@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import type { Ship, Port, ShipMovement, Berth } from '../types';
 import { ShipStatus, BerthType } from '../types';

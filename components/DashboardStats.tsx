@@ -1,5 +1,3 @@
-
-
 import React from 'react';
 import type { Ship, Berth } from '../types';
 import { ShipStatus } from '../types';
@@ -12,18 +10,7 @@ interface DashboardStatsProps {
   berths: Berth[];
 }
 
-const DashboardStats: React.FC<DashboardStatsProps> = ({ ships, berths }) => {
-  const activeShips = ships.filter(s => s.status !== ShipStatus.LEFT_PORT);
-  const occupiedBerthIds = new Set(activeShips.flatMap(s => s.berthIds));
-  
-  const berthOccupancy = berths.length > 0 ? (occupiedBerthIds.size / berths.length) * 100 : 0;
-
-  const statusCounts = activeShips.reduce((acc, ship) => {
-    acc[ship.status] = (acc[ship.status] || 0) + 1;
-    return acc;
-  }, {} as { [key in ShipStatus]?: number });
-
-  const StatCard: React.FC<{ icon: React.ElementType; title: string; value?: string | number; children?: React.ReactNode }> = ({ icon: Icon, title, value, children }) => (
+const StatCard: React.FC<{ icon: React.ElementType; title: string; value?: string | number; children?: React.ReactNode }> = ({ icon: Icon, title, value, children }) => (
     <div className="bg-gray-800/50 p-4 rounded-lg flex-1">
       <div className="flex items-center">
         <div className="p-3 bg-cyan-500/10 rounded-full mr-4">
@@ -36,7 +23,18 @@ const DashboardStats: React.FC<DashboardStatsProps> = ({ ships, berths }) => {
       </div>
       {children && <div className="mt-4">{children}</div>}
     </div>
-  );
+);
+
+const DashboardStats: React.FC<DashboardStatsProps> = ({ ships, berths }) => {
+  const activeShips = ships.filter(s => s.status !== ShipStatus.LEFT_PORT);
+  const occupiedBerthIds = new Set(activeShips.flatMap(s => s.berthIds));
+  
+  const berthOccupancy = berths.length > 0 ? (occupiedBerthIds.size / berths.length) * 100 : 0;
+
+  const statusCounts = activeShips.reduce((acc, ship) => {
+    acc[ship.status] = (acc[ship.status] || 0) + 1;
+    return acc;
+  }, {} as { [key in ShipStatus]?: number });
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

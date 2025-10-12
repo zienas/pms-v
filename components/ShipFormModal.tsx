@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import type { Ship, Berth, User } from '../types';
 import { ShipStatus, UserRole } from '../types';
@@ -16,6 +15,33 @@ type AssignmentStatus = {
     message: string;
     berthIds: string[];
 }
+
+const InputField: React.FC<{
+  label: string;
+  name: string;
+  type: string;
+  value: any;
+  error?: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+}> = ({ label, name, type, value, error, onChange }) => {
+  return (
+    <div>
+      <label htmlFor={name} className="block text-sm font-medium text-gray-300">{label}</label>
+      <input
+        type={type}
+        id={name}
+        name={name}
+        value={value}
+        onChange={onChange}
+        className={`mt-1 block w-full px-3 py-2 bg-gray-700 text-white border rounded-md focus:outline-none focus:ring-2 ${
+          error ? 'border-red-500 focus:ring-red-500' : 'border-gray-600 focus:ring-cyan-500'
+        }`}
+      />
+      {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+    </div>
+  );
+};
+
 
 const ShipFormModal: React.FC<ShipFormModalProps> = ({ pilots, agents }) => {
   const { currentUser } = useAuth();
@@ -163,38 +189,24 @@ const ShipFormModal: React.FC<ShipFormModalProps> = ({ pilots, agents }) => {
     return `${base} border-green-500 focus:ring-green-500`;
   };
 
-  const InputField: React.FC<{label: string, name: string, type: string, value: any}> = ({label, name, type, value}) => {
-      const error = errors[name];
-      return (
-        <div>
-            <label htmlFor={name} className="block text-sm font-medium text-gray-300">{label}</label>
-            <input
-                type={type} id={name} name={name} value={value} onChange={handleChange}
-                className={`mt-1 block w-full px-3 py-2 bg-gray-700 text-white border rounded-md focus:outline-none focus:ring-2 ${error ? 'border-red-500 focus:ring-red-500' : 'border-gray-600 focus:ring-cyan-500'}`}
-            />
-            {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
-        </div>
-      );
-  }
-
   return (
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
       <div className="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-2xl border border-gray-700">
         <h2 className="text-2xl font-bold mb-4">{shipToEdit ? 'Edit Ship' : 'Add New Ship'}</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <InputField label="Ship Name" name="name" type="text" value={formData.name} />
-            <InputField label="IMO Number" name="imo" type="text" value={formData.imo} />
+            <InputField label="Ship Name" name="name" type="text" value={formData.name} onChange={handleChange} error={errors.name} />
+            <InputField label="IMO Number" name="imo" type="text" value={formData.imo} onChange={handleChange} error={errors.imo} />
             {shipToEdit?.currentTripId && (
                 <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-300">Current Stopover ID</label>
                     <input type="text" disabled value={shipToEdit.currentTripId} className="mt-1 block w-full px-3 py-2 bg-gray-900/50 text-gray-400 border border-gray-600 rounded-md font-mono" />
                 </div>
             )}
-            <InputField label="Ship Type" name="type" type="text" value={formData.type} />
-            <InputField label="Flag" name="flag" type="text" value={formData.flag} />
-            <InputField label="Length (m)" name="length" type="number" value={formData.length} />
-            <InputField label="Draft (m)" name="draft" type="number" value={formData.draft} />
+            <InputField label="Ship Type" name="type" type="text" value={formData.type} onChange={handleChange} error={errors.type} />
+            <InputField label="Flag" name="flag" type="text" value={formData.flag} onChange={handleChange} error={errors.flag} />
+            <InputField label="Length (m)" name="length" type="number" value={formData.length} onChange={handleChange} error={errors.length} />
+            <InputField label="Draft (m)" name="draft" type="number" value={formData.draft} onChange={handleChange} error={errors.draft} />
              <div>
               <label htmlFor="eta" className="block text-sm font-medium text-gray-300">ETA</label>
               <input type="datetime-local" id="eta" name="eta" value={formData.eta} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500" />

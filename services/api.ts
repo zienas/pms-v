@@ -1,3 +1,4 @@
+
 import type { Ship, Berth, ShipMovement, Port, User, LoginHistoryEntry, AisData, Trip } from '../types';
 import { ShipStatus, BerthType, MovementEventType, UserRole, TripStatus } from '../types';
 

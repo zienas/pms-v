@@ -1,6 +1,3 @@
-
-
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { Toaster, toast } from 'react-hot-toast';
 import Header from './components/Header';

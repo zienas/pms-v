@@ -160,7 +160,10 @@ export const PortProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 dispatch({ type: 'SET_DATA', payload: { ships: fetchedShips, berths: fetchedBerths, trips: fetchedTrips, allBerths: fetchedAllBerths } });
             }
         } catch (error) {
-            if (!signal.aborted) console.error("Failed to fetch initial port data:", error);
+            if (!signal.aborted) {
+                console.error("Failed to fetch initial port data:", error);
+                toast.error(`Failed to load port data: ${error.message}`);
+            }
         } finally {
             if (!signal.aborted) dispatch({ type: 'SET_LOADING', payload: false });
         }

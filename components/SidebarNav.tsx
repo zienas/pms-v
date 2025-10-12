@@ -33,6 +33,42 @@ const icons: { [key: string]: React.ElementType } = {
     users: UsersIcon,
 };
 
+interface NavItemProps {
+    view: View;
+    label: string;
+    count?: number;
+    activeView: View;
+    onViewChange: (view: View) => void;
+}
+
+const NavItem: React.FC<NavItemProps> = ({ view, label, count, activeView, onViewChange }) => {
+    const isActive = activeView === view;
+    const baseClasses = "flex items-center w-full p-3 my-1 rounded-lg transition-colors duration-200";
+    const activeClasses = "bg-cyan-500/20 text-cyan-300";
+    const inactiveClasses = "text-gray-400 hover:bg-gray-700 hover:text-white";
+    const IconComponent = icons[view];
+
+    return (
+        <li>
+            <button
+                onClick={() => onViewChange(view)}
+                className={`${baseClasses} ${isActive ? activeClasses : inactiveClasses}`}
+                aria-current={isActive ? 'page' : undefined}
+            >
+                <IconComponent className="w-6 h-6" />
+                <span className="ml-3 font-medium">{label}</span>
+                {count !== undefined && (
+                     <span className={`ml-auto text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center ${
+                        count > 0 && view === 'alerts'
+                            ? 'bg-red-500 text-white' 
+                            : 'bg-gray-600 text-gray-200'
+                     }`}>{count}</span>
+                )}
+            </button>
+        </li>
+    );
+};
+
 const SidebarNav: React.FC<SidebarNavProps> = ({ activeView, setActiveView, alertCount, isOpen, setIsOpen }) => {
     const { currentUser } = useAuth();
     const isAdmin = currentUser.role === UserRole.ADMIN;
@@ -43,34 +79,6 @@ const SidebarNav: React.FC<SidebarNavProps> = ({ activeView, setActiveView, aler
         setIsOpen(false); // Close sidebar on selection in mobile
     };
 
-    const NavItem: React.FC<{view: View, label: string, count?: number}> = ({ view, label, count }) => {
-        const isActive = activeView === view;
-        const baseClasses = "flex items-center w-full p-3 my-1 rounded-lg transition-colors duration-200";
-        const activeClasses = "bg-cyan-500/20 text-cyan-300";
-        const inactiveClasses = "text-gray-400 hover:bg-gray-700 hover:text-white";
-        const IconComponent = icons[view];
-
-        return (
-            <li>
-                <button
-                    onClick={() => handleViewChange(view)}
-                    className={`${baseClasses} ${isActive ? activeClasses : inactiveClasses}`}
-                    aria-current={isActive ? 'page' : undefined}
-                >
-                    <IconComponent className="w-6 h-6" />
-                    <span className="ml-3 font-medium">{label}</span>
-                    {count !== undefined && (
-                         <span className={`ml-auto text-xs font-bold rounded-full h-6 w-6 flex items-center justify-center ${
-                            count > 0 && view === 'alerts'
-                                ? 'bg-red-500 text-white' 
-                                : 'bg-gray-600 text-gray-200'
-                         }`}>{count}</span>
-                    )}
-                </button>
-            </li>
-        )
-    }
-
     return (
         <nav className={`fixed top-0 left-0 h-full w-64 bg-gray-900 p-4 border-r border-gray-700 flex flex-col z-30 transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
             <div className="flex items-center justify-between pb-4 mb-4 border-b border-gray-700">
@@ -80,21 +88,21 @@ const SidebarNav: React.FC<SidebarNavProps> = ({ activeView, setActiveView, aler
                 </button>
             </div>
             <ul className="flex-1">
-                <NavItem view="dashboard" label="Dashboard" />
-                <NavItem view="vessels" label="Vessels" />
-                <NavItem view="berths" label="Berths" />
-                <NavItem view="alerts" label="Alerts" count={alertCount} />
-                <NavItem view="trips" label="Trips" />
-                <NavItem view="vessel-analytics" label="Vessel Analytics" />
+                <NavItem view="dashboard" label="Dashboard" activeView={activeView} onViewChange={handleViewChange} />
+                <NavItem view="vessels" label="Vessels" activeView={activeView} onViewChange={handleViewChange} />
+                <NavItem view="berths" label="Berths" activeView={activeView} onViewChange={handleViewChange} />
+                <NavItem view="alerts" label="Alerts" count={alertCount} activeView={activeView} onViewChange={handleViewChange} />
+                <NavItem view="trips" label="Trips" activeView={activeView} onViewChange={handleViewChange} />
+                <NavItem view="vessel-analytics" label="Vessel Analytics" activeView={activeView} onViewChange={handleViewChange} />
                 
                 <div className="my-4 border-t border-gray-700"></div>
                 
-                {canAccessSettings && <NavItem view="settings" label="Settings" />}
+                {canAccessSettings && <NavItem view="settings" label="Settings" activeView={activeView} onViewChange={handleViewChange} />}
                 
                 {isAdmin && (
                     <>
-                        <NavItem view="management" label="Manage Ports" />
-                        <NavItem view="users" label="Manage Users" />
+                        <NavItem view="management" label="Manage Ports" activeView={activeView} onViewChange={handleViewChange} />
+                        <NavItem view="users" label="Manage Users" activeView={activeView} onViewChange={handleViewChange} />
                     </>
                 )}
             </ul>
