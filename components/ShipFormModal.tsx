@@ -269,7 +269,11 @@ const ShipFormModal: React.FC<ShipFormModalProps> = ({ pilots, agents }) => {
            {formData.status === ShipStatus.LEFT_PORT && formData.departureDate && (
              <div className="mt-2">
                 <label className="block text-sm font-medium text-gray-300">Departure Date (Auto-set)</label>
-                <input type="text" disabled value={new Date(formData.departureDate).toLocaleString()} className="mt-1 block w-full px-3 py-2 bg-gray-700 text-gray-400 border border-gray-600 rounded-md" />
+                <input type="text" disabled value={
+                    formData.departureDate && !isNaN(new Date(formData.departureDate).getTime())
+                    ? new Date(formData.departureDate).toLocaleString()
+                    : 'Not yet departed'
+                } className="mt-1 block w-full px-3 py-2 bg-gray-700 text-gray-400 border border-gray-600 rounded-md" />
             </div>
            )}
 

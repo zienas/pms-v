@@ -61,8 +61,8 @@ const TripDirectory: React.FC<TripDirectoryProps> = ({ selectedPort }) => {
       'Vessel Name': trip.vesselName,
       'IMO': trip.vesselImo,
       'Status': trip.status,
-      'Arrival': new Date(trip.arrivalTimestamp).toLocaleString(),
-      'Departure': trip.departureTimestamp ? new Date(trip.departureTimestamp).toLocaleString() : '',
+      'Arrival': trip.arrivalTimestamp && !isNaN(new Date(trip.arrivalTimestamp).getTime()) ? new Date(trip.arrivalTimestamp).toLocaleString() : 'Invalid date',
+      'Departure': trip.departureTimestamp && !isNaN(new Date(trip.departureTimestamp).getTime()) ? new Date(trip.departureTimestamp).toLocaleString() : '',
       'Duration': trip.departureTimestamp ? formatDuration(new Date(trip.departureTimestamp).getTime() - new Date(trip.arrivalTimestamp).getTime()) : 'Active',
       'Assigned Agent': trip.agentId ? userMap.get(trip.agentId) || 'Unknown' : 'N/A',
       'Assigned Pilot': trip.pilotId ? userMap.get(trip.pilotId) || 'Unknown' : 'N/A',
@@ -74,11 +74,11 @@ const TripDirectory: React.FC<TripDirectoryProps> = ({ selectedPort }) => {
     const doc = new jsPDF({ orientation: 'landscape' });
     const tableColumns = ["Trip ID", "Vessel Name (IMO)", "Status", "Arrival", "Departure", "Duration", "Agent", "Pilot"];
     const tableRows = sortedTrips.map(trip => [
-        trip.id.split('-')[1],
+        trip.id && typeof trip.id === 'string' && trip.id.includes('-') ? trip.id.split('-')[1] : trip.id,
         `${trip.vesselName} (${trip.vesselImo})`,
         trip.status,
-        new Date(trip.arrivalTimestamp).toLocaleString(),
-        trip.departureTimestamp ? new Date(trip.departureTimestamp).toLocaleString() : '—',
+        trip.arrivalTimestamp && !isNaN(new Date(trip.arrivalTimestamp).getTime()) ? new Date(trip.arrivalTimestamp).toLocaleString() : 'Invalid date',
+        trip.departureTimestamp && !isNaN(new Date(trip.departureTimestamp).getTime()) ? new Date(trip.departureTimestamp).toLocaleString() : '—',
         trip.departureTimestamp ? formatDuration(new Date(trip.departureTimestamp).getTime() - new Date(trip.arrivalTimestamp).getTime()) : 'Active',
         trip.agentId ? userMap.get(trip.agentId) || 'Unknown' : 'N/A',
         trip.pilotId ? userMap.get(trip.pilotId) || 'Unknown' : 'N/A',
@@ -202,11 +202,21 @@ const TripDirectory: React.FC<TripDirectoryProps> = ({ selectedPort }) => {
             <tbody className="divide-y divide-gray-700">
                 {sortedTrips.map(trip => (
                     <tr key={trip.id} onClick={() => openTripDetailModal(trip)} className={`group transition-colors duration-200 cursor-pointer ${trip.status === TripStatus.COMPLETED ? 'bg-gray-800/60' : ''} hover:bg-gray-800/50`}>
-                        <td className="px-4 py-3 font-mono text-xs text-gray-400">{trip.id.split('-')[1]}</td>
+                        <td className="px-4 py-3 font-mono text-xs text-gray-400">{trip.id && typeof trip.id === 'string' && trip.id.includes('-') ? trip.id.split('-')[1] : trip.id}</td>
                         <td className="px-4 py-3 font-medium text-white">{trip.vesselName} <span className="text-gray-500">({trip.vesselImo})</span></td>
                         <td className="px-4 py-3"><span className={`px-2 py-1 text-xs font-medium rounded-full border ${statusColors[trip.status]}`}>{trip.status}</span></td>
-                        <td className="px-4 py-3">{new Date(trip.arrivalTimestamp).toLocaleString()}</td>
-                        <td className="px-4 py-3">{trip.departureTimestamp ? new Date(trip.departureTimestamp).toLocaleString() : '—'}</td>
+                        <td className="px-4 py-3">
+                            {trip.arrivalTimestamp && !isNaN(new Date(trip.arrivalTimestamp).getTime())
+                                ? new Date(trip.arrivalTimestamp).toLocaleString()
+                                : 'Invalid date'}
+                        </td>
+                        <td className="px-4 py-3">
+                            {trip.departureTimestamp ? (
+                                !isNaN(new Date(trip.departureTimestamp).getTime())
+                                    ? new Date(trip.departureTimestamp).toLocaleString()
+                                    : 'Invalid date'
+                            ) : '—'}
+                        </td>
                         <td className="px-4 py-3">{trip.departureTimestamp ? formatDuration(new Date(trip.departureTimestamp).getTime() - new Date(trip.arrivalTimestamp).getTime()) : formatDuration(Date.now() - new Date(trip.arrivalTimestamp).getTime())}</td>
                         <td className="px-4 py-3">{trip.agentId ? userMap.get(trip.agentId) || 'Unknown' : '—'}</td>
                         <td className="px-4 py-3">{trip.pilotId ? userMap.get(trip.pilotId) || 'Unknown' : '—'}</td>

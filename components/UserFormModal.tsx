@@ -1,6 +1,4 @@
-
-
-import * as React from 'react';
+import React, { useState, useEffect } from 'react';
 import type { User, Port } from '../types';
 import { UserRole } from '../types';
 import { useAuth } from '../context/AuthContext';
@@ -14,17 +12,17 @@ interface UserFormModalProps {
 const UserFormModal: React.FC<UserFormModalProps> = ({ ports, onClose }) => {
     const { addUser, updateUser } = useAuth();
     const { editingUser: userToEdit } = usePort();
-    const [formData, setFormData] = React.useState<Omit<User, 'id'>>({
+    const [formData, setFormData] = useState<Omit<User, 'id'>>({
         name: '',
         role: UserRole.OPERATOR,
         portId: undefined,
         password: '',
     });
-    const [errors, setErrors] = React.useState<{ [key: string]: string }>({});
+    const [errors, setErrors] = useState<{ [key: string]: string }>({});
     
     const isPortRequired = ![UserRole.ADMIN].includes(formData.role);
 
-    React.useEffect(() => {
+    useEffect(() => {
         if (userToEdit) {
             setFormData({
                 name: userToEdit.name,

@@ -1,5 +1,4 @@
 
-
 import React from 'react';
 import type { Alert } from '../types';
 import { AlertType } from '../types';
@@ -58,7 +57,7 @@ const AlertsDashboard: React.FC = () => {
                     <div>
                       <p className={`font-semibold text-lg ${styles.iconColor}`}>{alert.type}</p>
                       <p className="text-md text-gray-200 mt-1">{alert.message}</p>
-                      <p className="text-xs text-gray-500 mt-2">{new Date(alert.timestamp).toLocaleString()}</p>
+                      <p className="text-xs text-gray-500 mt-2">{alert.timestamp && !isNaN(new Date(alert.timestamp).getTime()) ? new Date(alert.timestamp).toLocaleString() : 'Invalid date'}</p>
                     </div>
                   </div>
                   <div className="flex justify-end items-center gap-2 border-t border-gray-700/50 pt-3">

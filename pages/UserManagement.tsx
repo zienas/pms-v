@@ -50,8 +50,8 @@ const UserManagement: React.FC<UserManagementProps> = ({ allPorts }) => {
                 return {
                     'User Name': entry.userName,
                     'Port': entry.portName,
-                    'Login Time': new Date(entry.timestamp).toLocaleString(),
-                    'Logout Time': entry.logoutTimestamp ? new Date(entry.logoutTimestamp).toLocaleString() : '',
+                    'Login Time': entry.timestamp && !isNaN(new Date(entry.timestamp).getTime()) ? new Date(entry.timestamp).toLocaleString() : 'Invalid Date',
+                    'Logout Time': entry.logoutTimestamp && !isNaN(new Date(entry.logoutTimestamp).getTime()) ? new Date(entry.logoutTimestamp).toLocaleString() : '',
                     'Session Duration': duration,
                 };
             });
@@ -132,10 +132,16 @@ const UserManagement: React.FC<UserManagementProps> = ({ allPorts }) => {
                                 <tr key={entry.id} className="hover:bg-gray-800/50">
                                     <td className="px-4 py-3 font-medium">{entry.userName}</td>
                                     <td className="px-4 py-3">{entry.portName}</td>
-                                    <td className="px-4 py-3">{new Date(entry.timestamp).toLocaleString()}</td>
+                                    <td className="px-4 py-3">
+                                        {entry.timestamp && !isNaN(new Date(entry.timestamp).getTime())
+                                            ? new Date(entry.timestamp).toLocaleString()
+                                            : 'Invalid date'}
+                                    </td>
                                     <td className="px-4 py-3">
                                         {entry.logoutTimestamp ? (
-                                            new Date(entry.logoutTimestamp).toLocaleString()
+                                            !isNaN(new Date(entry.logoutTimestamp).getTime())
+                                                ? new Date(entry.logoutTimestamp).toLocaleString()
+                                                : 'Invalid date'
                                         ) : (
                                             <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-500/20 text-green-300 border border-green-500">Active</span>
                                         )}

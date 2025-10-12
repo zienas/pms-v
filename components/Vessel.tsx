@@ -1,4 +1,4 @@
-import * as React from 'react';
+import React, { useMemo, useCallback, memo } from 'react';
 import type { Ship } from '../types';
 import { ShipStatus, UserRole } from '../types';
 import ShipIcon from './icons/ShipIcon';
@@ -133,12 +133,12 @@ const ListVesselItem: React.FC<{ ship: Ship; onClick: React.MouseEventHandler; c
 const Vessel: React.FC<VesselProps> = ({ ship, onClick, displayMode = 'list', pixelsPerNm }) => {
     const { currentUser } = useAuth();
 
-    const canModify = React.useMemo(() => {
+    const canModify = useMemo(() => {
         return currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.OPERATOR;
     }, [currentUser.role]);
     
     // Wrap the onClick to enforce permissions centrally.
-    const handleClick = React.useCallback(() => {
+    const handleClick = useCallback(() => {
         if (canModify) {
             onClick();
         }
@@ -157,4 +157,4 @@ const Vessel: React.FC<VesselProps> = ({ ship, onClick, displayMode = 'list', pi
     return <ListVesselItem ship={ship} onClick={handleClick} canModify={canModify} />;
 };
 
-export default React.memo(Vessel);
+export default memo(Vessel);

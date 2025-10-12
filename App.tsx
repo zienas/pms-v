@@ -206,21 +206,31 @@ const MainApp: React.FC = () => {
 
   const selectedPort = useMemo(() => allPorts.find(p => p.id === selectedPortId), [allPorts, selectedPortId]);
 
-  // Special view for when no ports exist
+  // Special view for when no ports exist or are accessible
   if (currentUser && accessiblePorts.length === 0 && !isLoading) {
+    const isAdmin = currentUser.role === UserRole.ADMIN;
     return (
         <div className="flex h-screen font-sans bg-gray-900 text-gray-200">
             <SidebarNav activeView={activeView} setActiveView={setActiveView} alertCount={0} isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
             <div className="flex flex-col flex-1">
                 <Header portName="No Ports Available" ports={[]} selectedPortId={null} onPortChange={() => {}} onMenuClick={() => setIsSidebarOpen(true)} />
                 <main className="flex-1 p-4 overflow-y-auto bg-gray-800">
-                    {currentUser.role === UserRole.ADMIN && (
+                    {isAdmin ? (
                      <PortManagement 
                         ports={allPorts} 
                         selectedPort={managingPort}
                         onSelectPort={setManagingPort}
                         onDeletePort={handleDeletePort}
                      />
+                    ) : (
+                        <div className="flex flex-col items-center justify-center h-full text-center text-gray-400">
+                            <WarningIcon className="w-16 h-16 mb-4" />
+                            <h2 className="text-xl font-bold text-white">No Port Assigned</h2>
+                            <p className="max-w-md mt-2">
+                                Your user account is not assigned to an active port. 
+                                Please contact an administrator to have your account configured correctly.
+                            </p>
+                        </div>
                     )}
                 </main>
                  {isPortFormModalOpen && <PortFormModal onClose={closePortFormModal} onSaveSuccess={fetchPorts} />}

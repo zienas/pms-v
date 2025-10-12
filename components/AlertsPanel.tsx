@@ -1,5 +1,4 @@
 
-
 import React from 'react';
 import type { Alert } from '../types';
 import { AlertType } from '../types';
@@ -45,7 +44,11 @@ const AlertsPanel: React.FC<AlertsPanelProps> = ({ alerts }) => {
               <div>
                 <p className="font-semibold text-white">{alert.type}</p>
                 <p className="text-sm text-gray-300">{alert.message}</p>
-                <p className="text-xs text-gray-500 mt-1">{new Date(alert.timestamp).toLocaleString()}</p>
+                <p className="text-xs text-gray-500 mt-1">
+                    {alert.timestamp && !isNaN(new Date(alert.timestamp).getTime())
+                        ? new Date(alert.timestamp).toLocaleString()
+                        : 'Invalid date'}
+                </p>
               </div>
             </li>
           );

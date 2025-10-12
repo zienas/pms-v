@@ -1,5 +1,4 @@
 
-
 import React, { useState, useMemo } from 'react';
 import type { Ship, Berth, Port } from '../types';
 import { ShipStatus, UserRole } from '../types';
@@ -78,11 +77,11 @@ const VesselDirectory: React.FC<VesselDirectoryProps> = ({ selectedPort }) => {
       'Draft (m)': ship.draft,
       'Flag': ship.flag,
       'Status': ship.status,
-      'ETA': new Date(ship.eta).toLocaleString(),
-      'ETD': new Date(ship.etd).toLocaleString(),
+      'ETA': ship.eta && !isNaN(new Date(ship.eta).getTime()) ? new Date(ship.eta).toLocaleString() : 'Invalid Date',
+      'ETD': ship.etd && !isNaN(new Date(ship.etd).getTime()) ? new Date(ship.etd).toLocaleString() : 'Invalid Date',
       'Assigned Berths': ship.berthIds.map(id => berthMap.get(id)).join(', ') || 'Unassigned',
       'Assigned Pilot': ship.pilotId ? userMap.get(ship.pilotId) || 'Unknown' : 'N/A',
-      'Departure Date': ship.departureDate ? new Date(ship.departureDate).toLocaleString() : '',
+      'Departure Date': ship.departureDate && !isNaN(new Date(ship.departureDate).getTime()) ? new Date(ship.departureDate).toLocaleString() : '',
     }));
     downloadCSV(dataToExport, `vessel_directory_${portName.replace(/\s+/g, '_')}.csv`);
   };
@@ -266,7 +265,11 @@ const VesselDirectory: React.FC<VesselDirectoryProps> = ({ selectedPort }) => {
                             </div>
                         </td>
                         <td className="px-4 py-3">{ship.imo}</td>
-                        <td className="px-4 py-3 font-mono text-xs text-gray-400">{ship.currentTripId ? ship.currentTripId.split('-')[1] : '—'}</td>
+                        <td className="px-4 py-3 font-mono text-xs text-gray-400">
+                            {ship.currentTripId && typeof ship.currentTripId === 'string' && ship.currentTripId.includes('-') 
+                                ? ship.currentTripId.split('-')[1] 
+                                : '—'}
+                        </td>
                         <td className="px-4 py-3">{ship.type}</td>
                         <td className="px-4 py-3">{ship.pilotId ? userMap.get(ship.pilotId) || 'Unknown Pilot' : '—'}</td>
                         <td className="px-4 py-3">

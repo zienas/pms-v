@@ -151,8 +151,8 @@ const TripDetailModal: React.FC<TripDetailModalProps> = ({ pilots, agents, selec
 
         const tableBody = [
             ['Status', trip.status],
-            ['Arrival', new Date(trip.arrivalTimestamp).toLocaleString()],
-            ['Departure', trip.departureTimestamp ? new Date(trip.departureTimestamp).toLocaleString() : '—'],
+            ['Arrival', trip.arrivalTimestamp && !isNaN(new Date(trip.arrivalTimestamp).getTime()) ? new Date(trip.arrivalTimestamp).toLocaleString() : 'Invalid Date'],
+            ['Departure', trip.departureTimestamp && !isNaN(new Date(trip.departureTimestamp).getTime()) ? new Date(trip.departureTimestamp).toLocaleString() : '—'],
             ['Duration', duration],
             ['Maritime Agent', agentName],
             ['Assigned Pilot', pilotName],
@@ -178,8 +178,8 @@ const TripDetailModal: React.FC<TripDetailModalProps> = ({ pilots, agents, selec
             const timelineColumns = ["Location", "Arrival", "Departure", "Duration", "Pilot (Arr)", "Pilot (Dep)"];
             const timelineRows = stopoverTimeline.map(stay => [
                 stay.location,
-                new Date(stay.arrival).toLocaleString(),
-                stay.departure ? new Date(stay.departure).toLocaleString() : 'Present',
+                stay.arrival && !isNaN(new Date(stay.arrival).getTime()) ? new Date(stay.arrival).toLocaleString() : 'Invalid Date',
+                stay.departure && !isNaN(new Date(stay.departure).getTime()) ? new Date(stay.departure).toLocaleString() : 'Present',
                 stay.durationMs !== null ? formatDuration(stay.durationMs) : '',
                 stay.pilotOnArrival || 'N/A',
                 stay.pilotOnDeparture || (stay.departure ? 'N/A' : '')
@@ -221,8 +221,16 @@ const TripDetailModal: React.FC<TripDetailModalProps> = ({ pilots, agents, selec
                             <DetailItem label="IMO" value={trip.vesselImo || 'N/A'} />
                             <DetailItem label="Status" value={trip.status} />
                             <DetailItem label="Duration" value={duration} />
-                            <DetailItem label="Arrival" value={new Date(trip.arrivalTimestamp).toLocaleString()} fullWidth />
-                            <DetailItem label="Departure" value={trip.departureTimestamp ? new Date(trip.departureTimestamp).toLocaleString() : '—'} fullWidth />
+                            <DetailItem label="Arrival" value={
+                                trip.arrivalTimestamp && !isNaN(new Date(trip.arrivalTimestamp).getTime())
+                                ? new Date(trip.arrivalTimestamp).toLocaleString()
+                                : 'Invalid Date'
+                            } fullWidth />
+                            <DetailItem label="Departure" value={
+                                trip.departureTimestamp && !isNaN(new Date(trip.departureTimestamp).getTime())
+                                    ? new Date(trip.departureTimestamp).toLocaleString()
+                                    : '—'
+                            } fullWidth />
                         </div>
                     </div>
 
@@ -273,9 +281,15 @@ const TripDetailModal: React.FC<TripDetailModalProps> = ({ pilots, agents, selec
                                         {stopoverTimeline.map((stay, index) => (
                                             <tr key={index} className="hover:bg-gray-700/50">
                                                 <td className="px-4 py-2 font-medium">{stay.location}</td>
-                                                <td className="px-4 py-2">{new Date(stay.arrival).toLocaleString()}</td>
                                                 <td className="px-4 py-2">
-                                                    {stay.departure ? new Date(stay.departure).toLocaleString() : <span className="text-green-400 font-semibold">Present</span>}
+                                                    {stay.arrival && !isNaN(new Date(stay.arrival).getTime())
+                                                        ? new Date(stay.arrival).toLocaleString()
+                                                        : 'Invalid date'}
+                                                </td>
+                                                <td className="px-4 py-2">
+                                                    {stay.departure && !isNaN(new Date(stay.departure).getTime())
+                                                        ? new Date(stay.departure).toLocaleString()
+                                                        : <span className="text-green-400 font-semibold">Present</span>}
                                                 </td>
                                                 <td className="px-4 py-2">
                                                     {stay.durationMs !== null ? formatDuration(stay.durationMs) : ''}

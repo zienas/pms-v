@@ -222,7 +222,11 @@ const ShipHistoryModal: React.FC<ShipHistoryModalProps> = ({ ship, portId, onClo
                         {locationHistory.map((stay, index) => (
                             <tr key={`${stay.location}-${index}`} className="hover:bg-gray-700/50">
                                 <td className="px-4 py-2 font-medium">{stay.location}</td>
-                                <td className="px-4 py-2">{new Date(stay.arrival).toLocaleString()}</td>
+                                <td className="px-4 py-2">
+                                    {stay.arrival && !isNaN(new Date(stay.arrival).getTime()) 
+                                        ? new Date(stay.arrival).toLocaleString() 
+                                        : 'Invalid date'}
+                                </td>
                                 <td className="px-4 py-2">
                                     {stay.pilotOnArrival ? (
                                         <div className="flex items-center gap-2">
@@ -234,7 +238,9 @@ const ShipHistoryModal: React.FC<ShipHistoryModalProps> = ({ ship, portId, onClo
                                     )}
                                 </td>
                                 <td className="px-4 py-2">
-                                    {stay.departure ? new Date(stay.departure).toLocaleString() : <span className="text-green-400 font-semibold">Present</span>}
+                                    {stay.departure && !isNaN(new Date(stay.departure).getTime()) 
+                                        ? new Date(stay.departure).toLocaleString() 
+                                        : <span className="text-green-400 font-semibold">Present</span>}
                                 </td>
                                  <td className="px-4 py-2">
                                     {stay.pilotOnDeparture ? (
@@ -295,7 +301,11 @@ const ShipHistoryModal: React.FC<ShipHistoryModalProps> = ({ ship, portId, onClo
                                             {item.eventType}
                                             {index === 0 && ship.currentTripId === tripId && <span className="bg-cyan-600 text-cyan-100 text-sm font-medium mr-2 px-2.5 py-0.5 rounded ml-3">Latest</span>}
                                         </h3>
-                                        <time className="block mb-2 text-sm font-normal leading-none text-gray-400">{new Date(item.timestamp).toLocaleString()}</time>
+                                        <time className="block mb-2 text-sm font-normal leading-none text-gray-400">
+                                            {item.timestamp && !isNaN(new Date(item.timestamp).getTime())
+                                                ? new Date(item.timestamp).toLocaleString()
+                                                : 'Invalid date'}
+                                        </time>
                                         <p className="mb-2 text-base font-normal text-gray-300">{item.details.message}</p>
                                         {item.details.pilotId && !isPilotChangeEvent && (
                                             <p className="text-sm text-gray-400 flex items-center gap-2 mt-1">
