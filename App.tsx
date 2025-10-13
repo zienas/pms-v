@@ -66,7 +66,7 @@ const NoPortsView: React.FC = () => {
 
 const MainApp: React.FC = () => {
   const { currentUser } = useAuth();
-  const { aisSource } = useSettings();
+  const { aisSource, approachingThreshold, pilotThreshold } = useSettings();
   const { state, actions } = usePort();
   const {
     accessiblePorts,
@@ -78,7 +78,7 @@ const MainApp: React.FC = () => {
     selectedPort,
   } = state;
   
-  const [activeView, setActiveView] = useState<View>('users');
+  const [activeView, setActiveView] = useState<View>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => { actions.loadInitialPorts(); }, [actions]);
@@ -104,9 +104,9 @@ const MainApp: React.FC = () => {
   }, [aisSource, actions, selectedPortId]); // Re-run if port changes
 
   useEffect(() => {
-    const cleanup = actions.generateAlerts();
+    const cleanup = actions.generateAlerts(approachingThreshold, pilotThreshold);
     return cleanup;
-  }, [ships, actions]);
+  }, [ships, actions, approachingThreshold, pilotThreshold]);
   
   const renderView = () => {
     if (isLoading && !selectedPort) {

@@ -4,7 +4,11 @@ import type { AisSource } from '../types';
 import { usePort } from '../context/PortContext';
 
 const SettingsPage: React.FC = () => {
-    const { aisSource, setAisSource } = useSettings();
+    const { 
+        aisSource, setAisSource,
+        approachingThreshold, setApproachingThreshold,
+        pilotThreshold, setPilotThreshold,
+    } = useSettings();
     const { state, actions } = usePort();
     const { selectedPort } = state;
     
@@ -59,6 +63,26 @@ const SettingsPage: React.FC = () => {
                             <a href="./HOWTO-GOLIVE.md" target="_blank" rel="noopener noreferrer" className="mt-3 inline-block font-bold text-orange-400 hover:text-orange-300 underline">View Go-Live Instructions &rarr;</a>
                         </div>
                     )}
+                </div>
+
+                <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
+                    <h2 className="text-xl font-semibold mb-4">Alert Thresholds</h2>
+                     <div className="space-y-6">
+                        <div>
+                            <label htmlFor="approachingThreshold" className="block text-sm font-medium text-gray-300">Vessel Approaching Warning</label>
+                            <div className="flex items-center gap-4 mt-2">
+                                <input id="approachingThreshold" type="range" min="1" max="20" step="0.5" value={approachingThreshold} onChange={(e) => setApproachingThreshold(parseFloat(e.target.value))} className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer" />
+                                <span className="text-cyan-400 font-semibold w-20 text-center">{approachingThreshold.toFixed(1)} NM</span>
+                            </div>
+                        </div>
+                         <div>
+                            <label htmlFor="pilotThreshold" className="block text-sm font-medium text-gray-300">Pilot Assignment Warning</label>
+                             <div className="flex items-center gap-4 mt-2">
+                                <input id="pilotThreshold" type="range" min="0.5" max="10" step="0.5" value={pilotThreshold} onChange={(e) => setPilotThreshold(parseFloat(e.target.value))} className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer" />
+                                <span className="text-cyan-400 font-semibold w-20 text-center">{pilotThreshold.toFixed(1)} NM</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 
                  <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">

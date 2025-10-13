@@ -30,7 +30,19 @@ const PortMap: React.FC<PortMapProps> = ({ ships, berths, selectedPort }) => {
     if (!container) return;
     const observer = new ResizeObserver(() => setMapSize({ width: container.clientWidth, height: container.clientHeight }));
     observer.observe(container);
-    return () => observer.disconnect();
+
+    const handleWheel = (e: WheelEvent) => {
+        e.preventDefault();
+        const zoomFactor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
+        setZoomLevel(z => Math.max(0.2, Math.min(z * zoomFactor, 5)));
+    };
+
+    container.addEventListener('wheel', handleWheel, { passive: false });
+
+    return () => {
+        observer.disconnect();
+        container.removeEventListener('wheel', handleWheel);
+    };
   }, []);
 
   const { pixelsPerDegLat, pixelsPerDegLon, pixelsPerNm } = useMemo(() => {

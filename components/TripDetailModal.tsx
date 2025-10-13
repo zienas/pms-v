@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import type { Trip, User, ShipMovement, Berth, Port } from '../types';
-import { TripStatus, MovementEventType, UserRole } from '../types';
+import type { Trip, User, ShipMovement } from '../types';
+import { UserRole } from '../types';
 import * as api from '../services/api';
 import CloseIcon from './icons/CloseIcon';
 import ShipIcon from './icons/ShipIcon';
@@ -9,10 +9,11 @@ import PilotIcon from './icons/PilotIcon';
 import { formatDuration } from '../utils/formatters';
 import PDFIcon from './icons/PDFIcon';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import { usePort } from '../context/PortContext';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-hot-toast';
+import { MovementEventType } from '../types';
 
 const DetailItem: React.FC<{ label: string; value: string | number; fullWidth?: boolean }> = ({ label, value, fullWidth }) => (
     <div className={fullWidth ? 'col-span-2' : ''}>
@@ -45,6 +46,7 @@ const TripDetailModal: React.FC = () => {
                 const tripMovements = fullHistory.filter(m => m.tripId === trip.id);
                 setMovements(tripMovements);
             } catch (error) {
+                toast.error("Failed to fetch ship history for trip.");
                 console.error("Failed to fetch ship history for trip:", error);
             } finally {
                 setIsLoadingHistory(false);
@@ -60,12 +62,7 @@ const TripDetailModal: React.FC = () => {
         setFormData(trip);
     }, [trip]);
     
-    const userMap = useMemo(() => {
-        const map = new Map<string, string>();
-        pilots.forEach(p => map.set(p.id, p.name));
-        agents.forEach(a => map.set(a.id, a.name));
-        return map;
-    }, [pilots, agents]);
+    const userMap = useMemo(() => new Map(users.map(u => [u.id, u.name])), [users]);
     
     const stopoverTimeline = useMemo(() => {
         type LocationStay = {
@@ -153,7 +150,7 @@ const TripDetailModal: React.FC = () => {
         doc.setFontSize(18);
 
         if (hasLogo) {
-            doc.addImage(selectedPort.logoImage, 'PNG', 14, 15, 20, 20); // x, y, w, h
+            doc.addImage(selectedPort.logoImage!, 'PNG', 14, 15, 20, 20); // x, y, w, h
             doc.text(`Trip Detail Report: ${trip.id}`, 40, 22);
             doc.setFontSize(11);
             doc.setTextColor(100);
@@ -167,14 +164,14 @@ const TripDetailModal: React.FC = () => {
 
         const tableBody = [
             ['Status', trip.status],
-            ['Arrival', trip.arrivalTimestamp && !isNaN(new Date(trip.arrivalTimestamp).getTime()) ? new Date(trip.arrivalTimestamp).toLocaleString() : 'Invalid Date'],
-            ['Departure', trip.departureTimestamp && !isNaN(new Date(trip.departureTimestamp).getTime()) ? new Date(trip.departureTimestamp).toLocaleString() : '—'],
+            ['Arrival', trip.arrivalTimestamp ? new Date(trip.arrivalTimestamp).toLocaleString() : 'N/A'],
+            ['Departure', trip.departureTimestamp ? new Date(trip.departureTimestamp).toLocaleString() : '—'],
             ['Duration', duration],
             ['Maritime Agent', agentName],
             ['Assigned Pilot', pilotName],
         ];
 
-        (doc as any).autoTable({
+        autoTable(doc, {
             startY: 40,
             head: [['Field', 'Value']],
             body: tableBody,
@@ -183,7 +180,7 @@ const TripDetailModal: React.FC = () => {
         });
 
         if (stopoverTimeline.length > 0) {
-             (doc as any).autoTable({
+             autoTable(doc, {
                 startY: (doc as any).lastAutoTable.finalY + 10,
                 head: [['Stopover Timeline']],
                 body: [],
@@ -194,14 +191,14 @@ const TripDetailModal: React.FC = () => {
             const timelineColumns = ["Location", "Arrival", "Departure", "Duration", "Pilot (Arr)", "Pilot (Dep)"];
             const timelineRows = stopoverTimeline.map(stay => [
                 stay.location,
-                stay.arrival && !isNaN(new Date(stay.arrival).getTime()) ? new Date(stay.arrival).toLocaleString() : 'Invalid Date',
-                stay.departure && !isNaN(new Date(stay.departure).getTime()) ? new Date(stay.departure).toLocaleString() : 'Present',
+                stay.arrival ? new Date(stay.arrival).toLocaleString() : 'N/A',
+                stay.departure ? new Date(stay.departure).toLocaleString() : 'Present',
                 stay.durationMs !== null ? formatDuration(stay.durationMs) : '',
                 stay.pilotOnArrival || 'N/A',
                 stay.pilotOnDeparture || (stay.departure ? 'N/A' : '')
             ]);
 
-            (doc as any).autoTable({
+            autoTable(doc, {
                 head: [timelineColumns],
                 body: timelineRows,
                 theme: 'grid',
@@ -237,16 +234,8 @@ const TripDetailModal: React.FC = () => {
                             <DetailItem label="IMO" value={trip.vesselImo || 'N/A'} />
                             <DetailItem label="Status" value={trip.status} />
                             <DetailItem label="Duration" value={duration} />
-                            <DetailItem label="Arrival" value={
-                                trip.arrivalTimestamp && !isNaN(new Date(trip.arrivalTimestamp).getTime())
-                                ? new Date(trip.arrivalTimestamp).toLocaleString()
-                                : 'Invalid Date'
-                            } fullWidth />
-                            <DetailItem label="Departure" value={
-                                trip.departureTimestamp && !isNaN(new Date(trip.departureTimestamp).getTime())
-                                    ? new Date(trip.departureTimestamp).toLocaleString()
-                                    : '—'
-                            } fullWidth />
+                            <DetailItem label="Arrival" value={trip.arrivalTimestamp ? new Date(trip.arrivalTimestamp).toLocaleString() : 'N/A'} fullWidth />
+                            <DetailItem label="Departure" value={trip.departureTimestamp ? new Date(trip.departureTimestamp).toLocaleString() : '—'} fullWidth />
                         </div>
                     </div>
 
@@ -297,19 +286,9 @@ const TripDetailModal: React.FC = () => {
                                         {stopoverTimeline.map((stay, index) => (
                                             <tr key={index} className="hover:bg-gray-700/50">
                                                 <td className="px-4 py-2 font-medium">{stay.location}</td>
-                                                <td className="px-4 py-2">
-                                                    {stay.arrival && !isNaN(new Date(stay.arrival).getTime())
-                                                        ? new Date(stay.arrival).toLocaleString()
-                                                        : 'Invalid date'}
-                                                </td>
-                                                <td className="px-4 py-2">
-                                                    {stay.departure && !isNaN(new Date(stay.departure).getTime())
-                                                        ? new Date(stay.departure).toLocaleString()
-                                                        : <span className="text-green-400 font-semibold">Present</span>}
-                                                </td>
-                                                <td className="px-4 py-2">
-                                                    {stay.durationMs !== null ? formatDuration(stay.durationMs) : ''}
-                                                </td>
+                                                <td className="px-4 py-2">{stay.arrival ? new Date(stay.arrival).toLocaleString() : 'N/A'}</td>
+                                                <td className="px-4 py-2">{stay.departure ? new Date(stay.departure).toLocaleString() : <span className="text-green-400 font-semibold">Present</span>}</td>
+                                                <td className="px-4 py-2">{stay.durationMs !== null ? formatDuration(stay.durationMs) : ''}</td>
                                             </tr>
                                         ))}
                                     </tbody>

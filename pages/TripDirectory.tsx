@@ -9,7 +9,7 @@ import DownloadIcon from '../components/icons/DownloadIcon';
 import PDFIcon from '../components/icons/PDFIcon';
 import { formatDuration } from '../utils/formatters';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import { usePort } from '../context/PortContext';
 
 const statusColors: { [key in TripStatus]: string } = {
@@ -67,7 +67,7 @@ const TripDirectory: React.FC = () => {
         trip.pilotId ? userMap.get(trip.pilotId) || 'Unknown' : 'N/A',
     ]);
     
-    (doc as any).autoTable({
+    autoTable(doc, {
         head: [tableColumns], body: tableRows, theme: 'striped',
         styles: { fontSize: 8, cellPadding: 2 }, headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
         columnStyles: { 1: { fontStyle: 'bold' } },

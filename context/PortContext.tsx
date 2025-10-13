@@ -85,7 +85,7 @@ interface PortContextType {
     fetchDataForPort: (portId: string, signal: AbortSignal) => Promise<void>;
     setSelectedPortId: (portId: string) => void;
     clearData: () => void;
-    generateAlerts: () => () => void;
+    generateAlerts: (approachingThreshold: number, pilotThreshold: number) => () => void;
     runAisSimulation: (aisSource: AisSource) => () => void;
     initWebSocket: (portId: string | null) => () => void;
     openModal: (modal: ModalState) => void;
@@ -232,7 +232,7 @@ export const PortProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
         };
         
-        const generateAlerts = () => {
+        const generateAlerts = (approachingThreshold: number, pilotThreshold: number) => {
             const timer = setInterval(() => {
                 const { selectedPort, ships, selectedPortId, alerts } = stateRef.current;
                 if (!selectedPort) {
@@ -243,8 +243,15 @@ export const PortProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 ships.forEach(ship => {
                     if (ship.lat && ship.lon && ship.status === ShipStatus.APPROACHING) {
                         const distance = calculateDistanceNM(ship.lat, ship.lon, selectedPort.lat, selectedPort.lon);
-                        if (distance <= 2 && !ship.pilotId) {
-                            newAlerts.push({ id: `alert-prox-${ship.id}`, portId: selectedPortId!, type: AlertType.WARNING, message: `Vessel ${ship.name} is approaching (${distance.toFixed(2)} NM). Suggest assigning a pilot.`, shipId: ship.id, timestamp: new Date().toISOString() });
+                        
+                        // General approaching alert
+                        if (distance <= approachingThreshold) {
+                           newAlerts.push({ id: `alert-approach-${ship.id}`, portId: selectedPortId!, type: AlertType.WARNING, message: `Vessel ${ship.name} is approaching port at ${distance.toFixed(2)} NM.`, shipId: ship.id, timestamp: new Date().toISOString() });
+                        }
+
+                        // Pilot assignment alert
+                        if (distance <= pilotThreshold && !ship.pilotId) {
+                            newAlerts.push({ id: `alert-pilot-${ship.id}`, portId: selectedPortId!, type: AlertType.ERROR, message: `Vessel ${ship.name} requires pilot assignment. It is within ${distance.toFixed(2)} NM of the port.`, shipId: ship.id, timestamp: new Date().toISOString() });
                         }
                     }
                 });
