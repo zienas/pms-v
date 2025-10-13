@@ -12,6 +12,7 @@ import UsersIcon from './icons/UsersIcon';
 import CloseIcon from './icons/CloseIcon';
 import ChartBarIcon from './icons/ChartBarIcon';
 import RouteIcon from './icons/RouteIcon';
+import DocumentTextIcon from './icons/DocumentTextIcon';
 
 interface SidebarNavProps {
     activeView: View;
@@ -60,6 +61,7 @@ const SidebarNav: React.FC<SidebarNavProps> = ({ activeView, setActiveView, aler
         { view: 'alerts', label: 'Alerts', icon: WarningIcon, count: alertCount },
         { view: 'trips', label: 'Trips', icon: RouteIcon },
         { view: 'vessel-analytics', label: 'Vessel Analytics', icon: ChartBarIcon },
+        { view: 'logs', label: 'System Logs', icon: DocumentTextIcon },
     ], [alertCount]);
     
     const settingsItems: NavItemConfig[] = useMemo(() => [

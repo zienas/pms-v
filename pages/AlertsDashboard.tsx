@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import type { Alert } from '../types';
 import { AlertType } from '../types';
 import WarningIcon from '../components/icons/WarningIcon';
@@ -17,9 +17,24 @@ const alertStyles: Record<AlertType, { iconColor: string; borderColor: string; b
   },
 };
 
+type FilterType = 'all' | AlertType;
+type FilterStatus = 'all' | 'acknowledged' | 'unacknowledged';
+
 const AlertsDashboard: React.FC = () => {
    const { state, actions } = usePort();
    const { alerts, ships } = state;
+   const [filterType, setFilterType] = useState<FilterType>('all');
+   const [filterStatus, setFilterStatus] = useState<FilterStatus>('unacknowledged');
+
+   const filteredAlerts = useMemo(() => {
+     return alerts.filter(alert => {
+       const typeMatch = filterType === 'all' || alert.type === filterType;
+       const statusMatch = filterStatus === 'all' ||
+         (filterStatus === 'acknowledged' && alert.acknowledged) ||
+         (filterStatus === 'unacknowledged' && !alert.acknowledged);
+       return typeMatch && statusMatch;
+     });
+   }, [alerts, filterType, filterStatus]);
 
    const handleTakeAction = (shipId: string) => {
      const ship = ships.find(s => s.id === shipId);
@@ -40,12 +55,40 @@ const AlertsDashboard: React.FC = () => {
   
   return (
     <div className="bg-gray-900/50 rounded-lg p-4 h-full flex flex-col">
-       <div className="flex justify-between items-center mb-4">
-        <h1 className="text-2xl font-bold text-white">Active Alerts ({alerts.filter(a => !a.acknowledged).length})</h1>
+      <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-4">
+        <h1 className="text-2xl font-bold text-white">Active Alerts ({filteredAlerts.length})</h1>
+        <div className="flex items-center gap-4 text-sm">
+          <div>
+            <label htmlFor="filter-type" className="sr-only">Filter by Type</label>
+            <select
+              id="filter-type"
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value as FilterType)}
+              className="bg-gray-700 text-white border border-gray-600 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+            >
+              <option value="all">All Types</option>
+              <option value={AlertType.ERROR}>Error</option>
+              <option value={AlertType.WARNING}>Warning</option>
+            </select>
+          </div>
+          <div>
+            <label htmlFor="filter-status" className="sr-only">Filter by Status</label>
+            <select
+              id="filter-status"
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value as FilterStatus)}
+              className="bg-gray-700 text-white border border-gray-600 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+            >
+              <option value="all">All Statuses</option>
+              <option value="unacknowledged">Unacknowledged</option>
+              <option value="acknowledged">Acknowledged</option>
+            </select>
+          </div>
+        </div>
       </div>
       <div className="flex-1 overflow-y-auto">
         <ul className="space-y-3 pr-2">
-            {alerts.map(alert => {
+            {filteredAlerts.map(alert => {
               const styles = alertStyles[alert.type];
               return (
                 <li key={alert.id} className={`p-4 rounded-lg flex flex-col gap-3 border ${styles.borderColor} ${alert.acknowledged ? 'bg-gray-800/60' : styles.bgColor} transition-all`}>
@@ -69,6 +112,11 @@ const AlertsDashboard: React.FC = () => {
                 </li>
               );
             })}
+            {filteredAlerts.length === 0 && (
+              <div className="text-center py-16 text-gray-500">
+                  <p>No alerts match the current filter.</p>
+              </div>
+            )}
         </ul>
       </div>
     </div>

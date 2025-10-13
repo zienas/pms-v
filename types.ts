@@ -160,7 +160,7 @@ export interface AisData {
 
 export type AisSource = 'simulator' | 'udp' | 'serial';
 
-export type View = 'dashboard' | 'vessels' | 'berths' | 'alerts' | 'management' | 'users' | 'settings' | 'vessel-analytics' | 'trips';
+export type View = 'dashboard' | 'vessels' | 'berths' | 'alerts' | 'management' | 'users' | 'settings' | 'vessel-analytics' | 'trips' | 'logs';
 
 // FIX: Added ModalState type export
 export type ModalState =

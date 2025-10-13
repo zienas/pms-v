@@ -26,6 +26,7 @@ import { useAuth } from './context/AuthContext';
 import WarningIcon from './components/icons/WarningIcon';
 import { useSettings } from './context/SettingsContext';
 import { usePort } from './context/PortContext';
+import SystemLogs from './pages/SystemLogs';
 
 const LoadingSpinner: React.FC<{ message: string }> = ({ message }) => (
     <div className="flex items-center justify-center h-full">
@@ -124,6 +125,7 @@ const MainApp: React.FC = () => {
         case 'alerts': return <AlertsDashboard />;
         case 'trips': return <TripDirectory />;
         case 'vessel-analytics': return <VesselAnalytics />;
+        case 'logs': return <SystemLogs />;
         case 'management': return <PortManagement />;
         case 'users': return <UserManagement />;
         case 'settings': return <SettingsPage />;
