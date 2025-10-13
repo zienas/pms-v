@@ -4,6 +4,7 @@ import App from './App';
 import { AuthProvider } from './context/AuthContext';
 import { SettingsProvider } from './context/SettingsContext';
 import { PortProvider } from './context/PortContext';
+import { Toaster } from 'react-hot-toast';
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {
@@ -17,6 +18,11 @@ root.render(
       <SettingsProvider>
         <PortProvider>
           <App />
+          <Toaster position="bottom-right" toastOptions={{
+              style: { background: '#374151', color: '#fff' },
+              success: { iconTheme: { primary: '#10B981', secondary: '#fff' } },
+              error: { iconTheme: { primary: '#EF4444', secondary: '#fff' } },
+          }}/>
         </PortProvider>
       </SettingsProvider>
     </AuthProvider>

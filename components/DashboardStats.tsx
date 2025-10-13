@@ -56,6 +56,7 @@ const DashboardStats: React.FC<DashboardStatsProps> = ({ ships, berths }) => {
                     <p className="text-gray-400">{status}</p>
                 </div>
             ))}
+             {Object.keys(statusCounts).length === 0 && <p className="text-gray-500">No active vessels</p>}
         </div>
       </StatCard>
     </div>

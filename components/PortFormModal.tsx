@@ -1,18 +1,11 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import type { Port } from '../types';
 import GeometryEditor from './GeometryEditor';
-import * as api from '../services/api';
 import { usePort } from '../context/PortContext';
-import { toast } from 'react-hot-toast';
 
-interface PortFormModalProps {
-    onClose: () => void;
-    onSaveSuccess: () => void;
-}
-
-const PortFormModal: React.FC<PortFormModalProps> = ({ onClose, onSaveSuccess }) => {
-    const { editingPort: portToEdit } = usePort();
+const PortFormModal: React.FC = () => {
+    const { state, actions } = usePort();
+    const portToEdit = useMemo(() => (state.modal?.type === 'portForm' ? state.modal.port : null), [state.modal]);
     const [formData, setFormData] = useState({
         name: '',
         lat: '',
@@ -81,18 +74,11 @@ const PortFormModal: React.FC<PortFormModalProps> = ({ onClose, onSaveSuccess })
                 geometry: formData.geometry, logoImage: formData.logoImage,
             };
             
-            const promise = portToEdit 
-                ? api.updatePort(portToEdit.id, { ...portToEdit, ...portData })
-                : api.addPort(portData);
-
-            await toast.promise(promise, {
-                loading: 'Saving port...',
-                success: `Port "${portData.name}" saved successfully.`,
-                error: 'Failed to save port.',
-            });
-
-            onSaveSuccess();
-            onClose();
+            if (portToEdit) {
+                await actions.updatePort(portToEdit.id, { ...portToEdit, ...portData });
+            } else {
+                await actions.addPort(portData);
+            }
         }
     };
 
@@ -104,8 +90,8 @@ const PortFormModal: React.FC<PortFormModalProps> = ({ onClose, onSaveSuccess })
     };
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-            <div className="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-2xl border border-gray-700">
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+            <div className="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-2xl border border-gray-700 max-h-full overflow-y-auto">
                 <h2 className="text-2xl font-bold mb-4 text-white">{portToEdit ? 'Edit Port' : 'Add New Port'}</h2>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
@@ -190,7 +176,7 @@ const PortFormModal: React.FC<PortFormModalProps> = ({ onClose, onSaveSuccess })
                         </div>
                     </div>
                     <div className="flex justify-end gap-4 pt-4">
-                        <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors">Cancel</button>
+                        <button type="button" onClick={actions.closeModal} className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors">Cancel</button>
                         <button type="submit" className="px-4 py-2 bg-cyan-600 text-white rounded-md hover:bg-cyan-700 transition-colors">Save Port</button>
                     </div>
                 </form>

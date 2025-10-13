@@ -19,9 +19,18 @@ class WebSocketService {
     private maxReconnectInterval: number = 30000; // Max reconnect interval (30 seconds)
     private reconnectAttempts: number = 0;
     private reconnectTimeoutId: number | null = null;
+    private hasStarted: boolean = false;
 
     constructor(url: string) {
         this.url = url;
+        // DO NOT connect automatically. Defer until start() is called.
+    }
+
+    public start() {
+        if (this.hasStarted) {
+            return;
+        }
+        this.hasStarted = true;
         this.connect();
     }
 
@@ -93,7 +102,7 @@ class WebSocketService {
         console.log(logMessage);
 
         // Schedule a reconnection attempt with exponential backoff if one isn't already scheduled.
-        if (!this.reconnectTimeoutId) {
+        if (this.hasStarted && !this.reconnectTimeoutId) {
             this.reconnectAttempts++;
             // Calculate next reconnect time: 5s, 10s, 20s, 30s, 30s...
             const backoffTime = Math.min(this.reconnectInterval * Math.pow(2, this.reconnectAttempts - 1), this.maxReconnectInterval);
@@ -123,6 +132,7 @@ class WebSocketService {
     }
 
     public close() {
+        this.hasStarted = false;
         if (this.reconnectTimeoutId) {
             clearTimeout(this.reconnectTimeoutId);
             this.reconnectTimeoutId = null;

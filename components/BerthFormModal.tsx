@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import type { Berth, Port } from '../types';
 import { BerthType } from '../types';
 import GeometryEditor from './GeometryEditor';
@@ -7,11 +6,12 @@ import { usePort } from '../context/PortContext';
 
 interface BerthFormModalProps {
     port: Port;
-    onClose: () => void;
 }
 
-const BerthFormModal: React.FC<BerthFormModalProps> = ({ port, onClose }) => {
-    const { editingBerth: berthToEdit, addBerth, updateBerth } = usePort();
+const BerthFormModal: React.FC<BerthFormModalProps> = ({ port }) => {
+    const { state, actions } = usePort();
+    const { addBerth, updateBerth, closeModal } = actions;
+    const berthToEdit = useMemo(() => (state.modal?.type === 'berthForm' ? state.modal.berth : null), [state.modal]);
     
     const [formData, setFormData] = useState<Omit<Berth, 'id' | 'portId'>>({
         name: '', type: BerthType.BERTH, maxLength: 0, maxDraft: 0,
@@ -21,7 +21,7 @@ const BerthFormModal: React.FC<BerthFormModalProps> = ({ port, onClose }) => {
 
     useEffect(() => {
         if (berthToEdit) {
-            setFormData({ ...berthToEdit, geometry: berthToEdit.geometry || [] });
+            setFormData({ ...berthToEdit, equipment: berthToEdit.equipment || [], geometry: berthToEdit.geometry || [] });
         } else {
              setFormData({ name: '', type: BerthType.BERTH, maxLength: 0, maxDraft: 0, equipment: [], quayId: '', positionOnQuay: 0, geometry: [] });
         }
@@ -46,21 +46,20 @@ const BerthFormModal: React.FC<BerthFormModalProps> = ({ port, onClose }) => {
         setFormData(prev => ({ ...prev, geometry: newGeometry }));
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (validate()) {
             if (berthToEdit) {
-                updateBerth(port.id, berthToEdit.id, { ...berthToEdit, ...formData });
+                await updateBerth(port.id, berthToEdit.id, { ...berthToEdit, ...formData });
             } else {
-                addBerth(port.id, formData);
+                await addBerth(port.id, formData);
             }
-            onClose();
         }
     };
     
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-            <div className="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-2xl border border-gray-700 text-white">
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+            <div className="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-2xl border border-gray-700 text-white max-h-full overflow-y-auto">
                 <h2 className="text-2xl font-bold mb-4">{berthToEdit ? 'Edit Berth' : `Add New Berth to ${port.name}`}</h2>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -106,7 +105,7 @@ const BerthFormModal: React.FC<BerthFormModalProps> = ({ port, onClose }) => {
                         </div>
                     </div>
                     <div className="flex justify-end gap-4 pt-4">
-                        <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-600 rounded-md hover:bg-gray-700">Cancel</button>
+                        <button type="button" onClick={closeModal} className="px-4 py-2 bg-gray-600 rounded-md hover:bg-gray-700">Cancel</button>
                         <button type="submit" className="px-4 py-2 bg-cyan-600 rounded-md hover:bg-cyan-700">Save Berth</button>
                     </div>
                 </form>

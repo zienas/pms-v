@@ -1,17 +1,16 @@
-import React, { useState, useEffect } from 'react';
-import type { User, Port } from '../types';
+import React, { useState, useEffect, useMemo } from 'react';
+import type { User } from '../types';
 import { UserRole } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { usePort } from '../context/PortContext';
 
-interface UserFormModalProps {
-    ports: Port[];
-    onClose: () => void;
-}
-
-const UserFormModal: React.FC<UserFormModalProps> = ({ ports, onClose }) => {
+const UserFormModal: React.FC = () => {
     const { addUser, updateUser } = useAuth();
-    const { editingUser: userToEdit } = usePort();
+    const { state, actions } = usePort();
+    const { ports, modal } = state;
+    const { closeModal } = actions;
+    const userToEdit = useMemo(() => (modal?.type === 'userForm' ? modal.user : null), [modal]);
+    
     const [formData, setFormData] = useState<Omit<User, 'id'>>({
         name: '',
         role: UserRole.OPERATOR,
@@ -80,12 +79,12 @@ const UserFormModal: React.FC<UserFormModalProps> = ({ ports, onClose }) => {
             } else {
                 await addUser(formData);
             }
-            onClose();
+            closeModal();
         }
     };
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
             <div className="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-lg border border-gray-700 text-white">
                 <h2 className="text-2xl font-bold mb-4">{userToEdit ? 'Edit User' : 'Add New User'}</h2>
                 <form onSubmit={handleSubmit} className="space-y-4">
@@ -116,7 +115,7 @@ const UserFormModal: React.FC<UserFormModalProps> = ({ ports, onClose }) => {
                         </div>
                     )}
                     <div className="flex justify-end gap-4 pt-4">
-                        <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-600 rounded-md hover:bg-gray-700">Cancel</button>
+                        <button type="button" onClick={closeModal} className="px-4 py-2 bg-gray-600 rounded-md hover:bg-gray-700">Cancel</button>
                         <button type="submit" className="px-4 py-2 bg-cyan-600 rounded-md hover:bg-cyan-700">Save User</button>
                     </div>
                 </form>

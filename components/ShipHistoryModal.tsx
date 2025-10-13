@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import type { Ship, ShipMovement } from '../types';
 import { MovementEventType, UserRole } from '../types';
@@ -190,9 +189,9 @@ const ShipHistoryModal: React.FC<ShipHistoryModalProps> = ({ ship, portId, onClo
 
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-      <div className="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-5xl border border-gray-700 flex flex-col" style={{maxHeight: '90vh'}}>
-        <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-700">
+    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+      <div className="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-5xl border border-gray-700 flex flex-col max-h-full">
+        <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-700 flex-shrink-0">
             <h2 className="text-2xl font-bold">Movement History: {ship.name}</h2>
             <div className="flex items-center gap-2">
                 <button onClick={handlePopOut} className="p-2 rounded-full text-gray-400 hover:bg-gray-700 hover:text-white" title="Open in new window">
@@ -206,7 +205,7 @@ const ShipHistoryModal: React.FC<ShipHistoryModalProps> = ({ ship, portId, onClo
         <div ref={contentRef} className="flex-1 overflow-y-auto pr-2 space-y-8">
           <div>
             <h3 className="text-xl font-bold mb-3 text-white">Location Summary</h3>
-             <div className="overflow-y-auto" style={{maxHeight: '30vh'}}>
+             <div className="overflow-y-auto max-h-64">
                 <table className="w-full text-sm text-left text-gray-300">
                     <thead className="text-xs text-gray-400 uppercase bg-gray-700/50 sticky top-0">
                         <tr>
@@ -325,7 +324,7 @@ const ShipHistoryModal: React.FC<ShipHistoryModalProps> = ({ ship, portId, onClo
             )}
           </div>
         </div>
-        <div className="flex justify-between items-center pt-4 mt-4 border-t border-gray-700">
+        <div className="flex justify-between items-center pt-4 mt-4 border-t border-gray-700 flex-shrink-0">
           {canExport ? (
             <button
                 onClick={handleExport}

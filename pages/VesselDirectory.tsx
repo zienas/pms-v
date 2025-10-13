@@ -1,26 +1,31 @@
-
-import React, { useState, useMemo } from 'react';
-import type { Ship, Berth, Port } from '../types';
+import React, { useState, useMemo, useEffect } from 'react';
+import type { Ship } from '../types';
 import { ShipStatus, UserRole } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { useSortableData } from '../hooks/useSortableData';
-import SortIcon from '../components/SortIcon';
+import SortIcon from '../components/icons/SortIcon';
 import { downloadCSV } from '../utils/export';
 import DownloadIcon from '../components/icons/DownloadIcon';
 import FireIcon from '../components/icons/FlameIcon';
 import ClockIcon from '../components/icons/ClockIcon';
-import ReassignIcon from '../components/icons/ReassignIcon';
 import EditIcon from '../components/icons/EditIcon';
 import DeleteIcon from '../components/icons/DeleteIcon';
 import PDFIcon from '../components/icons/PDFIcon';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { usePort } from '../context/PortContext';
+import { toast } from 'react-hot-toast';
 
+const SETTINGS_KEY = 'vesselDirectorySettings';
 
-interface VesselDirectoryProps {
-  selectedPort: Port | null;
-}
+const loadSettings = () => {
+    try {
+        const saved = localStorage.getItem(SETTINGS_KEY);
+        return saved ? JSON.parse(saved) : {};
+    } catch {
+        return {};
+    }
+};
 
 const statusColors: { [key in ShipStatus]: string } = {
   [ShipStatus.APPROACHING]: 'bg-yellow-500/20 text-yellow-300 border-yellow-500',
@@ -30,23 +35,21 @@ const statusColors: { [key in ShipStatus]: string } = {
   [ShipStatus.LEFT_PORT]: 'bg-gray-600/20 text-gray-400 border-gray-600',
 };
 
-const VesselDirectory: React.FC<VesselDirectoryProps> = ({ selectedPort }) => {
-  const [filter, setFilter] = useState('');
-  const [showDeparted, setShowDeparted] = useState(false);
+const VesselDirectory: React.FC = () => {
+  const { state, actions } = usePort();
+  const { ships, berths, selectedPort } = state;
   const { currentUser, users } = useAuth();
-  
-  const { ships, berths, openShipFormModal, deleteShip, openHistoryModal } = usePort();
+
+  const [settings, setSettings] = useState(() => loadSettings());
+  const filter = settings.filter || '';
+  const showDeparted = settings.showDeparted === undefined ? true : settings.showDeparted;
+  const initialSortConfig = settings.sortConfig || { key: 'name', direction: 'ascending' };
 
   const userMap = useMemo(() => new Map(users.map(u => [u.id, u.name])), [users]);
   const berthMap = useMemo(() => new Map(berths.map(b => [b.id, b.name])), [berths]);
 
-  const canModify = useMemo(() => {
-    return currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.OPERATOR;
-  }, [currentUser.role]);
-  
-  const canExport = useMemo(() => {
-    return currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.CAPTAIN;
-  }, [currentUser.role]);
+  const canModify = useMemo(() => currentUser?.role === UserRole.ADMIN || currentUser?.role === UserRole.OPERATOR, [currentUser]);
+  const canExport = useMemo(() => currentUser?.role === UserRole.ADMIN || currentUser?.role === UserRole.CAPTAIN, [currentUser]);
 
   const filteredShips = useMemo(() => {
     return ships
@@ -58,108 +61,76 @@ const VesselDirectory: React.FC<VesselDirectoryProps> = ({ selectedPort }) => {
       );
   }, [ships, filter, showDeparted]);
 
-  const { items: sortedShips, requestSort, sortConfig } = useSortableData<Ship>(filteredShips, { key: 'name', direction: 'ascending' });
+  const { items: sortedShips, requestSort, sortConfig, setSortConfig } = useSortableData<Ship>(filteredShips, initialSortConfig);
+  
+  useEffect(() => {
+    try {
+        const newSettings = { filter, showDeparted, sortConfig };
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(newSettings));
+    } catch (error) {
+        console.warn("Could not save view settings:", error);
+    }
+  }, [filter, showDeparted, sortConfig]);
+
+  const updateSetting = (key: string, value: any) => {
+    setSettings((prev: any) => ({ ...prev, [key]: value }));
+  };
+
+  const handleClearFilters = () => {
+    localStorage.removeItem(SETTINGS_KEY);
+    setSettings({});
+    setSortConfig({ key: 'name', direction: 'ascending' });
+    toast.success('View settings have been reset.');
+  };
 
   const getSortDirectionFor = (key: keyof Ship) => {
     if (!sortConfig) return undefined;
     return sortConfig.key === key ? sortConfig.direction : undefined;
   };
-  
+
   const handleExportCSV = () => {
-    const portName = selectedPort?.name || 'export';
+    if (!selectedPort) return;
     const dataToExport = sortedShips.map(ship => ({
-      'Name': ship.name,
-      'IMO': ship.imo,
-      'Trip ID': ship.currentTripId || '',
-      'Type': ship.type,
-      'Dangerous Goods': ship.hasDangerousGoods ? 'YES' : 'NO',
-      'Length (m)': ship.length,
-      'Draft (m)': ship.draft,
-      'Flag': ship.flag,
-      'Status': ship.status,
-      'ETA': ship.eta && !isNaN(new Date(ship.eta).getTime()) ? new Date(ship.eta).toLocaleString() : 'Invalid Date',
-      'ETD': ship.etd && !isNaN(new Date(ship.etd).getTime()) ? new Date(ship.etd).toLocaleString() : 'Invalid Date',
+      'Name': ship.name, 'IMO': ship.imo, 'Trip ID': ship.currentTripId || '', 'Type': ship.type,
+      'Dangerous Goods': ship.hasDangerousGoods ? 'YES' : 'NO', 'Length (m)': ship.length, 'Draft (m)': ship.draft,
+      'Flag': ship.flag, 'Status': ship.status,
+      'ETA': new Date(ship.eta).toLocaleString(), 'ETD': new Date(ship.etd).toLocaleString(),
       'Assigned Berths': ship.berthIds.map(id => berthMap.get(id)).join(', ') || 'Unassigned',
       'Assigned Pilot': ship.pilotId ? userMap.get(ship.pilotId) || 'Unknown' : 'N/A',
-      'Departure Date': ship.departureDate && !isNaN(new Date(ship.departureDate).getTime()) ? new Date(ship.departureDate).toLocaleString() : '',
+      'Departure Date': ship.departureDate ? new Date(ship.departureDate).toLocaleString() : '',
     }));
-    downloadCSV(dataToExport, `vessel_directory_${portName.replace(/\s+/g, '_')}.csv`);
+    downloadCSV(dataToExport, `vessel_directory_${selectedPort.name.replace(/\s+/g, '_')}.csv`);
   };
 
   const handleExportPDF = () => {
-    if (!selectedPort) {
-        alert("Please select a port first.");
-        return;
-    }
+    if (!selectedPort) return;
     const doc = new jsPDF();
-    const tableColumns = ["Name", "IMO", "Trip ID", "Type", "Status", "Assigned Berths", "Assigned Pilot"];
+    const tableColumns = ["Name", "IMO", "Trip ID", "Type", "Status", "Assigned Berths", "Pilot"];
     const tableRows = sortedShips.map(ship => [
-        ship.name,
-        ship.imo,
-        ship.currentTripId ? ship.currentTripId.split('-')[1] : '—',
-        ship.type,
-        ship.status,
+        ship.name, ship.imo, ship.currentTripId ? ship.currentTripId.split('-')[1] : '—', ship.type, ship.status,
         ship.berthIds.map(id => berthMap.get(id)).join(', ') || 'Unassigned',
         ship.pilotId ? userMap.get(ship.pilotId) || 'Unknown' : 'N/A',
     ]);
     
-    const portName = selectedPort.name;
-    const hasLogo = selectedPort.logoImage;
-
     (doc as any).autoTable({
-        head: [tableColumns],
-        body: tableRows,
-        theme: 'striped',
-        styles: { 
-            fontSize: 8,
-            cellPadding: 2,
-        },
-        headStyles: { 
-            fillColor: [41, 128, 185], // Professional blue
-            textColor: 255, 
-            fontStyle: 'bold',
-            halign: 'center'
-        },
-        columnStyles: {
-            0: { fontStyle: 'bold' } // Bold vessel name
-        },
+        head: [tableColumns], body: tableRows, theme: 'striped',
+        styles: { fontSize: 8, cellPadding: 2 }, headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold', halign: 'center' },
+        columnStyles: { 0: { fontStyle: 'bold' } },
         didDrawPage: (data: any) => {
-            // Header
-            doc.setFontSize(20);
-            doc.setFont('helvetica', 'bold');
-            doc.setTextColor(40);
-
+            doc.setFontSize(20); doc.setFont('helvetica', 'bold'); doc.setTextColor(40);
             let titleX = data.settings.margin.left;
-            if (hasLogo) {
-                try {
-                    doc.addImage(selectedPort.logoImage!, 'PNG', data.settings.margin.left, 15, 20, 20);
-                    titleX += 22; // Indent title if logo is present
-                } catch(e) {
-                    console.error("Error adding logo to PDF:", e);
-                }
+            if (selectedPort.logoImage) {
+                doc.addImage(selectedPort.logoImage, 'PNG', data.settings.margin.left, 15, 20, 20);
+                titleX += 22;
             }
             doc.text("Vessel Directory", titleX, 22);
-            
-            doc.setFontSize(12);
-            doc.setFont('helvetica', 'normal');
-            doc.setTextColor(100);
-            doc.text(portName, titleX, 29);
-
-            const generatedDate = `Generated: ${new Date().toLocaleString()}`;
-            doc.setFontSize(10);
-            doc.text(generatedDate, doc.internal.pageSize.getWidth() - data.settings.margin.right, 29, { align: 'right' });
-
-            // Footer
-            // FIX: Changed doc.internal.getNumberOfPages() to doc.getNumberOfPages() which is the correct modern API for jsPDF.
-            const pageStr = `Page ${doc.getNumberOfPages()}`;
-            doc.setFontSize(10);
-            doc.setTextColor(150);
-            doc.text(pageStr, data.settings.margin.left, doc.internal.pageSize.getHeight() - 10);
+            doc.setFontSize(12); doc.setFont('helvetica', 'normal'); doc.setTextColor(100); doc.text(selectedPort.name, titleX, 29);
+            doc.setFontSize(10); doc.text(`Generated: ${new Date().toLocaleString()}`, doc.internal.pageSize.getWidth() - data.settings.margin.right, 29, { align: 'right' });
+            doc.text(`Page ${doc.getNumberOfPages()}`, data.settings.margin.left, doc.internal.pageSize.getHeight() - 10);
         },
         margin: { top: 38 }
     });
-
-    doc.save(`vessel_directory_${portName.replace(/\s+/g, '_')}.pdf`);
+    doc.save(`vessel_directory_${selectedPort.name.replace(/\s+/g, '_')}.pdf`);
   };
 
   return (
@@ -169,84 +140,34 @@ const VesselDirectory: React.FC<VesselDirectoryProps> = ({ selectedPort }) => {
         <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
             {canExport && (
                  <>
-                    <button
-                        onClick={handleExportPDF}
-                        className="px-3 py-2 bg-red-700 text-white rounded-md hover:bg-red-800 text-sm flex items-center gap-2"
-                    >
-                        <PDFIcon className="w-4 h-4" />
-                        Export PDF
-                    </button>
-                    <button
-                        onClick={handleExportCSV}
-                        className="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm flex items-center gap-2"
-                    >
-                        <DownloadIcon className="w-4 h-4" />
-                        Export CSV
-                    </button>
+                    <button onClick={handleExportPDF} className="px-3 py-2 bg-red-700 text-white rounded-md hover:bg-red-800 text-sm flex items-center gap-2"><PDFIcon className="w-4 h-4" /> Export PDF</button>
+                    <button onClick={handleExportCSV} className="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm flex items-center gap-2"><DownloadIcon className="w-4 h-4" /> Export CSV</button>
                  </>
             )}
-            {canModify && (
-              <button
-                onClick={() => openShipFormModal(null)}
-                className="px-4 py-2 bg-cyan-600 text-white rounded-md hover:bg-cyan-700"
-              >
-                Add Ship
-              </button>
-            )}
+            {canModify && <button onClick={() => actions.openModal({ type: 'shipForm', ship: null })} className="px-4 py-2 bg-cyan-600 text-white rounded-md hover:bg-cyan-700">Add Ship</button>}
         </div>
       </div>
       <div className="flex flex-col md:flex-row gap-4 mb-4">
-        <input
-          type="text"
-          placeholder="Filter by name, IMO, or type..."
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          className="w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
-        />
-        <label className="flex items-center text-sm text-gray-300 whitespace-nowrap">
-          <input
-            type="checkbox"
-            checked={showDeparted}
-            onChange={(e) => setShowDeparted(e.target.checked)}
-            className="w-4 h-4 text-cyan-600 bg-gray-700 border-gray-600 rounded focus:ring-cyan-500"
-          />
-          <span className="ml-2">Show departed vessels</span>
-        </label>
+        <input type="text" placeholder="Filter by name, IMO, or type..." value={filter} onChange={(e) => updateSetting('filter', e.target.value)} className="w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+        <div className="flex items-center gap-4">
+            <label className="flex items-center text-sm text-gray-300 whitespace-nowrap">
+              <input type="checkbox" checked={showDeparted} onChange={(e) => updateSetting('showDeparted', e.target.checked)} className="w-4 h-4 text-cyan-600 bg-gray-700 border-gray-600 rounded focus:ring-cyan-500" />
+              <span className="ml-2">Show departed vessels</span>
+            </label>
+            <button onClick={handleClearFilters} className="px-3 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-500 text-sm whitespace-nowrap">Reset View</button>
+        </div>
       </div>
       <div className="flex-1 overflow-x-auto">
         <table className="w-full text-left text-sm text-gray-300 min-w-[800px]">
             <thead className="bg-gray-700/50 text-xs text-gray-400 uppercase sticky top-0">
                 <tr>
-                    <th className="px-4 py-3">
-                        <button onClick={() => requestSort('name')} className="flex items-center gap-1 hover:text-white">
-                            Name <SortIcon direction={getSortDirectionFor('name')} />
-                        </button>
-                    </th>
-                    <th className="px-4 py-3">
-                        <button onClick={() => requestSort('imo')} className="flex items-center gap-1 hover:text-white">
-                            IMO <SortIcon direction={getSortDirectionFor('imo')} />
-                        </button>
-                    </th>
-                    <th className="px-4 py-3">
-                        <button onClick={() => requestSort('currentTripId')} className="flex items-center gap-1 hover:text-white">
-                            Trip ID <SortIcon direction={getSortDirectionFor('currentTripId')} />
-                        </button>
-                    </th>
-                    <th className="px-4 py-3">
-                        <button onClick={() => requestSort('type')} className="flex items-center gap-1 hover:text-white">
-                            Type <SortIcon direction={getSortDirectionFor('type')} />
-                        </button>
-                    </th>
-                     <th className="px-4 py-3">
-                        <button onClick={() => requestSort('pilotId')} className="flex items-center gap-1 hover:text-white">
-                            Assigned Pilot <SortIcon direction={getSortDirectionFor('pilotId')} />
-                        </button>
-                    </th>
-                    <th className="px-4 py-3">
-                         <button onClick={() => requestSort('status')} className="flex items-center gap-1 hover:text-white">
-                            Status <SortIcon direction={getSortDirectionFor('status')} />
-                        </button>
-                    </th>
+                    {['name', 'imo', 'currentTripId', 'type', 'pilotId', 'status'].map(key => (
+                        <th className="px-4 py-3" key={key}>
+                            <button onClick={() => requestSort(key as keyof Ship)} className="flex items-center gap-1 hover:text-white capitalize">
+                                {key.replace('currentTripId', 'Trip ID').replace('pilotId', 'Pilot')} <SortIcon direction={getSortDirectionFor(key as keyof Ship)} />
+                            </button>
+                        </th>
+                    ))}
                     <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
             </thead>
@@ -255,42 +176,22 @@ const VesselDirectory: React.FC<VesselDirectoryProps> = ({ selectedPort }) => {
                     <tr key={ship.id} className={`group transition-colors duration-200 ${ship.status === ShipStatus.LEFT_PORT ? 'bg-gray-800/60' : ''} ${ship.hasDangerousGoods ? 'bg-red-900/20 hover:bg-red-900/30' : 'hover:bg-gray-800/50'}`}>
                         <td className="px-4 py-3 font-medium text-white">
                             <div className="flex items-center gap-2">
-                                {ship.hasDangerousGoods && (
-                                    <div className="relative flex-shrink-0" title="Carrying Dangerous Goods">
-                                        <FireIcon className="w-4 h-4 text-red-400" />
-                                        <div className="absolute top-0 left-0 w-full h-full bg-red-500 rounded-full animate-ping opacity-75"></div>
-                                    </div>
-                                )}
+                                {ship.hasDangerousGoods && <div className="flex-shrink-0" title="Carrying Dangerous Goods"><FireIcon className="w-4 h-4 text-red-400" /></div>}
                                 <span>{ship.name}</span>
                             </div>
                         </td>
                         <td className="px-4 py-3">{ship.imo}</td>
-                        <td className="px-4 py-3 font-mono text-xs text-gray-400">
-                            {ship.currentTripId && typeof ship.currentTripId === 'string' && ship.currentTripId.includes('-') 
-                                ? ship.currentTripId.split('-')[1] 
-                                : '—'}
-                        </td>
+                        <td className="px-4 py-3 font-mono text-xs text-gray-400">{ship.currentTripId?.split('-')[1] ?? '—'}</td>
                         <td className="px-4 py-3">{ship.type}</td>
                         <td className="px-4 py-3">{ship.pilotId ? userMap.get(ship.pilotId) || 'Unknown Pilot' : '—'}</td>
-                        <td className="px-4 py-3">
-                            <span className={`px-2 py-1 text-xs font-medium rounded-full border ${statusColors[ship.status]}`}>{ship.status}</span>
-                        </td>
+                        <td className="px-4 py-3"><span className={`px-2 py-1 text-xs font-medium rounded-full border border-current ${Object.values(ShipStatus).includes(ship.status) ? statusColors[ship.status] : statusColors[ShipStatus.LEFT_PORT]}`}>{ship.status}</span></td>
                         <td className="px-4 py-3 text-right">
                            <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onClick={() => openHistoryModal(ship)} className="p-1 text-gray-300 hover:text-blue-400" title="View history" aria-label={`View history for ${ship.name}`}>
-                                   <ClockIcon className="h-5 w-5" />
-                                </button>
+                                <button onClick={() => actions.openModal({ type: 'history', ship })} className="p-1 text-gray-300 hover:text-blue-400" title="View history"><ClockIcon className="h-5 w-5" /></button>
                                 {canModify && (
                                     <>
-                                        <button onClick={() => openShipFormModal(ship)} className="p-1 text-gray-300 hover:text-green-400" title="Change berth" aria-label={`Change berth for ${ship.name}`}>
-                                            <ReassignIcon className="h-5 w-5" />
-                                        </button>
-                                        <button onClick={() => openShipFormModal(ship)} className="p-1 text-gray-300 hover:text-cyan-400" title="Edit ship" aria-label={`Edit ${ship.name}`}>
-                                          <EditIcon className="h-5 w-5" />
-                                        </button>
-                                        <button onClick={() => deleteShip(ship.portId, ship.id)} className="p-1 text-gray-300 hover:text-red-500" title="Delete ship" aria-label={`Delete ${ship.name}`}>
-                                          <DeleteIcon className="h-5 w-5" />
-                                        </button>
+                                        <button onClick={() => actions.openModal({ type: 'shipForm', ship })} className="p-1 text-gray-300 hover:text-cyan-400" title="Edit ship"><EditIcon className="h-5 w-5" /></button>
+                                        <button onClick={() => actions.deleteShip(ship.portId, ship.id)} className="p-1 text-gray-300 hover:text-red-500" title="Delete ship"><DeleteIcon className="h-5 w-5" /></button>
                                     </>
                                 )}
                             </div>

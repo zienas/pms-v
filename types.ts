@@ -154,8 +154,20 @@ export interface AisData {
   name?: string;
   type?: string;
   status?: ShipStatus;
+  lat?: number;
+  lon?: number;
 }
 
 export type AisSource = 'simulator' | 'udp' | 'serial';
 
 export type View = 'dashboard' | 'vessels' | 'berths' | 'alerts' | 'management' | 'users' | 'settings' | 'vessel-analytics' | 'trips';
+
+// FIX: Added ModalState type export
+export type ModalState =
+  | { type: 'shipForm'; ship: Ship | null }
+  | { type: 'history'; ship: Ship }
+  | { type: 'portForm'; port: Port | null }
+  | { type: 'berthForm'; port: Port; berth: Berth | null }
+  | { type: 'berthDetail'; berth: Berth }
+  | { type: 'tripDetail'; trip: Trip }
+  | { type: 'userForm'; user: User | null };

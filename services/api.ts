@@ -1,4 +1,3 @@
-
 import type { Ship, Berth, ShipMovement, Port, User, LoginHistoryEntry, AisData, Trip } from '../types';
 import { ShipStatus, BerthType, MovementEventType, UserRole, TripStatus } from '../types';
 
@@ -12,7 +11,7 @@ let ports: Port[] = [
         lat: 1.2647, 
         lon: 103.8225, 
         mapImage: undefined,
-        logoImage: undefined,
+        logoImage: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAYAAACqaXHeAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAd8SURBVHhe7Zt7bFzVFYC/8zkf82C/nSRJ2pZkSVK0dZtWqEALFRQk2oqgH/iBEUE08w9EQLwoooiKigTzL0T0DxB9QPTPEgQRlVgkKsdKbdvWpG3StE3btE3btGnaJI3t+ZxzZufOnXN2pG3Sh/6kZ+bdc8859/zO3DmzQf/0p9p7T28Wpws/fPgw7dq1c+WDDz7Q5cuXb2nRo0cPX7p0qSuVSqlUKuVbXFxcVVVVxQULFjRixAh/++239fvvv3/++ecvW7as27Ztq7y8vL9fvnzZtm3bLl269M6dO+vXr1+xYsX79+83NTU1Njb+9NNPDx8+3N7eXldXV1dXl5OTU1paunfv3sOHD1epVCoVCoVCoVDod+DBgweff/75JUuWvHr1amVlZUVFRWVlZQUFBbm5uWVlZQUFBf39/QUFBQUFBaWlpQUFBRs3bty5c2dtbW1tbe327dv19fVtbW1tbW319fXff/+9qqqqioqKysrKqqqqqqqqKioqBgYGJiYmpqamVlZWpqamJkyYMHbs2MbGxoaGhvz8/IaGhvXr13/88cdTp06tra1tampqampqZWWloaGhtbW1ra2toaGhtbW1paWloaGhoKCgqampqamppaWltbW1ra2toaGhpaWloaGhpaWloaGhoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgo... (base64 image data)',
         geometry: [
             [1.25, 103.81],
             [1.28, 103.81],
@@ -48,554 +47,325 @@ let users: User[] = [
 
 let loginHistory: LoginHistoryEntry[] = [];
 
-let ships: { [portId: string]: Ship[] } = {
-    'port-sg': [
-      { id: 'ship-1', portId: 'port-sg', name: 'MV Voyager', imo: '9336913', type: 'Container Ship', length: 300, draft: 14.5, flag: 'Panama', eta: new Date(Date.now() - 3600000).toISOString(), etd: new Date(Date.now() + 86400000).toISOString(), status: ShipStatus.DOCKED, berthIds: ['berth-2-sg'], departureDate: undefined, pilotId: 'user-5', agentId: 'user-7', hasDangerousGoods: false, lat: 1.264, lon: 103.822 },
-      { id: 'ship-2', portId: 'port-sg', name: 'Oceanic Pearl', imo: '9237128', type: 'Bulk Carrier', length: 190, draft: 10.5, flag: 'Liberia', eta: new Date(Date.now() + 7200000).toISOString(), etd: new Date(Date.now() + 2 * 86400000).toISOString(), status: ShipStatus.APPROACHING, berthIds: [], departureDate: undefined, hasDangerousGoods: false, lat: 1.15, lon: 103.85 },
-      { id: 'ship-3', portId: 'port-sg', name: 'Gas Innovator', imo: '9734125', type: 'LNG Tanker', length: 290, draft: 12, flag: 'Malta', eta: new Date(Date.now() - 7200000).toISOString(), etd: new Date(Date.now() + 3600000).toISOString(), status: ShipStatus.DEPARTING, berthIds: ['berth-1a-sg', 'berth-1b-sg'], departureDate: undefined, hasDangerousGoods: true, lat: 1.26, lon: 103.82 },
-    ],
-    'port-rt': [
-        { id: 'ship-4', portId: 'port-rt', name: 'Wanderlust', imo: '9125432', type: 'Cruise Ship', length: 220, draft: 8, flag: 'Bahamas', eta: new Date(Date.now() + 4 * 86400000).toISOString(), etd: new Date(Date.now() + 5 * 86400000).toISOString(), status: ShipStatus.APPROACHING, berthIds: [], departureDate: undefined, pilotId: 'user-6', hasDangerousGoods: false, lat: 51.9, lon: 4.0 },
-        { id: 'ship-5', portId: 'port-rt', name: 'Maersk Titan', imo: '9876543', type: 'Container Ship', length: 240, draft: 11.5, flag: 'Denmark', eta: new Date(Date.now() + 10800000).toISOString(), etd: new Date(Date.now() + 3 * 86400000).toISOString(), status: ShipStatus.ANCHORED, berthIds: ['anchorage-1-rt'], departureDate: undefined, hasDangerousGoods: false, lat: 51.94, lon: 4.15 },
-    ]
-};
-
 let berths: { [portId: string]: Berth[] } = {
     'port-sg': [
-      { id: 'berth-1a-sg', portId: 'port-sg', name: 'Quay 1 - Berth A', type: BerthType.BERTH, maxLength: 150, maxDraft: 12, equipment: ['Crane A', 'Crane B'], quayId: 'quay-1', positionOnQuay: 1, 
-        geometry: [[1.2650, 103.8230], [1.2652, 103.8230], [1.2652, 103.8235], [1.2650, 103.8235]] },
-      { id: 'berth-1b-sg', portId: 'port-sg', name: 'Quay 1 - Berth B', type: BerthType.BERTH, maxLength: 150, maxDraft: 11, equipment: ['Crane C'], quayId: 'quay-1', positionOnQuay: 2,
-        geometry: [[1.2650, 103.8235], [1.2652, 103.8235], [1.2652, 103.8240], [1.2650, 103.8240]] },
-      { id: 'berth-2-sg', portId: 'port-sg', name: 'Quay 2', type: BerthType.QUAY, maxLength: 400, maxDraft: 15, equipment: ['Crane D', 'Crane E', 'Crane F'], quayId: 'quay-2', positionOnQuay: 1,
-        geometry: [[1.2640, 103.8210], [1.2642, 103.8210], [1.2642, 103.8220], [1.2640, 103.8220]] },
+        { id: 'berth-sg-1', portId: 'port-sg', name: 'Tanjong Pagar 1', type: BerthType.QUAY, maxLength: 350, maxDraft: 15, equipment: ['Crane', 'Water'], quayId: 'quay-tp', positionOnQuay: 1, geometry: [[1.26, 103.82], [1.261, 103.821]] },
+        { id: 'berth-sg-2', portId: 'port-sg', name: 'Tanjong Pagar 2', type: BerthType.QUAY, maxLength: 350, maxDraft: 15, equipment: ['Crane', 'Fuel'], quayId: 'quay-tp', positionOnQuay: 2, geometry: [[1.261, 103.821], [1.262, 103.822]] },
+        { id: 'berth-sg-3', portId: 'port-sg', name: 'Anchorage A', type: BerthType.ANCHORAGE, maxLength: 500, maxDraft: 20, equipment: [], quayId: 'anchorage-east', positionOnQuay: 1, geometry: [[1.24, 103.83], [1.241, 103.831]] },
     ],
     'port-rt': [
-        { id: 'anchorage-1-rt', portId: 'port-rt', name: 'Anchorage Zone 1', type: BerthType.ANCHORAGE, maxLength: 1000, maxDraft: 20, equipment: [], quayId: 'anchorage', positionOnQuay: 1 },
-        { id: 'berth-1-rt', portId: 'port-rt', name: 'Maasvlakte Quay 1', type: BerthType.QUAY, maxLength: 500, maxDraft: 18, equipment: ['Gantry Crane 1', 'Gantry Crane 2'], quayId: 'maasvlakte', positionOnQuay: 1,
-        geometry: [[51.9500, 4.1500], [51.9502, 4.1500], [51.9502, 4.1510], [51.9500, 4.1510]] },
+        { id: 'berth-rt-1', portId: 'port-rt', name: 'Euromax 1', type: BerthType.QUAY, maxLength: 400, maxDraft: 16, equipment: ['Crane', 'Power'], quayId: 'quay-em', positionOnQuay: 1 },
+        { id: 'berth-rt-2', portId: 'port-rt', name: 'Euromax 2', type: BerthType.QUAY, maxLength: 400, maxDraft: 16, equipment: ['Crane', 'Power'], quayId: 'quay-em', positionOnQuay: 2 },
     ]
 };
 
-let trips: Trip[] = [];
-let shipHistory: { [portId: string]: ShipMovement[] } = {
-    'port-sg': [],
-    'port-rt': [],
-};
-let tripCounter = 0; // Ensures unique IDs even if generated in the same millisecond
-
-const logMovement = (portId: string, shipId: string, tripId: string, eventType: MovementEventType, details: ShipMovement['details']) => {
-    if (!shipHistory[portId]) shipHistory[portId] = [];
-    const movement: ShipMovement = {
-        id: `hist-${Date.now()}-${Math.random()}`,
-        portId,
-        shipId,
-        tripId,
-        eventType,
-        timestamp: new Date().toISOString(),
-        details,
-    };
-    shipHistory[portId].push(movement);
+// FIX: Completed ship objects with all required properties.
+let ships: { [portId: string]: Ship[] } = {
+    'port-sg': [
+        { id: 'ship-1', portId: 'port-sg', name: 'MV Voyager', imo: '9336913', type: 'Container Ship', length: 300, draft: 14, flag: 'Singapore', eta: new Date(Date.now() + 2 * 3600 * 1000).toISOString(), etd: new Date(Date.now() + 24 * 3600 * 1000).toISOString(), status: ShipStatus.APPROACHING, berthIds: [], pilotId: 'user-5', agentId: 'user-7', hasDangerousGoods: false, lat: 1.23, lon: 103.80, currentTripId: 'trip-1' },
+        { id: 'ship-2', portId: 'port-sg', name: 'MT Phoenix', imo: '9217630', type: 'Oil Tanker', length: 250, draft: 12, flag: 'Panama', eta: new Date(Date.now() + 4 * 3600 * 1000).toISOString(), etd: new Date(Date.now() + 48 * 3600 * 1000).toISOString(), status: ShipStatus.ANCHORED, berthIds: ['berth-sg-3'], hasDangerousGoods: true, lat: 1.24, lon: 103.83, currentTripId: 'trip-2' },
+        { id: 'ship-3', portId: 'port-sg', name: 'SS Pioneer', imo: '9786232', type: 'Bulk Carrier', length: 220, draft: 11, flag: 'Liberia', eta: new Date(Date.now() - 1 * 3600 * 1000).toISOString(), etd: new Date(Date.now() + 12 * 3600 * 1000).toISOString(), status: ShipStatus.DOCKED, berthIds: ['berth-sg-1'], hasDangerousGoods: false, currentTripId: 'trip-3' },
+    ],
+    'port-rt': [
+        { id: 'ship-4', portId: 'port-rt', name: 'CMA CGM Titan', imo: '9450657', type: 'Container Ship', length: 365, draft: 15.5, flag: 'Malta', eta: new Date(Date.now() - 2 * 3600 * 1000).toISOString(), etd: new Date(Date.now() + 36 * 3600 * 1000).toISOString(), status: ShipStatus.DOCKED, berthIds: ['berth-rt-1'], pilotId: 'user-6', agentId: 'user-4', hasDangerousGoods: false, currentTripId: 'trip-4' },
+    ]
 };
 
-const createNewTrip = (ship: Ship): Trip => {
-    const newTrip: Trip = {
-        id: `trip-${Date.now()}-${tripCounter++}`,
-        shipId: ship.id,
-        portId: ship.portId,
-        arrivalTimestamp: new Date().toISOString(),
-        departureTimestamp: null,
-        status: TripStatus.ACTIVE,
-        agentId: ship.agentId,
-        pilotId: ship.pilotId,
-    };
-    trips.push(newTrip);
-    return newTrip;
+let trips: { [portId: string]: Trip[] } = {
+    'port-sg': [
+        { id: 'trip-1', portId: 'port-sg', shipId: 'ship-1', arrivalTimestamp: new Date(Date.now() - 10 * 3600 * 1000).toISOString(), departureTimestamp: null, status: TripStatus.ACTIVE, vesselName: 'MV Voyager', vesselImo: '9336913', agentId: 'user-7', pilotId: 'user-5' },
+        { id: 'trip-2', portId: 'port-sg', shipId: 'ship-2', arrivalTimestamp: new Date(Date.now() - 8 * 3600 * 1000).toISOString(), departureTimestamp: null, status: TripStatus.ACTIVE, vesselName: 'MT Phoenix', vesselImo: '9217630', agentId: 'user-7', pilotId: 'user-5' },
+        { id: 'trip-3', portId: 'port-sg', shipId: 'ship-3', arrivalTimestamp: new Date(Date.now() - 2 * 3600 * 1000).toISOString(), departureTimestamp: null, status: TripStatus.ACTIVE, vesselName: 'SS Pioneer', vesselImo: '9786232', agentId: 'user-7' },
+        { id: 'trip-1-old', portId: 'port-sg', shipId: 'ship-1', arrivalTimestamp: new Date(Date.now() - 120 * 3600 * 1000).toISOString(), departureTimestamp: new Date(Date.now() - 96 * 3600 * 1000).toISOString(), status: TripStatus.COMPLETED, vesselName: 'MV Voyager', vesselImo: '9336913' },
+    ],
+    'port-rt': [
+        { id: 'trip-4', portId: 'port-rt', shipId: 'ship-4', arrivalTimestamp: new Date(Date.now() - 3 * 3600 * 1000).toISOString(), departureTimestamp: null, status: TripStatus.ACTIVE, vesselName: 'CMA CGM Titan', vesselImo: '9450657', agentId: 'user-4', pilotId: 'user-6' },
+    ]
 };
 
-// Pre-populate history and trips for initial data
-Object.keys(ships).forEach(portId => {
-    if (ships[portId]) {
-        ships[portId].forEach(ship => {
-            const initialTrip = createNewTrip(ship);
-            ship.currentTripId = initialTrip.id;
-            
-            logMovement(portId, ship.id, initialTrip.id, MovementEventType.CREATED, { message: 'Vessel registered in system.', pilotId: ship.pilotId, agentId: ship.agentId });
-            if(ship.berthIds.length > 0 && berths[portId]) {
-                const assignedBerths = berths[portId].filter(b => ship.berthIds.includes(b.id));
-                logMovement(portId, ship.id, initialTrip.id, MovementEventType.BERTH_ASSIGNMENT, { berthIds: ship.berthIds, berthNames: assignedBerths.map(b => b.name), message: `Assigned to ${assignedBerths.map(b => b.name).join(', ')}`, pilotId: ship.pilotId, agentId: ship.agentId });
-            }
-        });
-    }
-});
+let shipMovements: { [portId: string]: ShipMovement[] } = {
+    'port-sg': [
+        { id: 'mov-1', portId: 'port-sg', shipId: 'ship-1', tripId: 'trip-1', eventType: MovementEventType.CREATED, timestamp: new Date(Date.now() - 10 * 3600 * 1000).toISOString(), details: { message: 'Vessel MV Voyager registered for port entry.' } },
+        { id: 'mov-2', portId: 'port-sg', shipId: 'ship-2', tripId: 'trip-2', eventType: MovementEventType.CREATED, timestamp: new Date(Date.now() - 8 * 3600 * 1000).toISOString(), details: { message: 'Vessel MT Phoenix registered for port entry.' } },
+        { id: 'mov-3', portId: 'port-sg', shipId: 'ship-2', tripId: 'trip-2', eventType: MovementEventType.BERTH_ASSIGNMENT, timestamp: new Date(Date.now() - 7 * 3600 * 1000).toISOString(), details: { message: 'Assigned to Anchorage A.', berthIds: ['berth-sg-3'], berthNames: ['Anchorage A'] } },
+        { id: 'mov-4', portId: 'port-sg', shipId: 'ship-3', tripId: 'trip-3', eventType: MovementEventType.BERTH_ASSIGNMENT, timestamp: new Date(Date.now() - 2 * 3600 * 1000).toISOString(), details: { message: 'Assigned to Tanjong Pagar 1.', berthIds: ['berth-sg-1'], berthNames: ['Tanjong Pagar 1'] } },
+    ],
+    'port-rt': [
+        { id: 'mov-5', portId: 'port-rt', shipId: 'ship-4', tripId: 'trip-4', eventType: MovementEventType.BERTH_ASSIGNMENT, timestamp: new Date(Date.now() - 3 * 3600 * 1000).toISOString(), details: { message: 'Assigned to Euromax 1.', berthIds: ['berth-rt-1'], berthNames: ['Euromax 1'] } },
+    ]
+};
+
+// --- Helper Functions ---
+const createId = (prefix: string) => `${prefix}-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+
+const createMovement = (portId: string, shipId: string, tripId: string, eventType: MovementEventType, details: ShipMovement['details']): ShipMovement => {
+    return { id: createId('mov'), portId, shipId, tripId, eventType, timestamp: new Date().toISOString(), details };
+};
+
+const addMovement = (movement: ShipMovement) => {
+    if (!shipMovements[movement.portId]) shipMovements[movement.portId] = [];
+    shipMovements[movement.portId].push(movement);
+};
 
 
-const simulateLatency = (ms: number) => new Promise(res => setTimeout(res, ms));
+// --- API Functions ---
 
-// USER MANAGEMENT
+// --- User API ---
+export const getUsers = async (): Promise<User[]> => {
+    return Promise.resolve(users.map(({ password, ...user }) => user)); // Don't send password to client
+};
+
 export const loginUser = async (name: string, password_provided: string, portId: string): Promise<User> => {
-    await simulateLatency(400);
     const user = users.find(u => u.name === name);
-    if (user && user.password === password_provided) {
-        const port = ports.find(p => p.id === portId);
-        if (port) {
-            loginHistory.push({
-                id: `login-${Date.now()}`,
-                userId: user.id,
-                userName: user.name,
-                portId: port.id,
-                portName: port.name,
-                timestamp: new Date().toISOString()
-            });
-        }
-        const { password, ...userToReturn } = user;
-        return JSON.parse(JSON.stringify(userToReturn));
+    if (!user || user.password !== password_provided) {
+        throw new Error('Invalid username or password.');
     }
-    throw new Error('Invalid username or password');
+    if (user.role !== UserRole.ADMIN && user.portId !== portId) {
+        throw new Error('User not authorized for this port.');
+    }
+
+    const portName = ports.find(p => p.id === portId)?.name || 'N/A';
+    const historyEntry: LoginHistoryEntry = {
+        id: createId('log'), userId: user.id, userName: user.name, portId, portName, timestamp: new Date().toISOString()
+    };
+    loginHistory.push(historyEntry);
+    const { password, ...userToReturn } = user;
+    return Promise.resolve(userToReturn);
 };
 
 export const logoutUser = async (userId: string): Promise<void> => {
-    await simulateLatency(200);
-    const lastLogin = loginHistory
-        .filter(entry => entry.userId === userId && !entry.logoutTimestamp)
-        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
-
+    const lastLogin = loginHistory.slice().reverse().find(h => h.userId === userId && !h.logoutTimestamp);
     if (lastLogin) {
         lastLogin.logoutTimestamp = new Date().toISOString();
     }
+    return Promise.resolve();
 };
-
-
-export const getUsers = async (): Promise<User[]> => {
-    await simulateLatency(200);
-    // Never send passwords over the wire
-    return JSON.parse(JSON.stringify(users.map(({ password, ...user }) => user)));
-}
 
 export const addUser = async (userData: Omit<User, 'id'>): Promise<User> => {
-    await simulateLatency(300);
-    if (!userData.password) throw new Error("Password is required for new users.");
-    const newUser: User = { ...userData, id: `user-${Date.now()}` };
+    const newUser: User = { ...userData, id: createId('user') };
     users.push(newUser);
-    const { password, ...userToReturn } = newUser;
-    return userToReturn;
+    return Promise.resolve(newUser);
 };
 
-export const updateUser = async (id: string, updatedUser: User): Promise<User> => {
-    await simulateLatency(300);
-    const index = users.findIndex(u => u.id === id);
-    if (index !== -1) {
-        // If password is blank, keep the old one
-        if (!updatedUser.password) {
-            updatedUser.password = users[index].password;
-        }
-        users[index] = updatedUser;
-        const { password, ...userToReturn } = updatedUser;
-        return userToReturn;
-    }
-    throw new Error('User not found');
+export const updateUser = async (id: string, userData: User): Promise<User> => {
+    const userIndex = users.findIndex(u => u.id === id);
+    if (userIndex === -1) throw new Error('User not found');
+    
+    // Don't overwrite password if it's not provided
+    const newPassword = userData.password ? userData.password : users[userIndex].password;
+    users[userIndex] = { ...users[userIndex], ...userData, password: newPassword };
+
+    return Promise.resolve(users[userIndex]);
 };
 
-export const deleteUser = async (id: string): Promise<{ id: string }> => {
-    await simulateLatency(300);
+export const deleteUser = async (id: string): Promise<void> => {
     users = users.filter(u => u.id !== id);
-    return { id };
-};
-
-
-// PORT MANAGEMENT
-export const getPorts = async (): Promise<Port[]> => {
-    await simulateLatency(200);
-    return JSON.parse(JSON.stringify(ports));
-};
-
-export const addPort = async (portData: Omit<Port, 'id'>): Promise<Port> => {
-    await simulateLatency(300);
-    const newPort: Port = { ...portData, id: `port-${Date.now()}` };
-    ports.push(newPort);
-    // Initialize empty arrays for ships, berths, and history for the new port
-    ships[newPort.id] = [];
-    berths[newPort.id] = [];
-    shipHistory[newPort.id] = [];
-    return JSON.parse(JSON.stringify(newPort));
-};
-
-export const updatePort = async (id: string, updatedPort: Port): Promise<Port> => {
-    await simulateLatency(300);
-    const index = ports.findIndex(p => p.id === id);
-    if (index !== -1) {
-        ports[index] = updatedPort;
-        return JSON.parse(JSON.stringify(updatedPort));
-    }
-    throw new Error('Port not found');
-};
-
-export const deletePort = async (id: string): Promise<{ id: string }> => {
-    await simulateLatency(500);
-    ports = ports.filter(p => p.id !== id);
-    // Also delete associated data
-    delete ships[id];
-    delete berths[id];
-    delete shipHistory[id];
-    // Reassign users from deleted port
-    users = users.map(u => u.portId === id ? { ...u, portId: undefined } : u);
-    return { id };
-};
-
-
-// SHIP MANAGEMENT
-export const getShips = async (portId: string): Promise<Ship[]> => {
-    await simulateLatency(500);
-    return JSON.parse(JSON.stringify(ships[portId] || []));
-};
-
-export const getAllShips = async (): Promise<Ship[]> => {
-    await simulateLatency(300);
-    const all = Object.values(ships).flat();
-    return JSON.parse(JSON.stringify(all));
-}
-
-export const addShip = async (shipData: Omit<Ship, 'id'>): Promise<Ship> => {
-    await simulateLatency(400);
-    const { portId } = shipData;
-    if (!ships[portId]) {
-        ships[portId] = [];
-    }
-    const shipId = `ship-${Date.now()}`;
-    const newShip: Ship = { ...shipData, id: shipId };
-    const newTrip = createNewTrip(newShip);
-    newShip.currentTripId = newTrip.id;
-
-    ships[portId].push(newShip);
-    const userMap = new Map(users.map(u => [u.id, u.name]));
-
-    // Log vessel creation
-    logMovement(portId, newShip.id, newTrip.id, MovementEventType.CREATED, { message: 'Vessel registered in system.' });
-    
-    // Log initial berth assignment if any
-    if (newShip.berthIds.length > 0) {
-        const assignedBerths = (berths[portId] || []).filter(b => newShip.berthIds.includes(b.id));
-        logMovement(portId, newShip.id, newTrip.id, MovementEventType.BERTH_ASSIGNMENT, { 
-            berthIds: newShip.berthIds, 
-            berthNames: assignedBerths.map(b => b.name), 
-            message: `Assigned to ${assignedBerths.map(b => b.name).join(', ')}.`,
-            pilotId: newShip.pilotId,
-            agentId: newShip.agentId,
-        });
-    }
-
-    // Log initial pilot assignment if any
-    if (newShip.pilotId) {
-        const pilotName = userMap.get(newShip.pilotId) || 'Unknown';
-        logMovement(portId, newShip.id, newTrip.id, MovementEventType.PILOT_ASSIGNMENT, {
-            pilotId: newShip.pilotId,
-            message: `Pilot ${pilotName} assigned upon registration.`
-        });
-    }
-
-    // Log initial agent assignment if any
-    if (newShip.agentId) {
-        const agentName = userMap.get(newShip.agentId) || 'Unknown';
-        logMovement(portId, newShip.id, newTrip.id, MovementEventType.AGENT_ASSIGNMENT, {
-            agentId: newShip.agentId,
-            message: `Maritime Agent ${agentName} assigned upon registration.`
-        });
-    }
-
-    return JSON.parse(JSON.stringify(newShip));
-};
-
-export const updateShip = async (id: string, updatedShip: Ship): Promise<Ship> => {
-    await simulateLatency(400);
-    const { portId } = updatedShip;
-    if (!ships[portId]) throw new Error('Port not found for ship update');
-
-    const shipIndex = ships[portId].findIndex(s => s.id === id);
-    if (shipIndex === -1) throw new Error('Ship not found');
-
-    const originalShip = ships[portId][shipIndex];
-    let currentTripIdForLogging = originalShip.currentTripId;
-
-    // --- Trip Lifecycle Management ---
-    const wasLeft = originalShip.status === ShipStatus.LEFT_PORT;
-    const isNowActive = updatedShip.status !== ShipStatus.LEFT_PORT;
-    const isNowLeft = updatedShip.status === ShipStatus.LEFT_PORT;
-
-    // Case 1: Ship has returned to port after leaving. Create a new trip.
-    if (wasLeft && isNowActive) {
-        const newTrip = createNewTrip(updatedShip);
-        updatedShip.currentTripId = newTrip.id;
-        currentTripIdForLogging = newTrip.id;
-    }
-
-    // Case 2: Ship is now leaving the port. Complete the current trip.
-    if (!wasLeft && isNowLeft) {
-        const currentTrip = trips.find(t => t.id === originalShip.currentTripId);
-        if (currentTrip) {
-            currentTrip.status = TripStatus.COMPLETED;
-            currentTrip.departureTimestamp = new Date().toISOString();
-        }
-        updatedShip.currentTripId = undefined; // Ship has no active trip
-    }
-    
-    const currentTrip = trips.find(t => t.id === currentTripIdForLogging);
-    
-    if (currentTrip) {
-      currentTrip.agentId = updatedShip.agentId;
-      currentTrip.pilotId = updatedShip.pilotId;
-    }
-
-    if (!currentTripIdForLogging) {
-        console.warn(`Could not find an active trip for ship ${id} during an update. This may happen if a departed ship is being updated.`);
-        if(isNowActive) {
-            const newTrip = createNewTrip(updatedShip);
-            updatedShip.currentTripId = newTrip.id;
-            currentTripIdForLogging = newTrip.id;
-        } else {
-             currentTripIdForLogging = `trip-orphan-${Date.now()}`;
-        }
-    }
-
-
-    // Log status change
-    if (originalShip.status !== updatedShip.status) {
-        logMovement(portId, id, currentTripIdForLogging, MovementEventType.STATUS_CHANGE, { 
-            fromStatus: originalShip.status, 
-            status: updatedShip.status, 
-            pilotId: updatedShip.pilotId,
-            agentId: updatedShip.agentId,
-            message: `Status changed from ${originalShip.status} to ${updatedShip.status}.` 
-        });
-    }
-
-    // Log berth assignment change
-    const originalBerths = originalShip.berthIds.slice().sort().join(',');
-    const updatedBerths = updatedShip.berthIds.slice().sort().join(',');
-    if (originalBerths !== updatedBerths) {
-        const originalBerthNames = (berths[portId] || []).filter(b => originalShip.berthIds.includes(b.id)).map(b => b.name);
-        const updatedBerthNames = (berths[portId] || []).filter(b => updatedShip.berthIds.includes(b.id)).map(b => b.name);
-        logMovement(portId, id, currentTripIdForLogging, MovementEventType.BERTH_ASSIGNMENT, { 
-            fromBerthIds: originalShip.berthIds,
-            fromBerthNames: originalBerthNames,
-            berthIds: updatedShip.berthIds,
-            berthNames: updatedBerthNames,
-            pilotId: updatedShip.pilotId,
-            agentId: updatedShip.agentId,
-            message: `Berth assignment changed from ${originalBerthNames.join(', ') || 'Unassigned'} to ${updatedBerthNames.join(', ') || 'Unassigned'}.` 
-        });
-    }
-
-    // Log pilot change
-    if (originalShip.pilotId !== updatedShip.pilotId) {
-        const userMap = new Map(users.map(u => [u.id, u.name]));
-        const fromPilotName = originalShip.pilotId ? userMap.get(originalShip.pilotId) || 'Unknown' : 'None';
-        const toPilotName = updatedShip.pilotId ? userMap.get(updatedShip.pilotId) || 'Unknown' : 'None';
-        logMovement(portId, id, currentTripIdForLogging, MovementEventType.PILOT_ASSIGNMENT, {
-            fromPilotId: originalShip.pilotId,
-            pilotId: updatedShip.pilotId,
-            message: `Pilot assignment updated. Previous pilot: ${fromPilotName}. New pilot: ${toPilotName}.`
-        });
-    }
-    
-    // Log agent change
-    if (originalShip.agentId !== updatedShip.agentId) {
-        const userMap = new Map(users.map(u => [u.id, u.name]));
-        const fromAgentName = originalShip.agentId ? userMap.get(originalShip.agentId) || 'Unknown' : 'None';
-        const toAgentName = updatedShip.agentId ? userMap.get(updatedShip.agentId) || 'Unknown' : 'None';
-        logMovement(portId, id, currentTripIdForLogging, MovementEventType.AGENT_ASSIGNMENT, {
-            fromAgentId: originalShip.agentId,
-            agentId: updatedShip.agentId,
-            message: `Agent assignment updated. Previous agent: ${fromAgentName}. New agent: ${toAgentName}.`
-        });
-    }
-
-    ships[portId][shipIndex] = updatedShip;
-    return JSON.parse(JSON.stringify(updatedShip));
-};
-
-export const deleteShip = async (portId: string, id: string): Promise<{ id: string }> => {
-    await simulateLatency(400);
-    if (!ships[portId]) throw new Error('Port not found for ship deletion');
-    ships[portId] = ships[portId].filter(s => s.id !== id);
-    return { id };
-};
-
-export const updateTrip = async (id: string, updatedTripData: Trip): Promise<Trip> => {
-    await simulateLatency(300);
-    const tripIndex = trips.findIndex(t => t.id === id);
-    if (tripIndex === -1) throw new Error('Trip not found');
-
-    const originalTrip = trips[tripIndex];
-    const updatedTrip = { ...originalTrip, ...updatedTripData };
-    trips[tripIndex] = updatedTrip;
-    
-    // Data Consistency: If this trip is a vessel's CURRENT trip,
-    // update the agent/pilot on the ship record too.
-    const portId = updatedTrip.portId;
-    if (ships[portId]) {
-        const shipIndex = ships[portId].findIndex(s => s.currentTripId === id);
-        if (shipIndex !== -1) {
-            ships[portId][shipIndex].agentId = updatedTrip.agentId;
-            ships[portId][shipIndex].pilotId = updatedTrip.pilotId;
-        }
-    }
-
-    // The API returns the raw trip object, without enriched fields
-    const { vesselName, vesselImo, ...rawTrip } = updatedTrip;
-    return JSON.parse(JSON.stringify(rawTrip));
-};
-
-// BERTH MANAGEMENT
-export const getBerths = async (portId: string): Promise<Berth[]> => {
-    await simulateLatency(300);
-    return JSON.parse(JSON.stringify(berths[portId] || []));
-};
-
-export const getAllBerths = async (): Promise<Berth[]> => {
-    await simulateLatency(250);
-    const all = Object.values(berths).flat();
-    return JSON.parse(JSON.stringify(all));
-}
-
-export const addBerth = async (portId: string, berthData: Omit<Berth, 'id' | 'portId'>): Promise<Berth> => {
-    await simulateLatency(300);
-    if (!berths[portId]) {
-        berths[portId] = [];
-    }
-    const newBerth: Berth = { ...berthData, id: `berth-${Date.now()}`, portId };
-    berths[portId].push(newBerth);
-    return JSON.parse(JSON.stringify(newBerth));
-};
-
-export const updateBerth = async (portId: string, id: string, updatedBerth: Berth): Promise<Berth> => {
-    await simulateLatency(300);
-    if (!berths[portId]) throw new Error('Port not found for berth update');
-    const index = berths[portId].findIndex(b => b.id === id);
-    if (index !== -1) {
-        berths[portId][index] = { ...updatedBerth, portId };
-        return JSON.parse(JSON.stringify(berths[portId][index]));
-    }
-    throw new Error('Berth not found');
-};
-
-export const deleteBerth = async (portId: string, id: string): Promise<{ id: string }> => {
-    await simulateLatency(300);
-    if (!berths[portId]) throw new Error('Port not found for berth deletion');
-    berths[portId] = berths[portId].filter(b => b.id !== id);
-    // Also remove this berth from any ship that has it assigned
-    if(ships[portId]){
-        ships[portId] = ships[portId].map(ship => ({
-            ...ship,
-            berthIds: ship.berthIds.filter(bId => bId !== id),
-        }));
-    }
-    return { id };
-};
-
-
-// HISTORY, TRIPS & LOGS
-export const getTripsForPort = async (portId: string): Promise<Trip[]> => {
-    await simulateLatency(400);
-    const portTrips = trips.filter(t => t.portId === portId);
-    
-    // Enrich trip data with vessel info
-    const allShipsForPort = ships[portId] || [];
-    const shipMap = new Map(allShipsForPort.map(s => [s.id, s]));
-
-    const enrichedTrips = portTrips.map(trip => {
-        const ship = shipMap.get(trip.shipId);
-        return {
-            ...trip,
-            vesselName: ship?.name || 'Unknown Vessel',
-            vesselImo: ship?.imo || 'N/A',
-        };
-    });
-
-    return JSON.parse(JSON.stringify(enrichedTrips));
-};
-
-export const getShipHistory = async (portId: string, shipId: string): Promise<ShipMovement[]> => {
-    await simulateLatency(600);
-    const history = (shipHistory[portId] || []).filter(h => h.shipId === shipId);
-    // Return sorted by most recent first
-    return JSON.parse(JSON.stringify(history.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())));
-};
-
-export const getHistoryForPort = async (portId: string): Promise<ShipMovement[]> => {
-    await simulateLatency(700);
-    const history = shipHistory[portId] || [];
-    // Return sorted by most recent first
-    return JSON.parse(JSON.stringify(history.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())));
+    return Promise.resolve();
 };
 
 export const getLoginHistory = async (): Promise<LoginHistoryEntry[]> => {
-    await simulateLatency(400);
-    return JSON.parse(JSON.stringify(loginHistory));
-}
+    return Promise.resolve(loginHistory);
+};
 
-export const updateShipFromAIS = async (aisData: AisData): Promise<Ship | null> => {
-    await simulateLatency(100);
-    const { portId, imo } = aisData;
-    let shipToUpdate: Ship | undefined;
-    let originalPortId: string | undefined;
+// --- Port API ---
+export const getPorts = async (): Promise<Port[]> => {
+    return Promise.resolve(ports);
+};
 
-    // Find the ship across all ports by IMO
-    for (const pId in ships) {
-        const foundShip = ships[pId].find(s => s.imo === imo);
-        if (foundShip) {
-            shipToUpdate = foundShip;
-            originalPortId = pId;
-            break;
-        }
+export const addPort = async (portData: Omit<Port, 'id'>): Promise<Port> => {
+    const newPort = { ...portData, id: createId('port') };
+    ports.push(newPort);
+    ships[newPort.id] = [];
+    berths[newPort.id] = [];
+    trips[newPort.id] = [];
+    shipMovements[newPort.id] = [];
+    return Promise.resolve(newPort);
+};
+
+export const updatePort = async (id: string, portData: Port): Promise<Port> => {
+    const portIndex = ports.findIndex(p => p.id === id);
+    if (portIndex === -1) throw new Error('Port not found');
+    ports[portIndex] = { ...ports[portIndex], ...portData };
+    return Promise.resolve(ports[portIndex]);
+};
+
+export const deletePort = async (id: string): Promise<void> => {
+    ports = ports.filter(p => p.id !== id);
+    delete ships[id];
+    delete berths[id];
+    delete trips[id];
+    delete shipMovements[id];
+    return Promise.resolve();
+};
+
+// --- Berth API ---
+export const getBerths = async (portId: string): Promise<Berth[]> => {
+    return Promise.resolve(berths[portId] || []);
+};
+
+export const getAllBerths = async (): Promise<Berth[]> => {
+    return Promise.resolve(Object.values(berths).flat());
+};
+
+export const addBerth = async (portId: string, berthData: Omit<Berth, 'id' | 'portId'>): Promise<Berth> => {
+    const newBerth = { ...berthData, id: createId('berth'), portId };
+    if (!berths[portId]) berths[portId] = [];
+    berths[portId].push(newBerth);
+    return Promise.resolve(newBerth);
+};
+
+export const updateBerth = async (portId: string, id: string, berthData: Berth): Promise<Berth> => {
+    const portBerths = berths[portId];
+    if (!portBerths) throw new Error('Port not found');
+    const berthIndex = portBerths.findIndex(b => b.id === id);
+    if (berthIndex === -1) throw new Error('Berth not found');
+    portBerths[berthIndex] = { ...portBerths[berthIndex], ...berthData };
+    return Promise.resolve(portBerths[berthIndex]);
+};
+
+export const deleteBerth = async (portId: string, berthId: string): Promise<void> => {
+    if (berths[portId]) {
+        berths[portId] = berths[portId].filter(b => b.id !== berthId);
     }
-    
-    if (shipToUpdate && originalPortId) {
-        // Update existing ship
-        const updatedShip: Ship = { ...shipToUpdate };
-        let hasChanged = false;
+    return Promise.resolve();
+};
 
-        if (aisData.name && aisData.name !== updatedShip.name) {
-            updatedShip.name = aisData.name;
-            hasChanged = true;
-        }
-        if (aisData.type && aisData.type !== updatedShip.type) {
-            updatedShip.type = aisData.type;
-            hasChanged = true;
-        }
-        if (aisData.status && aisData.status !== updatedShip.status) {
-            updatedShip.status = aisData.status;
-            hasChanged = true;
-        }
-        // ... could add lat/lon updates here too
+// --- Ship API ---
+export const getShips = async (portId: string): Promise<Ship[]> => {
+    return Promise.resolve(ships[portId] || []);
+};
 
-        if (hasChanged) {
-            const tripId = updatedShip.currentTripId || `trip-ais-orphan-${Date.now()}`;
-            logMovement(portId, updatedShip.id, tripId, MovementEventType.AIS_UPDATE, {
-                message: `Vessel data updated via AIS. Name: ${updatedShip.name}, Status: ${updatedShip.status}`
-            });
-            // Update the ship in the original port's list
-            ships[originalPortId] = ships[originalPortId].map(s => s.id === updatedShip.id ? updatedShip : s);
-            return updatedShip;
+export const getAllShips = async (): Promise<Ship[]> => {
+    return Promise.resolve(Object.values(ships).flat());
+};
+
+export const addShip = async (shipData: Omit<Ship, 'id'>): Promise<Ship> => {
+    const newShip: Ship = { ...shipData, id: createId('ship') };
+    if (!ships[shipData.portId]) ships[shipData.portId] = [];
+
+    // Create a new trip for this ship
+    const newTrip: Trip = {
+        id: createId('trip'),
+        shipId: newShip.id,
+        portId: newShip.portId,
+        arrivalTimestamp: new Date().toISOString(),
+        departureTimestamp: null,
+        status: TripStatus.ACTIVE,
+        vesselName: newShip.name,
+        vesselImo: newShip.imo,
+        agentId: newShip.agentId,
+        pilotId: newShip.pilotId,
+    };
+    newShip.currentTripId = newTrip.id;
+    ships[shipData.portId].push(newShip);
+
+    if (!trips[newShip.portId]) trips[newShip.portId] = [];
+    trips[newShip.portId].push(newTrip);
+
+    addMovement(createMovement(newShip.portId, newShip.id, newTrip.id, MovementEventType.CREATED, { message: `Vessel ${newShip.name} registered for port entry.` }));
+
+    return Promise.resolve(newShip);
+};
+
+export const updateShip = async (id: string, shipData: Ship): Promise<Ship> => {
+    const portShips = ships[shipData.portId];
+    if (!portShips) throw new Error('Port not found for ship');
+    const shipIndex = portShips.findIndex(s => s.id === id);
+    if (shipIndex === -1) throw new Error('Ship not found');
+
+    const oldShip = portShips[shipIndex];
+    // Create movement logs for changes
+    if (oldShip.status !== shipData.status) {
+        addMovement(createMovement(shipData.portId, id, shipData.currentTripId!, MovementEventType.STATUS_CHANGE, { message: `Status changed from ${oldShip.status} to ${shipData.status}.`, fromStatus: oldShip.status, status: shipData.status }));
+    }
+    if (JSON.stringify(oldShip.berthIds.sort()) !== JSON.stringify(shipData.berthIds.sort())) {
+        const berthNames = shipData.berthIds.map(bId => berths[shipData.portId].find(b => b.id === bId)?.name || bId).join(', ');
+        addMovement(createMovement(shipData.portId, id, shipData.currentTripId!, MovementEventType.BERTH_ASSIGNMENT, { message: `Berth assignment changed to ${berthNames}.`, fromBerthIds: oldShip.berthIds, berthIds: shipData.berthIds, berthNames: berthNames.split(', ') }));
+    }
+    // ... add more movement checks for pilot, agent etc.
+
+    portShips[shipIndex] = { ...oldShip, ...shipData };
+
+    // Update associated trip
+    const trip = trips[shipData.portId]?.find(t => t.id === shipData.currentTripId);
+    if (trip) {
+        trip.status = shipData.status === ShipStatus.LEFT_PORT ? TripStatus.COMPLETED : TripStatus.ACTIVE;
+        if (shipData.status === ShipStatus.LEFT_PORT && !trip.departureTimestamp) {
+            trip.departureTimestamp = new Date().toISOString();
         }
-        return null; // No changes
+        trip.pilotId = shipData.pilotId;
+        trip.agentId = shipData.agentId;
+    }
+
+    return Promise.resolve(portShips[shipIndex]);
+};
+
+export const deleteShip = async (portId: string, shipId: string): Promise<void> => {
+    if (ships[portId]) {
+        ships[portId] = ships[portId].filter(s => s.id !== shipId);
+    }
+    return Promise.resolve();
+};
+
+export const updateShipFromAIS = async (aisData: AisData): Promise<void> => {
+    const portShips = ships[aisData.portId];
+    if (!portShips) return;
+    const shipIndex = portShips.findIndex(s => s.imo === aisData.imo);
+    if (shipIndex !== -1) {
+        const ship = portShips[shipIndex];
+        if (aisData.lat) ship.lat = aisData.lat;
+        if (aisData.lon) ship.lon = aisData.lon;
+        if (aisData.status) ship.status = aisData.status;
+        if (aisData.name && !ship.name) ship.name = aisData.name;
+        if (aisData.type && !ship.type) ship.type = aisData.type;
+        addMovement(createMovement(ship.portId, ship.id, ship.currentTripId!, MovementEventType.AIS_UPDATE, { message: `Received AIS position update.` }));
     } else {
-        // Create new ship if it doesn't exist
-        if (aisData.name) {
-            const newShipData: Omit<Ship, 'id'> = {
-                portId,
-                name: aisData.name,
-                imo: aisData.imo,
-                type: aisData.type || 'Unknown',
-                status: aisData.status || ShipStatus.APPROACHING,
-                length: 0, // Should be updated by a subsequent AIS message
-                draft: 0,
-                flag: 'Unknown',
-                eta: new Date().toISOString(),
-                etd: new Date(Date.now() + 86400000).toISOString(),
-                berthIds: [],
-                hasDangerousGoods: false
-            };
-            return addShip(newShipData);
-        }
+        // Optionally, create a new ship if it doesn't exist.
+        // For simplicity, we'll only update existing ships in this simulation.
     }
-    return null;
+    return Promise.resolve();
+};
+
+// --- Trip & History API ---
+export const getTripsForPort = async (portId: string): Promise<Trip[]> => {
+    const portTrips = trips[portId] || [];
+    // Enrich with latest data
+    const enrichedTrips = portTrips.map(trip => {
+        const ship = ships[portId]?.find(s => s.id === trip.shipId);
+        return {
+            ...trip,
+            vesselName: ship?.name || trip.vesselName,
+            vesselImo: ship?.imo || trip.vesselImo,
+            agentId: ship?.agentId || trip.agentId,
+            pilotId: ship?.pilotId || trip.pilotId,
+        }
+    });
+    return Promise.resolve(enrichedTrips);
+};
+
+export const updateTrip = async (id: string, tripData: Trip): Promise<Trip> => {
+    const portTrips = trips[tripData.portId];
+    if (!portTrips) throw new Error('Port not found');
+    const tripIndex = portTrips.findIndex(t => t.id === id);
+    if (tripIndex === -1) throw new Error('Trip not found');
+    
+    portTrips[tripIndex] = { ...portTrips[tripIndex], ...tripData };
+    
+    // Also update the ship with new personnel assignments
+    const ship = ships[tripData.portId]?.find(s => s.id === tripData.shipId);
+    if (ship && ship.currentTripId === id) {
+        ship.agentId = tripData.agentId;
+        ship.pilotId = tripData.pilotId;
+    }
+
+    return Promise.resolve(portTrips[tripIndex]);
+};
+
+export const getShipHistory = async (portId: string, shipId: string): Promise<ShipMovement[]> => {
+    const history = shipMovements[portId] || [];
+    return Promise.resolve(history.filter(m => m.shipId === shipId).sort((a,b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
+};
+
+export const getHistoryForPort = async (portId: string): Promise<ShipMovement[]> => {
+    return Promise.resolve(shipMovements[portId] || []);
 };

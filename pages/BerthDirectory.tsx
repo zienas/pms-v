@@ -1,132 +1,127 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import type { Berth, Ship } from '../types';
-import { ShipStatus, UserRole } from '../types';
+import { ShipStatus, UserRole, BerthType } from '../types';
 import { useSortableData } from '../hooks/useSortableData';
-import SortIcon from '../components/SortIcon';
+import SortIcon from '../components/icons/SortIcon';
 import { useAuth } from '../context/AuthContext';
 import EditIcon from '../components/icons/EditIcon';
 import DeleteIcon from '../components/icons/DeleteIcon';
 import { usePort } from '../context/PortContext';
+import AnchorIcon from '../components/icons/AnchorIcon';
+import ChartBarIcon from '../components/icons/ChartBarIcon';
 
-const statusColors: { [key in ShipStatus]: string } = {
-  [ShipStatus.APPROACHING]: 'bg-yellow-500/20 text-yellow-300 border-yellow-500',
-  [ShipStatus.DOCKED]: 'bg-green-500/20 text-green-300 border-green-500',
-  [ShipStatus.DEPARTING]: 'bg-blue-500/20 text-blue-300 border-blue-500',
-  [ShipStatus.ANCHORED]: 'bg-gray-500/20 text-gray-300 border-gray-500',
-  [ShipStatus.LEFT_PORT]: 'bg-gray-600/20 text-gray-400 border-gray-600',
+const berthTypeColors: { [key in BerthType]: string } = {
+  [BerthType.QUAY]: 'bg-blue-500/20 text-blue-300',
+  [BerthType.BERTH]: 'bg-indigo-500/20 text-indigo-300',
+  [BerthType.ANCHORAGE]: 'bg-gray-500/20 text-gray-300',
 };
+
+const StatCard: React.FC<{ icon: React.ElementType, title: string, value: string | number }> = ({ icon: Icon, title, value }) => (
+    <div className="bg-gray-800 p-4 rounded-lg flex items-center">
+        <div className="p-3 bg-cyan-500/10 rounded-full mr-4"><Icon className="w-6 h-6 text-cyan-400" /></div>
+        <div>
+            <p className="text-sm text-gray-400 font-medium">{title}</p>
+            <p className="text-2xl font-bold text-white">{value}</p>
+        </div>
+    </div>
+);
+
 
 const BerthDirectory: React.FC = () => {
   const { currentUser } = useAuth();
-  const { berths, ships, openBerthFormModal, deleteBerth, openShipFormModal, openBerthDetailModal } = usePort();
-  
-  const { items: sortedBerths, requestSort, sortConfig } = useSortableData<Berth>(berths, { key: 'name', direction: 'ascending' });
-  
-  const canManageBerths = currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.CAPTAIN;
-  const canManageShips = currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.OPERATOR;
+  const { state, actions } = usePort();
+  const { berths, ships, selectedPort } = state;
+  const [filter, setFilter] = useState('');
 
-  const getSortDirectionFor = (key: keyof Berth) => {
-    if (!sortConfig) return undefined;
-    return sortConfig.key === key ? sortConfig.direction : undefined;
-  };
+  const stats = useMemo(() => {
+    const totalBerths = berths.length;
+    const occupiedBerthIds = new Set(ships.filter(s => s.status !== ShipStatus.LEFT_PORT).flatMap(s => s.berthIds));
+    const occupiedCount = occupiedBerthIds.size;
+    const availableCount = totalBerths - occupiedCount;
+    const occupancyRate = totalBerths > 0 ? (occupiedCount / totalBerths) * 100 : 0;
+    return { totalBerths, occupiedCount, availableCount, occupancyRate };
+  }, [berths, ships]);
+
+  const filteredBerths = useMemo(() => {
+    return berths.filter(berth => 
+        berth.name.toLowerCase().includes(filter.toLowerCase()) ||
+        berth.type.toLowerCase().includes(filter.toLowerCase())
+    );
+  }, [berths, filter]);
+  
+  const { items: sortedBerths, requestSort, sortConfig } = useSortableData<Berth>(filteredBerths, { key: 'name', direction: 'ascending' });
+  
+  const canManageBerths = useMemo(() => currentUser?.role === UserRole.ADMIN, [currentUser]);
+  const canManageShips = useMemo(() => currentUser?.role === UserRole.ADMIN || currentUser?.role === UserRole.OPERATOR, [currentUser]);
+
+  const getSortDirectionFor = (key: keyof Berth) => sortConfig?.key === key ? sortConfig.direction : undefined;
 
   return (
     <div className="bg-gray-900/50 rounded-lg p-3 sm:p-4 h-full flex flex-col">
        <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-4">
         <h1 className="text-2xl font-bold text-white">Berth Directory</h1>
-        {canManageBerths && (
-            <button
-                onClick={() => openBerthFormModal(null)}
-                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
-            >
-                Add Berth
-            </button>
+        {canManageBerths && selectedPort && (
+            <button onClick={() => actions.openModal({ type: 'berthForm', port: selectedPort, berth: null })} className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700">Add Berth</button>
         )}
       </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+        <StatCard icon={AnchorIcon} title="Total Berths" value={stats.totalBerths} />
+        <StatCard icon={AnchorIcon} title="Occupied" value={stats.occupiedCount} />
+        <StatCard icon={AnchorIcon} title="Available" value={stats.availableCount} />
+        <div className="bg-gray-800 p-4 rounded-lg">
+            <div className="flex items-center">
+                <div className="p-3 bg-cyan-500/10 rounded-full mr-4"><ChartBarIcon className="w-6 h-6 text-cyan-400" /></div>
+                <div>
+                    <p className="text-sm text-gray-400 font-medium">Occupancy Rate</p>
+                    <p className="text-2xl font-bold text-white">{stats.occupancyRate.toFixed(1)}%</p>
+                </div>
+            </div>
+            <div className="w-full bg-gray-700 rounded-full h-2.5 mt-2"><div className="bg-cyan-500 h-2.5 rounded-full" style={{ width: `${stats.occupancyRate}%` }}></div></div>
+        </div>
+      </div>
+
+      <div className="mb-4">
+        <input type="text" placeholder="Filter by berth name or type..." value={filter} onChange={(e) => setFilter(e.target.value)} className="w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+      </div>
+
       <div className="flex-1 overflow-x-auto">
         <table className="w-full text-left text-sm text-gray-300 min-w-[800px]">
           <thead className="bg-gray-700/50 text-xs text-gray-400 uppercase sticky top-0">
             <tr>
-              <th className="px-4 py-3">
-                <button onClick={() => requestSort('name')} className="flex items-center gap-1 hover:text-white">
-                    Berth Name <SortIcon direction={getSortDirectionFor('name')} />
-                </button>
-              </th>
-              <th className="px-4 py-3">
-                <button onClick={() => requestSort('type')} className="flex items-center gap-1 hover:text-white">
-                    Type <SortIcon direction={getSortDirectionFor('type')} />
-                </button>
-              </th>
-              <th className="px-4 py-3">
-                <button onClick={() => requestSort('maxLength')} className="flex items-center gap-1 hover:text-white">
-                    Max Length (m) <SortIcon direction={getSortDirectionFor('maxLength')} />
-                </button>
-              </th>
-              <th className="px-4 py-3">
-                <button onClick={() => requestSort('maxDraft')} className="flex items-center gap-1 hover:text-white">
-                    Max Draft (m) <SortIcon direction={getSortDirectionFor('maxDraft')} />
-                </button>
-              </th>
+              {['name', 'type', 'maxLength', 'maxDraft'].map(key => (
+                <th className="px-4 py-3" key={key}><button onClick={() => requestSort(key as keyof Berth)} className="flex items-center gap-1 hover:text-white capitalize">{key.replace('Length', ' Length (m)').replace('Draft', ' Draft (m)')} <SortIcon direction={getSortDirectionFor(key as keyof Berth)} /></button></th>
+              ))}
               <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Occupying Vessel(s)</th>
+              <th className="px-4 py-3">Occupying Vessel</th>
               {canManageBerths && <th className="px-4 py-3 text-right">Actions</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-700">
             {sortedBerths.map(berth => {
-              const occupyingShips = ships.filter(ship => 
-                ship.berthIds.includes(berth.id) && ship.status !== ShipStatus.LEFT_PORT
-              );
-              const isOccupied = occupyingShips.length > 0;
+              const occupyingShip = ships.find(s => s.berthIds.includes(berth.id) && s.status !== ShipStatus.LEFT_PORT);
               return (
-                <tr key={berth.id} onClick={() => openBerthDetailModal(berth)} className="hover:bg-gray-800/50 group cursor-pointer">
+                <tr key={berth.id} onClick={() => actions.openModal({ type: 'berthDetail', berth })} className="hover:bg-gray-800/50 group cursor-pointer">
                   <td className="px-4 py-3 font-medium text-white">{berth.name}</td>
-                  <td className="px-4 py-3">{berth.type}</td>
+                  <td className="px-4 py-3"><span className={`px-2 py-1 text-xs font-medium rounded-full ${berthTypeColors[berth.type]}`}>{berth.type}</span></td>
                   <td className="px-4 py-3">{berth.maxLength}</td>
                   <td className="px-4 py-3">{berth.maxDraft}</td>
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                        <span className={`h-2.5 w-2.5 rounded-full flex-shrink-0 ${isOccupied ? 'bg-green-500' : 'bg-gray-500'}`}></span>
-                        {isOccupied ? (
-                          <span className="text-green-400 font-semibold">Occupied</span>
-                        ) : (
-                          <span className="text-gray-400">Available</span>
-                        )}
-                    </div>
+                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${occupyingShip ? 'text-green-300 bg-green-900/50' : 'text-gray-300 bg-gray-700/50'}`}>{occupyingShip ? 'Occupied' : 'Available'}</span>
                   </td>
                   <td className="px-4 py-3">
-                    {isOccupied ? (
-                        <div className="flex flex-col gap-2">
-                            {occupyingShips.map(ship => (
-                                <div key={ship.id} className="flex justify-between items-center gap-2">
-                                    <div className="flex items-center gap-2 truncate flex-1 min-w-0">
-                                        <span className="font-medium text-white truncate">{ship.name}</span>
-                                        <span className={`px-2 py-0.5 text-xs font-medium rounded-full border whitespace-nowrap ${statusColors[ship.status]}`}>{ship.status}</span>
-                                    </div>
-                                    {canManageShips && (
-                                        <button 
-                                            onClick={(e) => { e.stopPropagation(); openShipFormModal(ship); }}
-                                            className="px-2 py-1 bg-cyan-600/50 text-cyan-200 rounded text-xs hover:bg-cyan-600 hover:text-white transition-colors flex-shrink-0"
-                                        >
-                                            Manage
-                                        </button>
-                                    )}
-                                </div>
-                            ))}
+                    {occupyingShip ? (
+                        <div className="flex justify-between items-center gap-2">
+                           <span className="font-medium text-white truncate">{occupyingShip.name}</span>
+                           {canManageShips && <button onClick={(e) => { e.stopPropagation(); actions.openModal({ type: 'shipForm', ship: occupyingShip }); }} className="px-2 py-1 bg-cyan-600/50 text-cyan-200 rounded text-xs hover:bg-cyan-600">Manage</button>}
                         </div>
-                    ) : (
-                        <span className="text-gray-400">—</span>
-                    )}
+                    ) : '—'}
                   </td>
                    {canManageBerths && (
                     <td className="px-4 py-3 text-right">
                          <div className="opacity-0 group-hover:opacity-100 flex justify-end gap-2">
-                            <button onClick={(e) => { e.stopPropagation(); openBerthFormModal(berth); }} className="p-1 text-gray-300 hover:text-cyan-400" title="Edit Berth">
-                                <EditIcon className="h-4 w-4" />
-                            </button>
-                            <button onClick={(e) => { e.stopPropagation(); deleteBerth(berth.portId, berth.id); }} className="p-1 text-gray-300 hover:text-red-500" title="Delete Berth">
-                                <DeleteIcon className="h-4 w-4" />
-                            </button>
+                            <button onClick={(e) => { e.stopPropagation(); if(selectedPort) actions.openModal({ type: 'berthForm', port: selectedPort, berth }); }} className="p-1 text-gray-300 hover:text-cyan-400" title="Edit Berth"><EditIcon className="h-4 w-4" /></button>
+                            <button onClick={(e) => { e.stopPropagation(); actions.deleteBerth(berth.portId, berth.id); }} className="p-1 text-gray-300 hover:text-red-500" title="Delete Berth"><DeleteIcon className="h-4 w-4" /></button>
                         </div>
                     </td>
                    )}

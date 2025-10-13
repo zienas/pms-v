@@ -1,20 +1,19 @@
-
 import React from 'react';
 import ShipIcon from './icons/ShipIcon';
 import MenuIcon from './icons/MenuIcon';
 import { useAuth } from '../context/AuthContext';
-import type { Port } from '../types';
+import { usePort } from '../context/PortContext';
+import { UserRole } from '../types';
 
 interface HeaderProps {
-    portName: string;
-    ports: Port[];
-    selectedPortId: string | null;
-    onPortChange: (portId: string) => void;
     onMenuClick: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ portName, ports, selectedPortId, onPortChange, onMenuClick }) => {
+const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const { currentUser, logout } = useAuth();
+  const { state, actions } = usePort();
+  const { selectedPort, accessiblePorts, selectedPortId } = state;
+  const showPortSelector = currentUser?.role === UserRole.ADMIN && accessiblePorts.length > 1;
 
   if (!currentUser) return null;
 
@@ -25,19 +24,21 @@ const Header: React.FC<HeaderProps> = ({ portName, ports, selectedPortId, onPort
           <MenuIcon className="w-6 h-6" />
         </button>
         <ShipIcon className="w-7 h-7 sm:w-8 sm:h-8 text-cyan-400 mr-2 sm:mr-3" />
-        <h1 className="text-xl sm:text-2xl font-bold text-white tracking-wider truncate">{portName}</h1>
+        <h1 className="text-xl sm:text-2xl font-bold text-white tracking-wider truncate">
+            {selectedPort?.name || (accessiblePorts.length > 0 ? "Select a Port" : "No Ports Available")}
+        </h1>
       </div>
       <div className="flex items-center gap-2 sm:gap-4">
-        {ports.length > 1 && (
+        {showPortSelector && (
             <div className="hidden sm:block">
                 <label htmlFor="port-select" className="sr-only">Select Port</label>
                 <select
                     id="port-select"
                     value={selectedPortId || ''}
-                    onChange={(e) => onPortChange(e.target.value)}
+                    onChange={(e) => actions.setSelectedPortId(e.target.value)}
                     className="bg-gray-700 text-white border border-gray-600 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm"
                 >
-                    {ports.map(port => (
+                    {accessiblePorts.map(port => (
                         <option key={port.id} value={port.id}>{port.name}</option>
                     ))}
                 </select>
@@ -47,13 +48,7 @@ const Header: React.FC<HeaderProps> = ({ portName, ports, selectedPortId, onPort
             <p className="text-sm font-semibold text-white truncate">{currentUser.name}</p>
             <p className="text-xs text-cyan-400 hidden sm:block">{currentUser.role}</p>
          </div>
-         <button
-            onClick={logout}
-            className="px-3 py-2 bg-red-600 text-white text-sm rounded-md hover:bg-red-700 transition-colors"
-            aria-label="Logout"
-         >
-            Logout
-         </button>
+         <button onClick={logout} className="px-3 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 transition-colors" aria-label="Logout">Logout</button>
       </div>
     </header>
   );

@@ -5,11 +5,6 @@ import { useAuth } from '../context/AuthContext';
 import { playNotificationSound } from '../utils/audio';
 import { usePort } from '../context/PortContext';
 
-interface ShipFormModalProps {
-  pilots: User[];
-  agents: User[];
-}
-
 type AssignmentStatus = {
     isValid: boolean;
     message: string;
@@ -43,9 +38,15 @@ const InputField: React.FC<{
 };
 
 
-const ShipFormModal: React.FC<ShipFormModalProps> = ({ pilots, agents }) => {
-  const { currentUser } = useAuth();
-  const { editingShip: shipToEdit, berths, ships, addShip, updateShip, closeShipFormModal } = usePort();
+const ShipFormModal: React.FC = () => {
+  const { currentUser, users } = useAuth();
+  const { state, actions } = usePort();
+  const { modal, berths, ships, selectedPortId } = state;
+  const { addShip, updateShip, closeModal } = actions;
+  const shipToEdit = useMemo(() => (modal?.type === 'shipForm' ? modal.ship : null), [modal]);
+
+  const pilots = useMemo(() => users.filter(user => user.role === UserRole.PILOT), [users]);
+  const agents = useMemo(() => users.filter(user => user.role === UserRole.AGENT), [users]);
 
   const [formData, setFormData] = useState<Omit<Ship, 'id' | 'portId'> | Ship>({
     name: '', imo: '', type: '', length: 0, draft: 0, flag: '',
@@ -136,7 +137,7 @@ const ShipFormModal: React.FC<ShipFormModalProps> = ({ pilots, agents }) => {
     const newErrors: { [key: string]: string } = {};
     if (!formData.name.trim()) newErrors.name = 'Ship name is required.';
     if (!/^\d{7}$/.test(formData.imo)) newErrors.imo = 'IMO must be a 7-digit number.';
-    if (formData.type.trim() && !/^[a-zA-Z0-9\s]+$/.test(formData.type)) newErrors.type = 'Ship type can only contain letters, numbers, and spaces.';
+    if (formData.type.trim() && !/^[a-zA-Z0-9\s-]+$/.test(formData.type)) newErrors.type = 'Ship type can only contain letters, numbers, spaces, and hyphens.';
     if (formData.length <= 0) newErrors.length = 'Length must be a positive number.';
     if (formData.draft <= 0) newErrors.draft = 'Draft must be a positive number.';
     if (formData.status === ShipStatus.DOCKED && formData.berthIds.length === 0) newErrors.berthIds = 'A ship with status "Docked" must be assigned to a berth.';
@@ -175,9 +176,9 @@ const ShipFormModal: React.FC<ShipFormModalProps> = ({ pilots, agents }) => {
       
       const saveAction = 'id' in shipToSave
         ? updateShip(shipToSave.id, shipToSave as Ship)
-        : addShip({ ...shipToSave, portId: ships[0].portId } as Omit<Ship, 'id'>);
+        : addShip({ ...shipToSave, portId: selectedPortId! } as Omit<Ship, 'id'>);
       
-      saveAction.then(closeShipFormModal);
+      saveAction.then(closeModal);
     }
   };
   
@@ -190,8 +191,8 @@ const ShipFormModal: React.FC<ShipFormModalProps> = ({ pilots, agents }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
-      <div className="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-2xl border border-gray-700">
+    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+      <div className="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-2xl border border-gray-700 max-h-full overflow-y-auto">
         <h2 className="text-2xl font-bold mb-4">{shipToEdit ? 'Edit Ship' : 'Add New Ship'}</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -278,7 +279,7 @@ const ShipFormModal: React.FC<ShipFormModalProps> = ({ pilots, agents }) => {
            )}
 
           <div className="flex justify-end gap-4 pt-4">
-            <button type="button" onClick={closeShipFormModal} className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors">Cancel</button>
+            <button type="button" onClick={closeModal} className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors">Cancel</button>
             <button type="submit" className="px-4 py-2 bg-cyan-600 text-white rounded-md hover:bg-cyan-700 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed" disabled={!assignmentStatus.isValid}>Save Ship</button>
           </div>
         </form>

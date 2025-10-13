@@ -32,6 +32,13 @@ export const useSortableData = <T extends {}>(items: T[], config: SortConfig<T> 
             : valB.localeCompare(valA);
         }
 
+        // Fallback for dates or other types
+        if (valA < valB) {
+            return sortConfig.direction === 'ascending' ? -1 : 1;
+        }
+        if (valA > valB) {
+            return sortConfig.direction === 'ascending' ? 1 : -1;
+        }
         return 0;
       });
     }
@@ -46,5 +53,5 @@ export const useSortableData = <T extends {}>(items: T[], config: SortConfig<T> 
     setSortConfig({ key, direction });
   };
 
-  return { items: sortedItems, requestSort, sortConfig };
+  return { items: sortedItems, requestSort, sortConfig, setSortConfig };
 };

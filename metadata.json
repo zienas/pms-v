@@ -1,5 +1,5 @@
 {
-  "name": "pms",
+  "name": "PVMS",
   "description": "A real-time application to manage and visualize vessel traffic and berth assignments in a maritime port. It provides a live map of the port, detailed information on ships (sourced from AIS data feeds), and alerts for potential conflicts.",
   "requestFramePermissions": []
 }

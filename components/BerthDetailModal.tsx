@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import type { Berth, Ship } from '../types';
 import { ShipStatus } from '../types';
 import AnchorIcon from './icons/AnchorIcon';
@@ -8,8 +8,6 @@ import { usePort } from '../context/PortContext';
 
 interface BerthDetailModalProps {
     berth: Berth;
-    onClose: () => void;
-    onManageShip: (ship: Ship) => void;
 }
 
 const DetailItem: React.FC<{ label: string; value: string | number }> = ({ label, value }) => (
@@ -20,20 +18,29 @@ const DetailItem: React.FC<{ label: string; value: string | number }> = ({ label
 );
 
 
-const BerthDetailModal: React.FC<BerthDetailModalProps> = ({ berth, onClose, onManageShip }) => {
-    const { ships } = usePort();
-    const occupyingShip = ships.find(s => s.berthIds.includes(berth.id) && s.status !== ShipStatus.LEFT_PORT) || null;
-    const isOccupied = !!occupyingShip;
+const BerthDetailModal: React.FC<BerthDetailModalProps> = ({ berth }) => {
+    const { state, actions } = usePort();
+    const { ships } = state;
+    const { closeModal, openModal } = actions;
+    
+    const { occupyingShip, isOccupied } = useMemo(() => {
+        const ship = ships.find(s => s.berthIds.includes(berth.id) && s.status !== ShipStatus.LEFT_PORT) || null;
+        return { occupyingShip: ship, isOccupied: !!ship };
+    }, [ships, berth.id]);
+
+    const onManageShip = (ship: Ship) => {
+        openModal({ type: 'shipForm', ship });
+    };
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
             <div className="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-lg border border-gray-700">
                 <div className="flex justify-between items-start">
                     <div>
                         <h2 className="text-2xl font-bold text-white">Berth Details</h2>
                         <p className="text-cyan-400 font-semibold">{berth.name}</p>
                     </div>
-                    <button onClick={onClose} className="p-2 -mt-2 -mr-2 rounded-full text-gray-400 hover:bg-gray-700 hover:text-white" aria-label="Close">
+                    <button onClick={closeModal} className="p-2 -mt-2 -mr-2 rounded-full text-gray-400 hover:bg-gray-700 hover:text-white" aria-label="Close">
                         <CloseIcon className="w-6 h-6" />
                     </button>
                 </div>
@@ -83,7 +90,7 @@ const BerthDetailModal: React.FC<BerthDetailModalProps> = ({ berth, onClose, onM
                 </div>
 
                 <div className="flex justify-end mt-6">
-                    <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors">Close</button>
+                    <button type="button" onClick={closeModal} className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors">Close</button>
                 </div>
             </div>
         </div>

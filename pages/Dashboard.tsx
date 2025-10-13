@@ -1,15 +1,15 @@
 import React from 'react';
-import type { Ship, Berth, Port } from '../types';
 import PortMap from '../components/PortMap';
 import DashboardStats from '../components/DashboardStats';
 import { usePort } from '../context/PortContext';
 
-interface DashboardProps {
-  selectedPort: Port;
-}
+const Dashboard: React.FC = () => {
+  const { state } = usePort();
+  const { selectedPort, ships, berths } = state;
 
-const Dashboard: React.FC<DashboardProps> = ({ selectedPort }) => {
-  const { ships, berths, openShipFormModal, openBerthDetailModal } = usePort();
+  if (!selectedPort) {
+      return <div className="text-center p-8 text-gray-400">Please select a port to view the dashboard.</div>;
+  }
 
   return (
     <div className="h-full flex flex-col gap-4">
@@ -18,7 +18,7 @@ const Dashboard: React.FC<DashboardProps> = ({ selectedPort }) => {
         <DashboardStats ships={ships} berths={berths} />
       </div>
       <div className="flex-1 min-h-0">
-         <PortMap ships={ships} berths={berths} onSelectShip={openShipFormModal} onSelectBerth={openBerthDetailModal} selectedPort={selectedPort} />
+         <PortMap ships={ships} berths={berths} selectedPort={selectedPort} />
       </div>
     </div>
   );

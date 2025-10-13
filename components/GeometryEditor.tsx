@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import type { Port } from '../types';
 import ZoomInIcon from './icons/ZoomInIcon';

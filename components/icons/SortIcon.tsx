@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 
 interface SortIconProps {
   direction?: 'ascending' | 'descending';
@@ -26,4 +26,4 @@ const SortIcon: React.FC<SortIconProps> = ({ direction }) => {
   );
 };
 
-export default SortIcon;
+export default memo(SortIcon);
