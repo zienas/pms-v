@@ -16,6 +16,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { usePort } from '../context/PortContext';
 import { toast } from 'react-hot-toast';
+import { DEFAULT_APP_LOGO_PNG } from '../utils/logo';
 
 const SETTINGS_KEY = 'vesselDirectorySettings';
 
@@ -120,10 +121,43 @@ const VesselDirectory: React.FC = () => {
         didDrawPage: (data: any) => {
             doc.setFontSize(20); doc.setFont('helvetica', 'bold'); doc.setTextColor(40);
             let titleX = data.settings.margin.left;
-            if (selectedPort.logoImage) {
-                doc.addImage(selectedPort.logoImage, 'PNG', data.settings.margin.left, 15, 20, 20);
+            const marginLeft = data.settings.margin.left;
+            
+            const getMimeType = (dataUrl: string) => {
+                const match = dataUrl.match(/^data:image\/([a-zA-Z+]+);base64,/);
+                return match ? match[1].toUpperCase() : null;
+            };
+
+            const customLogo = selectedPort.logoImage;
+            const customLogoFormat = customLogo ? getMimeType(customLogo) : null;
+            const isCustomLogoValid = customLogo && customLogoFormat && ['PNG', 'JPEG', 'WEBP'].includes(customLogoFormat);
+
+            let logoAdded = false;
+
+            // Attempt 1: Add custom logo if valid
+            if (isCustomLogoValid) {
+                try {
+                    doc.addImage(customLogo!, customLogoFormat!, marginLeft, 15, 20, 20);
+                    logoAdded = true;
+                } catch (e) {
+                    console.warn('Failed to add custom port logo, it might be corrupt. Falling back.', e);
+                }
+            }
+
+            // Attempt 2: Add default logo if custom one wasn't added
+            if (!logoAdded) {
+                try {
+                    doc.addImage(DEFAULT_APP_LOGO_PNG, 'PNG', marginLeft, 15, 20, 20);
+                    logoAdded = true;
+                } catch (e) {
+                    console.error('CRITICAL: Failed to add default logo. Proceeding without one.', e);
+                }
+            }
+            
+            if (logoAdded) {
                 titleX += 22;
             }
+
             doc.text("Vessel Directory", titleX, 22);
             doc.setFontSize(12); doc.setFont('helvetica', 'normal'); doc.setTextColor(100); doc.text(selectedPort.name, titleX, 29);
             doc.setFontSize(10); doc.text(`Generated: ${new Date().toLocaleString()}`, doc.internal.pageSize.getWidth() - data.settings.margin.right, 29, { align: 'right' });

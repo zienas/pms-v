@@ -21,6 +21,7 @@ import VesselAnalytics from './pages/VesselAnalytics';
 import TripDirectory from './pages/TripDirectory';
 import TripDetailModal from './components/TripDetailModal';
 import ReassignBerthModal from './components/ReassignBerthModal';
+import AssignPilotModal from './components/AssignPilotModal';
 import { useAuth } from './context/AuthContext';
 import WarningIcon from './components/icons/WarningIcon';
 import { useSettings } from './context/SettingsContext';
@@ -162,6 +163,7 @@ const MainApp: React.FC = () => {
       {modal?.type === 'tripDetail' && modal.trip && <TripDetailModal />}
       {modal?.type === 'userForm' && <UserFormModal />}
       {modal?.type === 'reassignBerth' && modal.ship && <ReassignBerthModal ship={modal.ship} />}
+      {modal?.type === 'assignPilot' && modal.ship && <AssignPilotModal ship={modal.ship} />}
     </div>
   );
 }

@@ -2,7 +2,6 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import type { Ship, Berth, User } from '../types';
 import { ShipStatus, UserRole } from '../types';
 import { useAuth } from '../context/AuthContext';
-import { playNotificationSound } from '../utils/audio';
 import { usePort } from '../context/PortContext';
 
 type AssignmentStatus = {
@@ -150,7 +149,6 @@ const ShipFormModal: React.FC = () => {
     if (type === 'checkbox') {
         const isChecked = (e.target as HTMLInputElement).checked;
         setFormData(prev => ({ ...prev, [name]: isChecked }));
-        if (name === 'hasDangerousGoods' && isChecked) playNotificationSound();
     } else {
         setFormData(prev => ({ ...prev, [name]: name === 'length' || name === 'draft' ? parseFloat(value) || 0 : value }));
     }

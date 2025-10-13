@@ -171,4 +171,5 @@ export type ModalState =
   | { type: 'berthDetail'; berth: Berth }
   | { type: 'tripDetail'; trip: Trip }
   | { type: 'reassignBerth'; ship: Ship }
+  | { type: 'assignPilot'; ship: Ship }
   | { type: 'userForm'; user: User | null };

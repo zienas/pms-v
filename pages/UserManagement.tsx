@@ -17,13 +17,15 @@ const UserManagement: React.FC = () => {
     const { ports } = state;
     const [loginHistory, setLoginHistory] = useState<LoginHistoryEntry[]>([]);
     
-    const { items: sortedHistory, requestSort, sortConfig } = useSortableData<LoginHistoryEntry>(loginHistory, { key: 'timestamp', direction: 'descending' });
+    const { items: sortedHistory, requestSort: requestHistorySort, sortConfig: historySortConfig } = useSortableData<LoginHistoryEntry>(loginHistory, { key: 'timestamp', direction: 'descending' });
+    const { items: sortedUsers, requestSort: requestUserSort, sortConfig: userSortConfig } = useSortableData<User>(users, { key: 'name', direction: 'ascending' });
     
     useEffect(() => {
         api.getLoginHistory().then(setLoginHistory).catch(err => console.error("Failed to fetch login history", err));
     }, []);
 
-    const getSortDirectionFor = (key: keyof LoginHistoryEntry) => sortConfig?.key === key ? sortConfig.direction : undefined;
+    const getHistorySortDirectionFor = (key: keyof LoginHistoryEntry) => historySortConfig?.key === key ? historySortConfig.direction : undefined;
+    const getUserSortDirectionFor = (key: keyof User) => userSortConfig?.key === key ? userSortConfig.direction : undefined;
     
     const handleExport = () => {
         const dataToExport = sortedHistory.map(entry => ({
@@ -47,12 +49,26 @@ const UserManagement: React.FC = () => {
                     <table className="w-full text-sm text-left text-gray-300 min-w-[500px]">
                         <thead className="text-xs text-gray-400 uppercase bg-gray-700">
                             <tr>
-                                <th className="px-4 py-3">Name</th><th className="px-4 py-3">Role</th>
-                                <th className="px-4 py-3">Assigned Port</th><th className="px-4 py-3 text-right">Actions</th>
+                                <th className="px-4 py-3">
+                                    <button onClick={() => requestUserSort('name')} className="flex items-center gap-1 hover:text-white">
+                                        Name <SortIcon direction={getUserSortDirectionFor('name')} />
+                                    </button>
+                                </th>
+                                <th className="px-4 py-3">
+                                    <button onClick={() => requestUserSort('role')} className="flex items-center gap-1 hover:text-white">
+                                        Role <SortIcon direction={getUserSortDirectionFor('role')} />
+                                    </button>
+                                </th>
+                                <th className="px-4 py-3">
+                                    <button onClick={() => requestUserSort('portId')} className="flex items-center gap-1 hover:text-white">
+                                        Assigned Port <SortIcon direction={getUserSortDirectionFor('portId')} />
+                                    </button>
+                                </th>
+                                <th className="px-4 py-3 text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-700">
-                            {users.map(user => (
+                            {sortedUsers.map(user => (
                                 <tr key={user.id} className="hover:bg-gray-800/50 group">
                                     <td className="px-4 py-3 font-medium">{user.name}</td>
                                     <td className="px-4 py-3">{user.role}</td>
@@ -79,7 +95,7 @@ const UserManagement: React.FC = () => {
                         <thead className="text-xs text-gray-400 uppercase bg-gray-700 sticky top-0">
                             <tr>
                                 {['userName', 'portName', 'timestamp', 'logoutTimestamp'].map(key => (
-                                    <th className="px-4 py-3" key={key}><button onClick={() => requestSort(key as keyof LoginHistoryEntry)} className="flex items-center gap-1 hover:text-white capitalize">{key.replace('Name','').replace('timestamp',' Time')} <SortIcon direction={getSortDirectionFor(key as keyof LoginHistoryEntry)} /></button></th>
+                                    <th className="px-4 py-3" key={key}><button onClick={() => requestHistorySort(key as keyof LoginHistoryEntry)} className="flex items-center gap-1 hover:text-white capitalize">{key.replace('Name','').replace('timestamp',' Time')} <SortIcon direction={getHistorySortDirectionFor(key as keyof LoginHistoryEntry)} /></button></th>
                                 ))}
                                 <th className="px-4 py-3">Duration</th>
                             </tr>

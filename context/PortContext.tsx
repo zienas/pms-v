@@ -7,6 +7,7 @@ import { runAisUpdateStep } from '../services/aisSimulator';
 import { calculateDistanceNM } from '../utils/geolocation';
 import { webSocketService } from '../services/webSocketService';
 import { useAuth } from './AuthContext';
+import AlertToast from '../components/AlertToast';
 
 // --- STATE ---
 interface PortState {
@@ -118,6 +119,14 @@ export const PortProvider: React.FC<{ children: React.ReactNode }> = ({ children
     useEffect(() => {
         stateRef.current = state;
     }, [state]);
+    
+    const triggeredPilotAlertsRef = useRef(new Set<string>());
+
+    useEffect(() => {
+        // When port changes, reset the set of triggered alerts to allow new alerts for the new port
+        triggeredPilotAlertsRef.current.clear();
+    }, [state.selectedPortId]);
+
 
     const actions = useMemo(() => {
         const loadInitialPorts = async () => {
@@ -239,7 +248,9 @@ export const PortProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     dispatch({ type: 'SET_ALERTS', payload: [] });
                     return;
                 }
-                const newAlerts: Omit<Alert, 'acknowledged'>[] = [];
+                const newAlerts: Alert[] = [];
+                const currentPilotAlertIds = new Set<string>();
+
                 ships.forEach(ship => {
                     if (ship.lat && ship.lon && ship.status === ShipStatus.APPROACHING) {
                         const distance = calculateDistanceNM(ship.lat, ship.lon, selectedPort.lat, selectedPort.lon);
@@ -251,8 +262,49 @@ export const PortProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
                         // Pilot assignment alert
                         if (distance <= pilotThreshold && !ship.pilotId) {
-                            newAlerts.push({ id: `alert-pilot-${ship.id}`, portId: selectedPortId!, type: AlertType.ERROR, message: `Vessel ${ship.name} requires pilot assignment. It is within ${distance.toFixed(2)} NM of the port.`, shipId: ship.id, timestamp: new Date().toISOString() });
+                            const alertId = `alert-pilot-${ship.id}`;
+                            const message = `Vessel ${ship.name} requires pilot assignment. It is within ${distance.toFixed(2)} NM of the port.`;
+                             const newPilotAlert: Alert = {
+                                id: alertId,
+                                portId: selectedPortId!,
+                                type: AlertType.ERROR,
+                                message,
+                                shipId: ship.id,
+                                timestamp: new Date().toISOString()
+                            };
+                            newAlerts.push(newPilotAlert);
+                            currentPilotAlertIds.add(alertId);
+
+                            // Trigger audible/visual notification only once
+                            if (!triggeredPilotAlertsRef.current.has(alertId)) {
+                                toast(
+                                    (t) => (
+                                      <AlertToast
+                                        alert={newPilotAlert}
+                                        toastId={t.id}
+                                      />
+                                    ),
+                                    {
+                                      id: alertId,
+                                      duration: Infinity,
+                                      style: {
+                                        background: 'transparent',
+                                        padding: '0',
+                                        boxShadow: 'none',
+                                        border: 'none',
+                                      }
+                                    }
+                                );
+                                triggeredPilotAlertsRef.current.add(alertId);
+                            }
                         }
+                    }
+                });
+
+                // Clean up resolved pilot alerts from the tracking ref
+                triggeredPilotAlertsRef.current.forEach(alertId => {
+                    if (!currentPilotAlertIds.has(alertId)) {
+                        triggeredPilotAlertsRef.current.delete(alertId);
                     }
                 });
                 
@@ -299,10 +351,12 @@ export const PortProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const acknowledgeAlert = (alertId: string) => {
             const newAlerts = stateRef.current.alerts.map(a => a.id === alertId ? { ...a, acknowledged: true } : a);
             dispatch({ type: 'SET_ALERTS', payload: newAlerts });
+            toast.dismiss(alertId);
         };
         const removeAlert = (alertId: string) => {
             const newAlerts = stateRef.current.alerts.filter(a => a.id !== alertId);
             dispatch({ type: 'SET_ALERTS', payload: newAlerts });
+            toast.dismiss(alertId);
         };
 
         return {

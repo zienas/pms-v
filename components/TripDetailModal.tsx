@@ -14,6 +14,7 @@ import { usePort } from '../context/PortContext';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-hot-toast';
 import { MovementEventType } from '../types';
+import { DEFAULT_APP_LOGO_PNG } from '../utils/logo';
 
 const DetailItem: React.FC<{ label: string; value: string | number; fullWidth?: boolean }> = ({ label, value, fullWidth }) => (
     <div className={fullWidth ? 'col-span-2' : ''}>
@@ -145,23 +146,51 @@ const TripDetailModal: React.FC = () => {
         
         const agentName = agents.find(a => a.id === trip.agentId)?.name || 'N/A';
         const pilotName = pilots.find(p => p.id === trip.pilotId)?.name || 'N/A';
-        const hasLogo = selectedPort?.logoImage;
+
+        const getMimeTypeFromDataUrl = (dataUrl: string): string | null => {
+            const match = dataUrl.match(/^data:image\/([a-zA-Z+]+);base64,/);
+            return match ? match[1].toUpperCase() : null;
+        };
 
         doc.setFontSize(18);
+        let titleX = 14;
+        const marginLeft = 14;
 
-        if (hasLogo) {
-            doc.addImage(selectedPort.logoImage!, 'PNG', 14, 15, 20, 20); // x, y, w, h
-            doc.text(`Trip Detail Report: ${trip.id}`, 40, 22);
-            doc.setFontSize(11);
-            doc.setTextColor(100);
-            doc.text(`Vessel: ${trip.vesselName} (IMO: ${trip.vesselImo})`, 40, 30);
-        } else {
-            doc.text(`Trip Detail Report: ${trip.id}`, 14, 22);
-            doc.setFontSize(11);
-            doc.setTextColor(100);
-            doc.text(`Vessel: ${trip.vesselName} (IMO: ${trip.vesselImo})`, 14, 30);
+        const customLogo = selectedPort?.logoImage;
+        const customLogoFormat = customLogo ? getMimeTypeFromDataUrl(customLogo) : null;
+        const isCustomLogoValid = customLogo && customLogoFormat && ['PNG', 'JPEG', 'WEBP'].includes(customLogoFormat);
+
+        let logoAdded = false;
+
+        // Attempt 1: Add custom logo if valid
+        if (isCustomLogoValid) {
+            try {
+                doc.addImage(customLogo!, customLogoFormat!, marginLeft, 15, 20, 20);
+                logoAdded = true;
+            } catch (e) {
+                console.warn('Failed to add custom port logo, it might be corrupt. Falling back.', e);
+            }
         }
 
+        // Attempt 2: Add default logo if custom one wasn't added
+        if (!logoAdded) {
+            try {
+                doc.addImage(DEFAULT_APP_LOGO_PNG, 'PNG', marginLeft, 15, 20, 20);
+                logoAdded = true;
+            } catch (e) {
+                console.error('CRITICAL: Failed to add default logo. Proceeding without one.', e);
+            }
+        }
+
+        if (logoAdded) {
+            titleX = 40;
+        }
+        
+        doc.text(`Trip Detail Report: ${trip.id}`, titleX, 22);
+        doc.setFontSize(11);
+        doc.setTextColor(100);
+        doc.text(`Vessel: ${trip.vesselName} (IMO: ${trip.vesselImo})`, titleX, 30);
+        
         const tableBody = [
             ['Status', trip.status],
             ['Arrival', trip.arrivalTimestamp ? new Date(trip.arrivalTimestamp).toLocaleString() : 'N/A'],
