@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import type { Berth, Ship } from '../types';
-import { ShipStatus, UserRole, BerthType } from '../types';
+import { ShipStatus, UserRole, BerthType, MovementEventType } from '../types';
 import { useSortableData } from '../hooks/useSortableData';
 import SortIcon from '../components/icons/SortIcon';
 import { useAuth } from '../context/AuthContext';
@@ -26,11 +26,23 @@ const StatCard: React.FC<{ icon: React.ElementType, title: string, value: string
     </div>
 );
 
+const OccupancyBar: React.FC<{ percentage: number }> = ({ percentage }) => {
+    const color = percentage > 80 ? 'bg-red-500' : percentage > 50 ? 'bg-yellow-500' : 'bg-green-500';
+    return (
+        <div className="w-full bg-gray-700 rounded-full h-2.5" title={`${percentage.toFixed(1)}% occupied in last 24h`}>
+            <div
+                className={`${color} h-2.5 rounded-full`}
+                style={{ width: `${percentage}%` }}
+            ></div>
+        </div>
+    );
+};
+
 
 const BerthDirectory: React.FC = () => {
   const { currentUser } = useAuth();
   const { state, actions } = usePort();
-  const { berths, ships, selectedPort } = state;
+  const { berths, ships, selectedPort, movements } = state;
   const [filter, setFilter] = useState('');
 
   const stats = useMemo(() => {
@@ -41,6 +53,60 @@ const BerthDirectory: React.FC = () => {
     const occupancyRate = totalBerths > 0 ? (occupiedCount / totalBerths) * 100 : 0;
     return { totalBerths, occupiedCount, availableCount, occupancyRate };
   }, [berths, ships]);
+
+  const occupancyData = useMemo(() => {
+    if (!movements || movements.length === 0) return new Map<string, number>();
+
+    const now = Date.now();
+    const twentyFourHoursAgo = now - 24 * 60 * 60 * 1000;
+    const occupancyMap = new Map<string, number>();
+
+    berths.forEach(berth => {
+        type BerthEvent = { timestamp: number; type: 'enter' | 'leave' };
+        const events: BerthEvent[] = [];
+
+        movements.forEach(movement => {
+            if (movement.eventType !== MovementEventType.BERTH_ASSIGNMENT) return;
+            
+            const eventTime = new Date(movement.timestamp).getTime();
+            const wasOccupied = movement.details.fromBerthIds?.includes(berth.id) ?? false;
+            const isOccupied = movement.details.berthIds?.includes(berth.id) ?? false;
+
+            if (!wasOccupied && isOccupied) events.push({ timestamp: eventTime, type: 'enter' });
+            if (wasOccupied && !isOccupied) events.push({ timestamp: eventTime, type: 'leave' });
+        });
+        
+        events.sort((a, b) => a.timestamp - b.timestamp);
+
+        let totalOccupiedMs = 0;
+        let lastEventTime = twentyFourHoursAgo;
+        let currentStateIsOccupied = false;
+
+        const lastEventBeforeWindow = events.filter(e => e.timestamp < twentyFourHoursAgo).pop();
+        if (lastEventBeforeWindow) {
+            currentStateIsOccupied = lastEventBeforeWindow.type === 'enter';
+        }
+
+        const relevantEvents = events.filter(e => e.timestamp >= twentyFourHoursAgo);
+        for (const event of relevantEvents) {
+            const eventTime = event.timestamp;
+            if (currentStateIsOccupied) {
+                totalOccupiedMs += (eventTime - lastEventTime);
+            }
+            currentStateIsOccupied = (event.type === 'enter');
+            lastEventTime = eventTime;
+        }
+
+        if (currentStateIsOccupied) {
+            totalOccupiedMs += (now - lastEventTime);
+        }
+
+        const occupancyPercent = (totalOccupiedMs / (24 * 60 * 60 * 1000)) * 100;
+        occupancyMap.set(berth.id, Math.min(100, occupancyPercent));
+    });
+
+    return occupancyMap;
+  }, [berths, movements]);
 
   const filteredBerths = useMemo(() => {
     return berths.filter(berth => 
@@ -94,6 +160,7 @@ const BerthDirectory: React.FC = () => {
               ))}
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3">Occupying Vessel</th>
+              <th className="px-4 py-3">24h Occupancy</th>
               {canManageBerths && <th className="px-4 py-3 text-right">Actions</th>}
             </tr>
           </thead>
@@ -116,6 +183,14 @@ const BerthDirectory: React.FC = () => {
                            {canManageShips && <button onClick={(e) => { e.stopPropagation(); actions.openModal({ type: 'shipForm', ship: occupyingShip }); }} className="px-2 py-1 bg-cyan-600/50 text-cyan-200 rounded text-xs hover:bg-cyan-600">Manage</button>}
                         </div>
                     ) : '—'}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                        <OccupancyBar percentage={occupancyData.get(berth.id) || 0} />
+                        <span className="text-xs font-mono w-12 text-right">
+                            {`${(occupancyData.get(berth.id) || 0).toFixed(0)}%`}
+                        </span>
+                    </div>
                   </td>
                    {canManageBerths && (
                     <td className="px-4 py-3 text-right">

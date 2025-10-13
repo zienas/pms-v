@@ -1,6 +1,6 @@
 import React, { useReducer, useCallback, createContext, useContext, useMemo, useRef, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
-import type { Ship, Berth, Alert, Port, Trip, User, AisSource, ModalState, AisData, ShipMovement } from '../types';
+import type { Ship, Berth, Alert, Port, Trip, User, AisSource, ModalState, AisData, ShipMovement, LoginHistoryEntry } from '../types';
 import { AlertType, ShipStatus, UserRole } from '../types';
 import * as api from '../services/api';
 import { runAisUpdateStep } from '../services/aisSimulator';
@@ -19,6 +19,7 @@ interface PortState {
   ports: Port[];
   allBerths: Berth[]; // Berths for all ports, for management views
   movements: ShipMovement[];
+  loginHistory: LoginHistoryEntry[];
   
   // UI State
   isLoading: boolean;
@@ -35,7 +36,7 @@ type Action =
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_INITIAL_PORTS'; payload: { ports: Port[], accessiblePorts: Port[], selectedPortId: string | null } }
   | { type: 'SET_ALL_BERTHS'; payload: Berth[] }
-  | { type: 'SET_PORT_DATA'; payload: { ships: Ship[]; berths: Berth[]; trips: Trip[]; movements: ShipMovement[] } }
+  | { type: 'SET_PORT_DATA'; payload: { ships: Ship[]; berths: Berth[]; trips: Trip[]; movements: ShipMovement[]; loginHistory: LoginHistoryEntry[] } }
   | { type: 'SET_SELECTED_PORT_ID'; payload: string | null }
   | { type: 'CLEAR_DATA' }
   | { type: 'SET_ALERTS'; payload: Alert[] }
@@ -44,7 +45,7 @@ type Action =
   | { type: 'UPDATE_SHIP_POSITION'; payload: { shipId: string; lat: number; lon: number } };
 
 const initialState: PortState = {
-  ships: [], berths: [], trips: [], alerts: [], ports: [], allBerths: [], movements: [],
+  ships: [], berths: [], trips: [], alerts: [], ports: [], allBerths: [], movements: [], loginHistory: [],
   isLoading: true, selectedPortId: null, accessiblePorts: [], modal: null,
   selectedPort: null,
 };
@@ -62,7 +63,7 @@ const portReducer = (state: PortState, action: Action): PortState => {
         const selectedPort = state.ports.find(p => p.id === action.payload) ?? null;
         return { ...state, selectedPortId: action.payload, selectedPort };
     }
-    case 'CLEAR_DATA': return { ...state, ships: [], berths: [], trips: [], alerts: [], movements: [] };
+    case 'CLEAR_DATA': return { ...state, ships: [], berths: [], trips: [], alerts: [], movements: [], loginHistory: [] };
     case 'SET_ALERTS': return { ...state, alerts: action.payload };
     case 'OPEN_MODAL': return { ...state, modal: action.payload };
     case 'CLOSE_MODAL': return { ...state, modal: null };
@@ -162,11 +163,16 @@ export const PortProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const fetchDataForPort = async (portId: string, signal: AbortSignal) => {
             try {
                 dispatch({ type: 'SET_LOADING', payload: true });
-                const [ships, berths, trips, movements] = await Promise.all([
-                    api.getShips(portId), api.getBerths(portId), api.getTripsForPort(portId), api.getHistoryForPort(portId)
+                const [ships, berths, trips, movements, allLoginHistory] = await Promise.all([
+                    api.getShips(portId), 
+                    api.getBerths(portId), 
+                    api.getTripsForPort(portId), 
+                    api.getHistoryForPort(portId),
+                    api.getLoginHistory(),
                 ]);
                 if (!signal.aborted) {
-                    dispatch({ type: 'SET_PORT_DATA', payload: { ships, berths, trips, movements } });
+                    const loginHistory = allLoginHistory.filter(h => h.portId === portId);
+                    dispatch({ type: 'SET_PORT_DATA', payload: { ships, berths, trips, movements, loginHistory } });
                 }
             } catch (error) {
                 if (!signal.aborted) toast.error(`Failed to load data for port.`);

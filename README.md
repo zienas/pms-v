@@ -27,6 +27,9 @@ This is a modern frontend application designed to manage and visualize vessel tr
     -   How many times it has visited the port.
     -   Total, average, minimum, and maximum stay durations.
     -   A detailed breakdown of time spent at a dock versus time spent at anchorage.
+-   **Unified & Auditable System Logs**: A dedicated, tab-based page provides a comprehensive audit trail of all port activities.
+    -   **Tabbed Views**: Easily switch between a unified view of all events, or focused logs for Vessel Movements, Port Actions (assignments), and User Login/Logout sessions.
+    -   **Full Functionality**: All log views are sortable, filterable, and exportable to both CSV and professional PDF formats.
 -   **Full Authentication & RBAC**: A dedicated login page and an advanced role-based access control system (Admin, Operator, Captain, Pilot, Agent) to restrict access to features and data.
 -   **Admin-Level Management Suite**:
     -   **Multi-Port Management**: Admins can switch between and manage multiple ports, including their geospatial boundaries.

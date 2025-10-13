@@ -42,6 +42,10 @@ The Windows application must implement the full feature set of its web counterpa
     -   Ability to draw and edit port/berth geometry directly on a map interface within the application.
     -   A detailed, sortable audit trail of all user login/logout events.
 
+-   **Unified & Auditable System Logs**: A dedicated, tab-based interface for viewing all system events.
+    -   Must provide a unified view of all events as well as filtered views for Vessel Movements, Port Actions (e.g., pilot/berth assignments), and User Login/Logout sessions.
+    -   All log views must be sortable, filterable, and exportable to both CSV and PDF formats.
+
 -   **Authentication & Role-Based Access Control (RBAC)**:
     -   Secure login screen.
     -   Application features and data access must be restricted based on user roles (Admin, Operator, Captain, etc.) as defined in the existing system.
