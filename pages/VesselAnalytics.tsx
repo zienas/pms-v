@@ -10,6 +10,7 @@ import ShipIcon from '../components/icons/ShipIcon';
 import ChartBarIcon from '../components/icons/ChartBarIcon';
 import DownloadIcon from '../components/icons/DownloadIcon';
 import { usePort } from '../context/PortContext';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 interface VesselStat {
     shipId: string; shipName: string; shipImo: string; attendanceCount: number;
@@ -102,6 +103,18 @@ const VesselAnalytics: React.FC = () => {
     const { items: sortedStats, requestSort, sortConfig } = useSortableData<VesselStat>(stats, { key: 'shipName', direction: 'ascending' });
     const getSortDirectionFor = (key: keyof VesselStat) => sortConfig?.key === key ? sortConfig.direction : undefined;
 
+    const chartData = useMemo(() => {
+        if (!stats) return [];
+        return stats
+            .sort((a, b) => b.attendanceCount - a.attendanceCount)
+            .slice(0, 5)
+            .map(stat => ({
+                name: stat.shipName,
+                'Dock Stay (Hours)': parseFloat((stat.totalDockStay / (1000 * 60 * 60)).toFixed(1)),
+                'Anchorage Stay (Hours)': parseFloat((stat.totalAnchorageStay / (1000 * 60 * 60)).toFixed(1)),
+            }));
+    }, [stats]);
+
     const handleExport = () => {
         if (!selectedPort) return;
         const dataToExport = sortedStats.map(stat => ({
@@ -128,6 +141,31 @@ const VesselAnalytics: React.FC = () => {
                 <KPICard icon={ChartBarIcon} title="Avg. Port Stay" value={formatDuration(portStats.portWideAvgStay)} description="Average duration of a single port visit" />
                 <KPICard icon={ChartBarIcon} title="Avg. Dock Stay" value={formatDuration(portStats.portWideAvgDockStay)} description="Average time spent at berth/quay" />
                 <KPICard icon={ChartBarIcon} title="Avg. Anchorage Stay" value={formatDuration(portStats.portWideAvgAnchorageStay)} description="Average time spent at anchorage" />
+            </div>
+
+            <div className="bg-gray-800 p-4 rounded-lg border border-gray-700 mb-6">
+                <h2 className="text-xl font-bold text-white mb-4">Top 5 Vessels by Visits: Stay Analysis</h2>
+                {chartData.length > 0 ? (
+                    <div style={{ width: '100%', height: 300 }}>
+                        <ResponsiveContainer>
+                            <BarChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#4A5568" />
+                                <XAxis dataKey="name" stroke="#A0AEC0" tick={{ fontSize: 12 }} />
+                                <YAxis stroke="#A0AEC0" label={{ value: 'Hours', angle: -90, position: 'insideLeft', fill: '#A0AEC0' }} />
+                                <Tooltip 
+                                    contentStyle={{ backgroundColor: '#2D3748', border: '1px solid #4A5568' }} 
+                                    labelStyle={{ color: '#E2E8F0' }}
+                                    formatter={(value: number) => `${value.toFixed(1)} hrs`}
+                                />
+                                <Legend wrapperStyle={{ color: '#E2E8F0' }}/>
+                                <Bar dataKey="Dock Stay (Hours)" fill="#38B2AC" />
+                                <Bar dataKey="Anchorage Stay (Hours)" fill="#63B3ED" />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                ) : (
+                    <p className="text-gray-500 text-center py-8">Not enough data to display chart.</p>
+                )}
             </div>
 
             <div className="flex-1 overflow-x-auto">

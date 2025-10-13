@@ -140,6 +140,25 @@ const ShipFormModal: React.FC = () => {
     if (formData.length <= 0) newErrors.length = 'Length must be a positive number.';
     if (formData.draft <= 0) newErrors.draft = 'Draft must be a positive number.';
     if (formData.status === ShipStatus.DOCKED && formData.berthIds.length === 0) newErrors.berthIds = 'A ship with status "Docked" must be assigned to a berth.';
+
+    // Date validation
+    const etaDate = new Date(formData.eta);
+    const etdDate = new Date(formData.etd);
+    const now = new Date();
+
+    if (etaDate <= now) {
+        newErrors.eta = 'ETA must be in the future.';
+    }
+
+    if (etdDate <= now) {
+        newErrors.etd = 'ETD must be in the future.';
+    }
+
+    if (etaDate >= etdDate) {
+        newErrors.eta = (newErrors.eta ? newErrors.eta + ' ' : '') + 'ETA must be before ETD.';
+        newErrors.etd = (newErrors.etd ? newErrors.etd + ' ' : '') + 'ETD must be after ETA.';
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -206,13 +225,15 @@ const ShipFormModal: React.FC = () => {
             <InputField label="Flag" name="flag" type="text" value={formData.flag} onChange={handleChange} error={errors.flag} />
             <InputField label="Length (m)" name="length" type="number" value={formData.length} onChange={handleChange} error={errors.length} />
             <InputField label="Draft (m)" name="draft" type="number" value={formData.draft} onChange={handleChange} error={errors.draft} />
-             <div>
+            <div>
               <label htmlFor="eta" className="block text-sm font-medium text-gray-300">ETA</label>
-              <input type="datetime-local" id="eta" name="eta" value={formData.eta} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+              <input type="datetime-local" id="eta" name="eta" value={formData.eta} onChange={handleChange} className={`mt-1 block w-full px-3 py-2 bg-gray-700 text-white border rounded-md focus:outline-none focus:ring-2 ${errors.eta ? 'border-red-500 focus:ring-red-500' : 'border-gray-600 focus:ring-cyan-500'}`} />
+              {errors.eta && <p className="text-red-500 text-xs mt-1">{errors.eta}</p>}
             </div>
             <div>
               <label htmlFor="etd" className="block text-sm font-medium text-gray-300">ETD</label>
-              <input type="datetime-local" id="etd" name="etd" value={formData.etd} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+              <input type="datetime-local" id="etd" name="etd" value={formData.etd} onChange={handleChange} className={`mt-1 block w-full px-3 py-2 bg-gray-700 text-white border rounded-md focus:outline-none focus:ring-2 ${errors.etd ? 'border-red-500 focus:ring-red-500' : 'border-gray-600 focus:ring-cyan-500'}`} />
+              {errors.etd && <p className="text-red-500 text-xs mt-1">{errors.etd}</p>}
             </div>
             <div>
                 <label htmlFor="status" className="block text-sm font-medium text-gray-300">Status</label>

@@ -305,7 +305,15 @@ const ShipHistoryModal: React.FC<ShipHistoryModalProps> = ({ ship, portId, onClo
                                                 ? new Date(item.timestamp).toLocaleString()
                                                 : 'Invalid date'}
                                         </time>
-                                        <p className="mb-2 text-base font-normal text-gray-300">{item.details.message}</p>
+                                        
+                                        {item.eventType === MovementEventType.STATUS_CHANGE && item.details.fromStatus && item.details.status ? (
+                                            <p className="mb-2 text-base font-normal text-gray-300">
+                                                Status changed from <span className="font-semibold text-yellow-400">{item.details.fromStatus}</span> to <span className="font-semibold text-green-400">{item.details.status}</span>.
+                                            </p>
+                                        ) : (
+                                            <p className="mb-2 text-base font-normal text-gray-300">{item.details.message}</p>
+                                        )}
+                                        
                                         {item.details.pilotId && !isPilotChangeEvent && (
                                             <p className="text-sm text-gray-400 flex items-center gap-2 mt-1">
                                                 <PilotIcon className="w-4 h-4 flex-shrink-0" />

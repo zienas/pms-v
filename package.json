@@ -15,7 +15,8 @@
     "react-chartjs-2": "5.2.0",
     "jspdf": "2.5.1",
     "jspdf-autotable": "3.8.2",
-    "react-hot-toast": "2.4.1"
+    "react-hot-toast": "2.4.1",
+    "recharts": "2.12.7"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
