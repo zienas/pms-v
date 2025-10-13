@@ -11,6 +11,7 @@ import ClockIcon from '../components/icons/ClockIcon';
 import EditIcon from '../components/icons/EditIcon';
 import DeleteIcon from '../components/icons/DeleteIcon';
 import PDFIcon from '../components/icons/PDFIcon';
+import ReassignIcon from '../components/icons/ReassignIcon';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { usePort } from '../context/PortContext';
@@ -186,10 +187,11 @@ const VesselDirectory: React.FC = () => {
                         <td className="px-4 py-3">{ship.pilotId ? userMap.get(ship.pilotId) || 'Unknown Pilot' : '—'}</td>
                         <td className="px-4 py-3"><span className={`px-2 py-1 text-xs font-medium rounded-full border border-current ${Object.values(ShipStatus).includes(ship.status) ? statusColors[ship.status] : statusColors[ShipStatus.LEFT_PORT]}`}>{ship.status}</span></td>
                         <td className="px-4 py-3 text-right">
-                           <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onClick={() => actions.openModal({ type: 'history', ship })} className="p-1 text-gray-300 hover:text-blue-400" title="View history"><ClockIcon className="h-5 w-5" /></button>
+                           <div className="flex items-center justify-end gap-1">
+                                <button onClick={() => actions.openModal({ type: 'history', ship })} className="p-1 text-gray-300 hover:text-blue-400" title="View Movement History"><ClockIcon className="h-5 w-5" /></button>
                                 {canModify && (
                                     <>
+                                        <button onClick={() => actions.openModal({ type: 'reassignBerth', ship })} className="p-1 text-gray-300 hover:text-green-400" title="Reassign Berth"><ReassignIcon className="h-5 w-5" /></button>
                                         <button onClick={() => actions.openModal({ type: 'shipForm', ship })} className="p-1 text-gray-300 hover:text-cyan-400" title="Edit ship"><EditIcon className="h-5 w-5" /></button>
                                         <button onClick={() => actions.deleteShip(ship.portId, ship.id)} className="p-1 text-gray-300 hover:text-red-500" title="Delete ship"><DeleteIcon className="h-5 w-5" /></button>
                                     </>

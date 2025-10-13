@@ -313,6 +313,7 @@ CREATE TABLE ports (
     lat NUMERIC(9, 6) NOT NULL,
     lon NUMERIC(9, 6) NOT NULL,
     map_image TEXT, -- Base64 Data URL for a custom map background
+    logo_image TEXT, -- Base64 Data URL for the port logo
     geometry GEOMETRY(POLYGON, 4326) -- Store port boundary as a polygon
 );
 

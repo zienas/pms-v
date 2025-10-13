@@ -76,13 +76,13 @@ The database is designed with a relational model to ensure data integrity. Here 
 -   `ship_movements`: A detailed log of every significant event in a ship's lifecycle, now linked to a specific `trip_id`.
 -   `login_history`: An audit trail of all user login and logout events.
 
-### 3. State Management (`hooks/usePortState.ts`)
+### 3. State Management (`context/PortContext.tsx`)
 
-The `usePortState` hook orchestrates the frontend's state, acting as a client to the API.
+State management is primarily handled within `context/PortContext.tsx`. This context uses a reducer (`useReducer`) and the Context API to provide state and actions throughout the entire component tree, acting as a client to the API service.
 
--   **Data Fetching**: On initial load, it calls the API service to fetch all necessary data and manages a `isLoading` state to provide user feedback.
--   **State as a Local Cache**: The hook holds the fetched data in the React state, acting as a temporary, client-side cache of the database's state.
--   **Data Mutations**: When a user performs an action (e.g., adding a ship), the hook calls the appropriate API function (`api.addShip`). Upon a successful response from the API, it updates its local state to reflect the change, causing the UI to re-render.
+-   **Data Fetching**: On initial load and when the selected port changes, the context calls the API service to fetch all necessary data (ports, ships, berths, etc.) and manages a global `isLoading` state to provide user feedback.
+-   **State as a Local Cache**: The context holds the fetched data in its state, acting as a temporary, client-side cache of the database's state for the selected port.
+-   **Data Mutations**: When a user performs an action (e.g., adding a ship), the context calls the appropriate API function (`api.addShip`). Upon a successful response from the API, it re-fetches the relevant data to update its local state, causing the UI to re-render with the latest information.
 
 ### 4. User Management & Permissions (`context/AuthContext.tsx`)
 

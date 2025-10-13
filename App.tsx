@@ -20,6 +20,7 @@ import SettingsPage from './pages/SettingsPage';
 import VesselAnalytics from './pages/VesselAnalytics';
 import TripDirectory from './pages/TripDirectory';
 import TripDetailModal from './components/TripDetailModal';
+import ReassignBerthModal from './components/ReassignBerthModal';
 import { useAuth } from './context/AuthContext';
 import WarningIcon from './components/icons/WarningIcon';
 import { useSettings } from './context/SettingsContext';
@@ -77,7 +78,7 @@ const MainApp: React.FC = () => {
     selectedPort,
   } = state;
   
-  const [activeView, setActiveView] = useState<View>('dashboard');
+  const [activeView, setActiveView] = useState<View>('users');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => { actions.loadInitialPorts(); }, [actions]);
@@ -160,6 +161,7 @@ const MainApp: React.FC = () => {
       {modal?.type === 'berthDetail' && modal.berth && <BerthDetailModal berth={modal.berth} />}
       {modal?.type === 'tripDetail' && modal.trip && <TripDetailModal />}
       {modal?.type === 'userForm' && <UserFormModal />}
+      {modal?.type === 'reassignBerth' && modal.ship && <ReassignBerthModal ship={modal.ship} />}
     </div>
   );
 }
