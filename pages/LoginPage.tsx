@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../context/AuthContext';
 import ShipIcon from '../components/icons/ShipIcon';
 import * as api from '../services/api';
-import type { Port, User } from '../types';
+import type { Port } from '../types';
 import { UserRole } from '../types';
 
 const LoginPage: React.FC = () => {
@@ -12,6 +12,7 @@ const LoginPage: React.FC = () => {
     const [selectedUserName, setSelectedUserName] = useState('');
     const [password, setPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [selectedRole, setSelectedRole] = useState<UserRole | 'all'>('all');
 
     useEffect(() => {
         const fetchPorts = async () => {
@@ -28,8 +29,11 @@ const LoginPage: React.FC = () => {
 
     const filteredUsers = useMemo(() => {
         if (!selectedPortId) return [];
-        return users.filter(user => user.role === UserRole.ADMIN || user.portId === selectedPortId);
-    }, [users, selectedPortId]);
+        return users.filter(user => 
+            (user.role === UserRole.ADMIN || user.portId === selectedPortId) &&
+            (selectedRole === 'all' || user.role === selectedRole)
+        );
+    }, [users, selectedPortId, selectedRole]);
 
     useEffect(() => {
         // Reset selected user if they are not in the filtered list
@@ -60,6 +64,15 @@ const LoginPage: React.FC = () => {
                             <select id="port" name="port" required value={selectedPortId} onChange={e => setSelectedPortId(e.target.value)} className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-600 bg-gray-700 text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm rounded-t-md">
                                 <option value="" disabled>-- Select a Port --</option>
                                 {ports.map(port => <option key={port.id} value={port.id}>{port.name}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label htmlFor="role" className="sr-only">Role</label>
+                            <select id="role" name="role" value={selectedRole} onChange={e => setSelectedRole(e.target.value as UserRole | 'all')} disabled={!selectedPortId} className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-600 bg-gray-700 text-gray-200 placeholder-gray-400 focus:outline-none focus:ring-cyan-500 focus:border-cyan-500 sm:text-sm disabled:bg-gray-600">
+                                <option value="all">-- All Roles --</option>
+                                {Object.values(UserRole).map(role => (
+                                    <option key={role} value={role}>{role}</option>
+                                ))}
                             </select>
                         </div>
                         <div>

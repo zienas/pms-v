@@ -12,33 +12,7 @@ const SettingsPage: React.FC = () => {
     const { state, actions } = usePort();
     const { selectedPort } = state;
     
-    const [newMapImage, setNewMapImage] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
-
-    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => setNewMapImage(reader.result as string);
-            reader.readAsDataURL(file);
-        }
-    };
-    
-    const handleSaveMapImage = async () => {
-        if (!selectedPort || !newMapImage) return;
-        setIsSaving(true);
-        await actions.updatePort(selectedPort.id, { ...selectedPort, mapImage: newMapImage });
-        setNewMapImage(null);
-        setIsSaving(false);
-    };
-
-    const handleRemoveMapImage = async () => {
-        if (!selectedPort) return;
-        setIsSaving(true);
-        await actions.updatePort(selectedPort.id, { ...selectedPort, mapImage: undefined });
-        setNewMapImage(null);
-        setIsSaving(false);
-    };
 
     return (
         <div className="bg-gray-900/50 rounded-lg p-4 sm:p-6 h-full text-white overflow-y-auto">
@@ -83,28 +57,6 @@ const SettingsPage: React.FC = () => {
                             </div>
                         </div>
                     </div>
-                </div>
-                
-                 <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
-                    <h2 className="text-xl font-semibold mb-4">Map Background Customization</h2>
-                    <p className="text-sm text-gray-400 mb-4">Upload a background image for the live map of the currently selected port: <strong className="text-cyan-400">{selectedPort?.name ?? '...'}</strong></p>
-                    
-                    {selectedPort ? (
-                        <>
-                           <div className="mt-4">
-                               <label htmlFor="map-upload" className="block text-sm font-medium text-gray-300 mb-2">Upload New Image</label>
-                               <input id="map-upload" type="file" accept="image/*" onChange={handleImageUpload} className="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:font-semibold file:bg-cyan-600/20 file:text-cyan-300 hover:file:bg-cyan-600/30" />
-                            </div>
-                            <div className="mt-4 p-2 border border-gray-700 rounded-md">
-                                <p className="text-xs text-center text-gray-400 mb-2">Preview</p>
-                                <img src={newMapImage || selectedPort.mapImage || 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7'} alt="Map preview" className="w-full h-48 object-contain rounded bg-gray-900/50" />
-                            </div>
-                            <div className="mt-6 flex gap-4">
-                                <button onClick={handleSaveMapImage} disabled={!newMapImage || isSaving} className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-600">{isSaving ? 'Saving...' : 'Save Image'}</button>
-                                <button onClick={handleRemoveMapImage} disabled={!selectedPort.mapImage || isSaving} className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:bg-gray-600">{isSaving ? 'Removing...' : 'Remove Image'}</button>
-                            </div>
-                        </>
-                    ) : <p className="text-gray-500">No port selected.</p>}
                 </div>
             </div>
         </div>

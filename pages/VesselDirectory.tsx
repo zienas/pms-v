@@ -209,10 +209,10 @@ const VesselDirectory: React.FC = () => {
             <tbody className="divide-y divide-gray-700">
                 {sortedShips.map(ship => (
                     <tr key={ship.id} className={`group transition-colors duration-200 ${ship.status === ShipStatus.LEFT_PORT ? 'bg-gray-800/60' : ''} ${ship.hasDangerousGoods ? 'bg-red-900/20 hover:bg-red-900/30' : 'hover:bg-gray-800/50'}`}>
-                        <td className="px-4 py-3 font-medium text-white">
+                        <td className="px-4 py-3 font-medium">
                             <div className="flex items-center gap-2">
-                                {ship.hasDangerousGoods && <div className="flex-shrink-0" title="Carrying Dangerous Goods"><FireIcon className="w-4 h-4 text-red-400" /></div>}
-                                <span>{ship.name}</span>
+                                {ship.hasDangerousGoods && <div className="flex-shrink-0" title="Carrying Dangerous Goods"><FireIcon className="w-4 h-4 text-red-400 animate-pulse" /></div>}
+                                <span className={ship.hasDangerousGoods ? 'text-red-300' : 'text-white'}>{ship.name}</span>
                             </div>
                         </td>
                         <td className="px-4 py-3">{ship.imo}</td>

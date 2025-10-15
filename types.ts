@@ -59,6 +59,7 @@ export interface User {
   role: UserRole;
   password?: string;
   portId?: string; // Used to scope non-admin users to a specific port
+  forcePasswordChange?: boolean;
 }
 
 export interface Port {
@@ -66,7 +67,6 @@ export interface Port {
   name: string;
   lat: number;
   lon: number;
-  mapImage?: string; // Base64 Data URL for a custom map background image
   logoImage?: string; // Base64 Data URL for the port logo
   geometry?: [number, number][]; // Array of [lat, lon] pairs for the port boundary
 }

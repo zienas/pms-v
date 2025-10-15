@@ -36,10 +36,15 @@ const AlertsDashboard: React.FC = () => {
      });
    }, [alerts, filterType, filterStatus]);
 
-   const handleTakeAction = (shipId: string) => {
-     const ship = ships.find(s => s.id === shipId);
+   const handleTakeAction = (alert: Alert) => {
+     const ship = ships.find(s => s.id === alert.shipId);
      if (ship) {
-       actions.openModal({ type: 'shipForm', ship });
+       if (alert.id.startsWith('alert-pilot-')) {
+         actions.openModal({ type: 'assignPilot', ship });
+       } else {
+         // Fallback for other potential actions
+         actions.openModal({ type: 'shipForm', ship });
+       }
      }
    };
 
@@ -107,7 +112,7 @@ const AlertsDashboard: React.FC = () => {
                           <button onClick={() => actions.acknowledgeAlert(alert.id)} className="px-3 py-1 text-sm bg-green-700 text-white rounded-md hover:bg-green-600">ACK</button>
                       )}
                       <button onClick={() => actions.removeAlert(alert.id)} className="px-3 py-1 text-sm bg-gray-600 text-white rounded-md hover:bg-gray-700">Discard</button>
-                      {alert.shipId && <button onClick={() => handleTakeAction(alert.shipId)} className="px-3 py-1 text-sm bg-cyan-600 text-white rounded-md hover:bg-cyan-700">Take Action</button>}
+                      {alert.shipId && <button onClick={() => handleTakeAction(alert)} className="px-3 py-1 text-sm bg-cyan-600 text-white rounded-md hover:bg-cyan-700">Take Action</button>}
                   </div>
                 </li>
               );

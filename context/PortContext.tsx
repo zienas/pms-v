@@ -89,7 +89,7 @@ interface PortContextType {
     setSelectedPortId: (portId: string) => void;
     clearData: () => void;
     generateAlerts: (approachingThreshold: number, pilotThreshold: number) => () => void;
-    runAisSimulation: (aisSource: AisSource) => () => void;
+    runAisSimulation: (aisSource: AisSource, pilotThreshold: number) => () => void;
     initWebSocket: (portId: string | null) => () => void;
     openModal: (modal: ModalState) => void;
     closeModal: () => void;
@@ -323,13 +323,14 @@ export const PortProvider: React.FC<{ children: React.ReactNode }> = ({ children
             return () => clearInterval(timer);
         };
         
-        const runAisSimulation = (aisSource: AisSource) => {
+        const runAisSimulation = (aisSource: AisSource, pilotThreshold: number) => {
             if (aisSource !== 'simulator') return () => {};
             const interval = setInterval(async () => {
                 const { ports, selectedPortId } = stateRef.current;
                 if (ports.length > 0 && selectedPortId) {
                     const allShips = await api.getAllShips();
-                    const updates = runAisUpdateStep(ports, allShips);
+                    const updates = runAisUpdateStep(ports, allShips, pilotThreshold);
+                    
                     const shipData = updates.newShip || updates.updatedShip;
                     
                     if (shipData) {

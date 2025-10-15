@@ -46,7 +46,7 @@ const seedData = () => {
         lat: 1.264722,
         lon: 103.8225,
         geometry: [[1.27, 103.81], [1.275, 103.83], [1.26, 103.84], [1.25, 103.82]],
-        logoImage: 'data:image/png;base64,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',
+        logoImage: 'data:image/png;base64,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',
     };
     const portId2 = 'port-rt';
      const port2: Port = {
@@ -58,13 +58,13 @@ const seedData = () => {
     db.ports.push(port1, port2);
 
     const users: User[] = [
-        { id: uuid(), name: 'Admin User', role: UserRole.ADMIN, password: 'password' },
-        { id: uuid(), name: 'SG Operator', role: UserRole.OPERATOR, password: 'password', portId: portId1 },
-        { id: uuid(), name: 'RT Operator', role: UserRole.OPERATOR, password: 'password', portId: portId2 },
-        { id: uuid(), name: 'Capt. Ahab (SG)', role: UserRole.CAPTAIN, password: 'password', portId: portId1 },
-        { id: uuid(), name: 'Maritime Agent (SG)', role: UserRole.AGENT, password: 'password', portId: portId1 },
-        { id: uuid(), name: 'John Smith (Pilot)', role: UserRole.PILOT, password: 'password', portId: portId1 },
-        { id: uuid(), name: 'Jane Doe (Pilot)', role: UserRole.PILOT, password: 'password', portId: portId1 },
+        { id: uuid(), name: 'Admin User', role: UserRole.ADMIN, password: 'password', forcePasswordChange: false },
+        { id: uuid(), name: 'SG Operator', role: UserRole.OPERATOR, password: 'password', portId: portId1, forcePasswordChange: true },
+        { id: uuid(), name: 'RT Operator', role: UserRole.OPERATOR, password: 'password', portId: portId2, forcePasswordChange: true },
+        { id: uuid(), name: 'Capt. Ahab (SG)', role: UserRole.CAPTAIN, password: 'password', portId: portId1, forcePasswordChange: true },
+        { id: uuid(), name: 'Maritime Agent (SG)', role: UserRole.AGENT, password: 'password', portId: portId1, forcePasswordChange: true },
+        { id: uuid(), name: 'John Smith (Pilot)', role: UserRole.PILOT, password: 'password', portId: portId1, forcePasswordChange: true },
+        { id: uuid(), name: 'Jane Doe (Pilot)', role: UserRole.PILOT, password: 'password', portId: portId1, forcePasswordChange: true },
     ];
     db.users = users;
 
@@ -184,7 +184,11 @@ export const logoutUser = async (userId: string): Promise<void> => {
 export const addUser = async (userData: Omit<User, 'id'>): Promise<User> => {
     await delay(300);
     const db = getDB();
-    const newUser: User = { ...userData, id: uuid() };
+    const newUser: User = {
+        ...userData,
+        id: uuid(),
+        forcePasswordChange: userData.role !== UserRole.ADMIN,
+    };
     db.users.push(newUser);
     saveDB(db);
     return newUser;
@@ -195,7 +199,27 @@ export const updateUser = async (id: string, userData: User): Promise<User> => {
     const db = getDB();
     const userIndex = db.users.findIndex(u => u.id === id);
     if (userIndex === -1) throw new Error("User not found.");
-    db.users[userIndex] = { ...db.users[userIndex], ...userData };
+    
+    const userToUpdate = { ...db.users[userIndex], ...userData };
+    // If password is being changed by an admin, force a reset on next login (unless it's the admin themselves)
+    if (userData.password && userData.password.trim() !== '' && userToUpdate.role !== UserRole.ADMIN) {
+        userToUpdate.forcePasswordChange = true;
+    }
+
+    db.users[userIndex] = userToUpdate;
+    saveDB(db);
+    return db.users[userIndex];
+};
+
+export const updateOwnPassword = async (userId: string, newPassword: string): Promise<User> => {
+    await delay(300);
+    const db = getDB();
+    const userIndex = db.users.findIndex(u => u.id === userId);
+    if (userIndex === -1) throw new Error("User not found.");
+    
+    db.users[userIndex].password = newPassword;
+    db.users[userIndex].forcePasswordChange = false;
+
     saveDB(db);
     return db.users[userIndex];
 };

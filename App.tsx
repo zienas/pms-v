@@ -27,6 +27,7 @@ import WarningIcon from './components/icons/WarningIcon';
 import { useSettings } from './context/SettingsContext';
 import { usePort } from './context/PortContext';
 import SystemLogs from './pages/SystemLogs';
+import ForcePasswordChangeModal from './components/ForcePasswordChangeModal';
 
 const LoadingSpinner: React.FC<{ message: string }> = ({ message }) => (
     <div className="flex items-center justify-center h-full">
@@ -101,9 +102,9 @@ const MainApp: React.FC = () => {
   }, [selectedPortId, actions]);
 
   useEffect(() => {
-    const cleanup = actions.runAisSimulation(aisSource);
+    const cleanup = actions.runAisSimulation(aisSource, pilotThreshold);
     return cleanup;
-  }, [aisSource, actions, selectedPortId]); // Re-run if port changes
+  }, [aisSource, actions, selectedPortId, pilotThreshold]); // Re-run if port or threshold changes
 
   useEffect(() => {
     const cleanup = actions.generateAlerts(approachingThreshold, pilotThreshold);
@@ -171,7 +172,7 @@ const MainApp: React.FC = () => {
 }
 
 export default function App() {
-    const { currentUser, isLoading } = useAuth();
+    const { currentUser, isLoading, isPasswordChangeRequired } = useAuth();
 
     if (isLoading) {
         return (
@@ -179,6 +180,10 @@ export default function App() {
                 <LoadingSpinner message="Initializing..." />
             </div>
         );
+    }
+    
+    if (currentUser && isPasswordChangeRequired) {
+        return <ForcePasswordChangeModal />;
     }
     
     return currentUser ? <MainApp /> : <LoginPage />;

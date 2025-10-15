@@ -10,12 +10,7 @@ This is a modern frontend application designed to manage and visualize vessel tr
     -   Interactive zoom controls and customizable map backgrounds.
     -   Display of port and berth boundary geometries.
 -   **Proactive & Automated Alerts**: A sophisticated alert system to enhance operator awareness and response time.
-    -   **Proximity Alerts**: Automatically detects vessels within 2 NM of the port, generating a warning and a **pop-up dialog** suggesting pilot assignment if one is not already assigned.
-    -   **Safety & Conflict Alerts**: The system automatically flags dangerous goods carriers, double-booked berths, and vessels exceeding berth length/draft limits.
--   **Interactive Alert Dashboard**: Operators can manage alerts directly from the dashboard with actionable buttons:
-    -   **Acknowledge**: Mark an alert as reviewed, dimming it to reduce noise.
-    -   **Discard**: Remove an alert from the dashboard.
-    -   **Take Action**: Immediately open the relevant vessel's form to resolve the issue (e.g., assign a pilot or change a berth).
+-   **Interactive Alert Dashboard**: A centralized dashboard for managing all system-generated alerts with clear, actionable steps.
 -   **Vessel Trip & Stopover Tracking**: Automatically generates a unique Trip ID for each vessel visit, from approach to departure. This ID is associated with all movements and operations, providing a clear, auditable trail for each distinct stopover.
 -   **Comprehensive Trip Directory**: A dedicated, sortable, and exportable page to view the complete lifecycle of every trip, including arrival/departure times, duration, assigned personnel, and status. Clickable rows open a detailed editing modal.
 -   **Interactive Trip Details & Timeline**: Click on any trip to open a detailed modal view. Edit pilot and agent assignments on the fly. View a complete "Stopover Timeline" for the visit, breaking down each stay at a berth or anchorage with precise durations and pilot involvement for arrivals and departures.
@@ -37,6 +32,58 @@ This is a modern frontend application designed to manage and visualize vessel tr
     -   **User Management & Auditing**: Admins can manage all user accounts and view a detailed, sortable audit trail of all user login/logout events.
 -   **Data Export (CSV & PDF)**: Authorized users can export data grids like the Vessel Directory, User Login History, and Vessel Attendance Analytics to CSV. Additionally, a full **Trip Directory report** and detailed **single-trip reports** (including the Stopover Timeline) can be exported to professional, print-ready PDF documents.
 -   **Fully Responsive Design**: Optimized for mobile devices with a collapsible sidebar and responsive tables for a seamless experience on any screen.
+
+## Alert System Workflow
+
+The alert system has a clear workflow designed to draw the operator's attention to important events and guide them toward resolution.
+
+### 1. Alert Generation (Automated)
+
+Alerts are automatically generated in the background based on real-time data. The primary triggers are:
+
+*   **Vessel Proximity Warning**: A `Warning` level alert is created when a vessel with the status "Approaching" comes within a configurable distance of the port (e.g., 5 nautical miles). This serves as an early heads-up.
+*   **Pilot Assignment Required**: An `Error` level alert is created when an approaching vessel comes within a closer, more critical distance (e.g., 2 nautical miles) and does *not* have a pilot assigned.
+
+When the critical **Pilot Assignment** alert is generated, two things happen simultaneously:
+1.  The alert is added to the main list on the "Alerts Dashboard" page.
+2.  A **pop-up toast notification** appears on the screen, accompanied by a sound, to immediately grab the user's attention, regardless of which page they are currently viewing.
+
+### 2. User Interaction & Actions
+
+From either the pop-up toast or the Alerts Dashboard, an operator has three distinct actions they can take:
+
+#### Action 1: Acknowledge ("ACK")
+*   **What it means**: *"I have seen and am aware of this situation."*
+*   **Workflow**:
+    1.  The operator clicks the **ACK** button.
+    2.  The pop-up toast is dismissed.
+    3.  On the Alerts Dashboard, the alert is visually dimmed and moved from the "Unacknowledged" filter to the "Acknowledged" filter.
+    4.  The alert remains in the system but is de-emphasized to reduce visual clutter, allowing operators to focus on new, unacknowledged issues. The underlying condition (e.g., no pilot assigned) still exists.
+
+#### Action 2: Discard
+*   **What it means**: *"Dismiss this specific notification for now."*
+*   **Workflow**:
+    1.  The operator clicks the **Discard** button.
+    2.  The pop-up toast is dismissed.
+    3.  The alert is removed from the list on the dashboard.
+    4.  **Important**: This is a temporary dismissal. If the condition that triggered the alert still exists when the system next checks (every 5 seconds), the alert will be **regenerated** as a new, unacknowledged alert.
+
+#### Action 3: Take Action
+*   **What it means**: *"I need to resolve this issue now."*
+*   **Workflow**:
+    1.  The operator clicks the **Take Action** button.
+    2.  The pop-up toast is dismissed.
+    3.  The system immediately opens the relevant modal to fix the problem. For a pilot assignment alert, this opens the **"Assign Pilot"** modal, pre-filled with the vessel's information.
+    4.  The operator can then assign a pilot and save the changes.
+
+### 3. Alert Resolution (Automated)
+
+Once the operator has taken action and resolved the underlying condition (e.g., a pilot is now assigned to the vessel), the system's automatic alert generation process takes over:
+
+1.  On its next check, the system sees that the condition for the alert is no longer met (the ship now has a pilot).
+2.  The alert is **no longer generated** and disappears from the system entirely.
+
+This completes the lifecycle, ensuring that operators are only notified about current, actionable issues.
 
 ## Going Live with Real AIS Data
 

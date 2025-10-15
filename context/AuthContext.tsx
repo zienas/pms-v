@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, createContext, useContext, useMemo } from 'react';
 import type { User } from '../types';
+import { UserRole } from '../types';
 import * as api from '../services/api';
 import { toast } from 'react-hot-toast';
 
@@ -12,6 +13,8 @@ interface AuthContextType {
   updateUser: (id: string, user: User) => Promise<void>;
   deleteUser: (id: string) => Promise<void>;
   isLoading: boolean;
+  isPasswordChangeRequired: boolean;
+  updateOwnPassword: (newPassword: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -20,6 +23,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [users, setUsers] = useState<User[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isPasswordChangeRequired, setIsPasswordChangeRequired] = useState(false);
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -45,6 +49,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
         const user = await api.loginUser(name, password_provided, portId);
         setCurrentUser(user);
+        if (user.forcePasswordChange && user.role !== UserRole.ADMIN) {
+            setIsPasswordChangeRequired(true);
+        }
         toast.success(`Welcome, ${user.name}!`);
         return true;
     } catch (error: any) {
@@ -58,6 +65,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await api.logoutUser(currentUser.id);
     }
     setCurrentUser(null);
+    setIsPasswordChangeRequired(false);
   }
 
   const addUser = async (user: Omit<User, 'id'>) => {
@@ -77,6 +85,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       await fetchUsers();
   };
+  
+  const updateOwnPassword = async (newPassword: string) => {
+    if (!currentUser) throw new Error("No user is logged in.");
+    await toast.promise(api.updateOwnPassword(currentUser.id, newPassword), {
+        loading: 'Updating password...',
+        success: 'Password updated successfully.',
+        error: 'Failed to update password.'
+    });
+    // On success, clear the flag
+    setIsPasswordChangeRequired(false);
+  };
 
   const deleteUser = async (id: string) => {
       if (window.confirm("Are you sure you want to delete this user?")) {
@@ -90,8 +109,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const value = useMemo(() => ({ 
-      currentUser, users, login, logout, addUser, updateUser, deleteUser, isLoading 
-  }), [currentUser, users, isLoading]);
+      currentUser, users, login, logout, addUser, updateUser, deleteUser, isLoading,
+      isPasswordChangeRequired,
+      updateOwnPassword,
+  }), [currentUser, users, isLoading, isPasswordChangeRequired]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

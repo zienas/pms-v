@@ -9,6 +9,7 @@ import DeleteIcon from '../components/icons/DeleteIcon';
 import { usePort } from '../context/PortContext';
 import AnchorIcon from '../components/icons/AnchorIcon';
 import ChartBarIcon from '../components/icons/ChartBarIcon';
+import FireIcon from '../components/icons/FlameIcon';
 
 const berthTypeColors: { [key in BerthType]: string } = {
   [BerthType.QUAY]: 'bg-blue-500/20 text-blue-300',
@@ -167,19 +168,23 @@ const BerthDirectory: React.FC = () => {
           <tbody className="divide-y divide-gray-700">
             {sortedBerths.map(berth => {
               const occupyingShip = ships.find(s => s.berthIds.includes(berth.id) && s.status !== ShipStatus.LEFT_PORT);
+              const hasDangerousGoods = occupyingShip?.hasDangerousGoods;
               return (
-                <tr key={berth.id} onClick={() => actions.openModal({ type: 'berthDetail', berth })} className="hover:bg-gray-800/50 group cursor-pointer">
+                <tr key={berth.id} onClick={() => actions.openModal({ type: 'berthDetail', berth })} className={`group cursor-pointer transition-colors ${hasDangerousGoods ? 'bg-red-900/20 hover:bg-red-900/40' : 'hover:bg-gray-800/50'}`}>
                   <td className="px-4 py-3 font-medium text-white">{berth.name}</td>
                   <td className="px-4 py-3"><span className={`px-2 py-1 text-xs font-medium rounded-full ${berthTypeColors[berth.type]}`}>{berth.type}</span></td>
                   <td className="px-4 py-3">{berth.maxLength}</td>
                   <td className="px-4 py-3">{berth.maxDraft}</td>
                   <td className="px-4 py-3">
-                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${occupyingShip ? 'text-green-300 bg-green-900/50' : 'text-gray-300 bg-gray-700/50'}`}>{occupyingShip ? 'Occupied' : 'Available'}</span>
+                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${occupyingShip ? (hasDangerousGoods ? 'text-red-300 bg-red-900/50' : 'text-green-300 bg-green-900/50') : 'text-gray-300 bg-gray-700/50'}`}>{occupyingShip ? 'Occupied' : 'Available'}</span>
                   </td>
                   <td className="px-4 py-3">
                     {occupyingShip ? (
                         <div className="flex justify-between items-center gap-2">
-                           <span className="font-medium text-white truncate">{occupyingShip.name}</span>
+                           <div className="flex items-center gap-2 truncate">
+                               {hasDangerousGoods && <FireIcon className="w-4 h-4 text-red-400 flex-shrink-0" title="Carrying Dangerous Goods" />}
+                               <span className={`font-medium truncate ${hasDangerousGoods ? 'text-red-300' : 'text-white'}`}>{occupyingShip.name}</span>
+                           </div>
                            {canManageShips && <button onClick={(e) => { e.stopPropagation(); actions.openModal({ type: 'shipForm', ship: occupyingShip }); }} className="px-2 py-1 bg-cyan-600/50 text-cyan-200 rounded text-xs hover:bg-cyan-600">Manage</button>}
                         </div>
                     ) : '—'}
