@@ -141,6 +141,7 @@ The application includes a full authentication and permission system.
 -   **React Context**: An `AuthContext` provides the current user's information and authentication status throughout the entire component tree.
 -   **Login/Logout Flow**: A dedicated login page protects the application. The context manages user sessions by validating credentials against the API.
 -   **Password Management**: Admins can set and update passwords for all users via the "Manage Users" interface.
+-   **Forced Password Change on First Login**: As a key security enhancement, all new non-admin users (or users whose passwords have been reset by an admin) are required to change their password upon their first login. They are presented with a secure, non-dismissible modal and cannot access the application until a new password is set. This ensures temporary or default passwords are never left active.
 -   **Defined Roles**: The system defines roles with specific permissions: `Admin`, `Port Operator`, `Captain`, and `Pilot`. UI elements and functionality are conditionally rendered based on the current user's role.
 
 ### 5. Production Architecture with Docker

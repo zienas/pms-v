@@ -324,6 +324,7 @@ CREATE TABLE users (
     role user_role NOT NULL,
     password TEXT NOT NULL, -- In a real app, this would store a hash
     port_id TEXT,
+    force_password_change BOOLEAN NOT NULL DEFAULT TRUE, -- Enforces password change on first login. Set to FALSE for admins.
     FOREIGN KEY (port_id) REFERENCES ports(id) ON DELETE SET NULL
 );
 

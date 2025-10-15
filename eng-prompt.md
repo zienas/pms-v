@@ -48,6 +48,7 @@ The Windows application must implement the full feature set of its web counterpa
 
 -   **Authentication & Role-Based Access Control (RBAC)**:
     -   Secure login screen.
+    -   **Forced Password Reset**: The system must enforce a password change for new users or upon an administrative password reset to enhance security.
     -   Application features and data access must be restricted based on user roles (Admin, Operator, Captain, etc.) as defined in the existing system.
 
 -   **Data Export**:
@@ -120,6 +121,7 @@ CREATE TABLE ports (
     lat NUMERIC(9, 6) NOT NULL,
     lon NUMERIC(9, 6) NOT NULL,
     map_image TEXT, -- Base64 Data URL for a custom map background
+    logo_image TEXT, -- Base64 Data URL for the port logo
     geometry GEOMETRY(POLYGON, 4326) -- Store port boundary as a polygon
 );
 
@@ -130,6 +132,7 @@ CREATE TABLE users (
     role user_role NOT NULL,
     password TEXT NOT NULL, -- In a real app, this would store a hash
     port_id TEXT,
+    force_password_change BOOLEAN NOT NULL DEFAULT TRUE, -- Enforces password change on first login. Set to FALSE for admins.
     FOREIGN KEY (port_id) REFERENCES ports(id) ON DELETE SET NULL
 );
 
