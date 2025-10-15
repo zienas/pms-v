@@ -8,7 +8,7 @@ interface AuthContextType {
   currentUser: User | null;
   users: User[];
   login: (name: string, password_provided: string, portId: string) => Promise<boolean>;
-  logout: () => Promise<void>;
+  logout: (reason?: string) => Promise<void>;
   addUser: (user: Omit<User, 'id'>) => Promise<void>;
   updateUser: (id: string, user: User) => Promise<void>;
   deleteUser: (id: string) => Promise<void>;
@@ -60,13 +60,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
   
-  const logout = async () => {
+  const logout = useCallback(async (reason?: string) => {
     if (currentUser) {
         await api.logoutUser(currentUser.id);
     }
+    if (reason) {
+        toast.info(reason, { duration: 6000 });
+    }
     setCurrentUser(null);
     setIsPasswordChangeRequired(false);
-  }
+  }, [currentUser]);
 
   const addUser = async (user: Omit<User, 'id'>) => {
       await toast.promise(api.addUser(user), {
@@ -112,7 +115,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       currentUser, users, login, logout, addUser, updateUser, deleteUser, isLoading,
       isPasswordChangeRequired,
       updateOwnPassword,
-  }), [currentUser, users, isLoading, isPasswordChangeRequired]);
+  }), [currentUser, users, isLoading, isPasswordChangeRequired, logout]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

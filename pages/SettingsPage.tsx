@@ -8,6 +8,8 @@ const SettingsPage: React.FC = () => {
         aisSource, setAisSource,
         approachingThreshold, setApproachingThreshold,
         pilotThreshold, setPilotThreshold,
+        firstShiftStartHour, setFirstShiftStartHour,
+        shiftDurationHours, setShiftDurationHours,
     } = useSettings();
     const { state, actions } = usePort();
     const { selectedPort } = state;
@@ -37,6 +39,27 @@ const SettingsPage: React.FC = () => {
                             <a href="./HOWTO-GOLIVE.md" target="_blank" rel="noopener noreferrer" className="mt-3 inline-block font-bold text-orange-400 hover:text-orange-300 underline">View Go-Live Instructions &rarr;</a>
                         </div>
                     )}
+                </div>
+
+                <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
+                    <h2 className="text-xl font-semibold mb-4">Operator Shift Settings</h2>
+                    <p className="text-sm text-gray-400 mb-4">Configure the automatic logout schedule for users with the 'Port Operator' role.</p>
+                    <div className="space-y-6">
+                        <div>
+                            <label htmlFor="firstShiftStartHour" className="block text-sm font-medium text-gray-300">1st Shift Start Time</label>
+                            <div className="flex items-center gap-4 mt-2">
+                                <input id="firstShiftStartHour" type="range" min="0" max="23" step="1" value={firstShiftStartHour} onChange={(e) => setFirstShiftStartHour(parseInt(e.target.value, 10))} className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer" />
+                                <span className="text-cyan-400 font-semibold w-24 text-center">{`${firstShiftStartHour.toString().padStart(2, '0')}:00`}</span>
+                            </div>
+                        </div>
+                        <div>
+                            <label htmlFor="shiftDurationHours" className="block text-sm font-medium text-gray-300">Shift Duration</label>
+                            <div className="flex items-center gap-4 mt-2">
+                                <input id="shiftDurationHours" type="range" min="4" max="12" step="1" value={shiftDurationHours} onChange={(e) => setShiftDurationHours(parseInt(e.target.value, 10))} className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer" />
+                                <span className="text-cyan-400 font-semibold w-24 text-center">{shiftDurationHours} hours</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">

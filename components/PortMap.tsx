@@ -9,6 +9,8 @@ import PortCenterIcon from './icons/PortCenterIcon';
 import SunIcon from './icons/SunIcon';
 import SunsetIcon from './icons/SunsetIcon';
 import MoonIcon from './icons/MoonIcon';
+import Squares2x2Icon from './icons/Squares2x2Icon';
+import HeatmapLayer from './HeatmapLayer';
 
 const FILTERABLE_STATUSES: ShipStatus[] = [ShipStatus.APPROACHING, ShipStatus.DOCKED, ShipStatus.ANCHORED, ShipStatus.DEPARTING];
 
@@ -19,10 +21,12 @@ interface MapControllerProps {
   zoom: number;
   theme: MapTheme;
   setTheme: (theme: MapTheme) => void;
+  showHeatmap: boolean;
+  setShowHeatmap: (show: boolean) => void;
 }
 
 // Helper component to control map view and add custom controls
-const MapController: React.FC<MapControllerProps> = ({ center, zoom, theme, setTheme }) => {
+const MapController: React.FC<MapControllerProps> = ({ center, zoom, theme, setTheme, showHeatmap, setShowHeatmap }) => {
   const map = useMap();
 
   // This effect handles view changes when the port changes, and fixes tile rendering issues.
@@ -49,26 +53,33 @@ const MapController: React.FC<MapControllerProps> = ({ center, zoom, theme, setT
   ];
 
   return (
-      <div className="leaflet-top leaflet-right p-2 flex flex-col items-end gap-2">
-          {/* Reset View Control */}
-          <div className="leaflet-control leaflet-bar bg-gray-800/80 backdrop-blur-sm border border-gray-600 rounded-md shadow-lg p-1">
-              <a href="#" role="button" aria-label="Reset View" title="Reset View" onClick={(e) => { e.preventDefault(); resetView(); }} className="flex items-center justify-center w-8 h-8 text-white hover:bg-gray-700/80 rounded-md transition-colors">
-                  <PortCenterIcon className="w-5 h-5" />
-              </a>
-          </div>
-          {/* Theme Control */}
-          <div className="leaflet-control leaflet-bar bg-gray-800/80 backdrop-blur-sm border border-gray-600 rounded-md shadow-lg p-1 flex flex-col gap-1">
+    <div className="leaflet-top leaflet-right p-2">
+        <div className="leaflet-control leaflet-bar bg-gray-800/80 backdrop-blur-sm border border-gray-600 rounded-md shadow-lg p-1 flex flex-col gap-1">
+            {/* Reset View Button */}
+            <a href="#" role="button" aria-label="Reset View" title="Reset View" onClick={(e) => { e.preventDefault(); resetView(); }} className="flex items-center justify-center w-8 h-8 text-white hover:bg-gray-700/80 rounded-md transition-colors">
+                <PortCenterIcon className="w-5 h-5" />
+            </a>
+
+            {/* Heatmap Toggle Button */}
+            <a href="#" role="button" aria-label="Toggle Traffic Heatmap" title="Toggle Traffic Heatmap" onClick={(e) => { e.preventDefault(); setShowHeatmap(!showHeatmap); }} className={`flex items-center justify-center w-8 h-8 rounded-md transition-colors ${showHeatmap ? 'bg-cyan-600 text-white' : 'text-white hover:bg-gray-700/80'}`}>
+                <Squares2x2Icon className="w-5 h-5" />
+            </a>
+
+            {/* Separator */}
+            <div className="h-px bg-gray-600 my-1 mx-1"></div>
+
+            {/* Theme Buttons */}
             {themeOptions.map(option => {
-              const Icon = option.icon;
-              const isActive = theme === option.name;
-              return (
-                <a href="#" key={option.name} role="button" aria-label={option.title} title={option.title} onClick={(e) => { e.preventDefault(); setTheme(option.name); }} className={`flex items-center justify-center w-8 h-8 rounded-md transition-colors ${isActive ? 'bg-cyan-600 text-white' : 'text-white hover:bg-gray-700/80'}`}>
-                  <Icon className="w-5 h-5" />
-                </a>
-              );
+                const Icon = option.icon;
+                const isActive = theme === option.name;
+                return (
+                    <a href="#" key={option.name} role="button" aria-label={option.title} title={option.title} onClick={(e) => { e.preventDefault(); setTheme(option.name); }} className={`flex items-center justify-center w-8 h-8 rounded-md transition-colors ${isActive ? 'bg-cyan-600 text-white' : 'text-white hover:bg-gray-700/80'}`}>
+                        <Icon className="w-5 h-5" />
+                    </a>
+                );
             })}
-          </div>
-      </div>
+        </div>
+    </div>
   );
 }
 
@@ -83,6 +94,7 @@ const PortMap: React.FC<PortMapProps> = ({ ships, berths, selectedPort }) => {
   const { actions } = usePort();
   const [statusFilters, setStatusFilters] = useState<Set<ShipStatus>>(new Set(FILTERABLE_STATUSES));
   const [theme, setTheme] = useState<MapTheme>('night');
+  const [showHeatmap, setShowHeatmap] = useState(false);
 
   const themes = {
     night: {
@@ -101,6 +113,13 @@ const PortMap: React.FC<PortMapProps> = ({ ships, berths, selectedPort }) => {
 
   const allActiveShips = useMemo(() => ships.filter(s => s.status !== ShipStatus.LEFT_PORT), [ships]);
   const filteredShips = useMemo(() => allActiveShips.filter(s => statusFilters.has(s.status)), [allActiveShips, statusFilters]);
+
+  const heatPoints = useMemo(() => {
+    return allActiveShips
+      .filter(ship => ship.lat && ship.lon)
+      // FIX: Explicitly type the returned array to ensure it matches the expected [number, number, number] tuple format.
+      .map((ship): [number, number, number] => [ship.lat!, ship.lon!, 1.0]); // lat, lng, intensity
+  }, [allActiveShips]);
 
   const handleFilterChange = (status: ShipStatus) => {
     setStatusFilters(prev => {
@@ -129,12 +148,14 @@ const PortMap: React.FC<PortMapProps> = ({ ships, berths, selectedPort }) => {
           scrollWheelZoom={true}
           style={mapContainerStyle}
         >
-          <MapController center={mapCenter} zoom={mapZoom} theme={theme} setTheme={setTheme} />
+          <MapController center={mapCenter} zoom={mapZoom} theme={theme} setTheme={setTheme} showHeatmap={showHeatmap} setShowHeatmap={setShowHeatmap} />
           <TileLayer
             key={theme}
             attribution={themes[theme].attribution}
             url={themes[theme].url}
           />
+          
+          {showHeatmap && <HeatmapLayer points={heatPoints} />}
 
           {/* Port Boundary */}
           {selectedPort.geometry && (

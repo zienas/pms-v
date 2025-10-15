@@ -1,3 +1,4 @@
+/*
 // ais-udp-listener.js
 /**
  * NOTE: This is a BACKEND service script.
@@ -137,3 +138,4 @@ server.on('listening', () => {
 
 // Start listening for UDP packets.
 server.bind(UDP_PORT, UDP_HOST);
+*/

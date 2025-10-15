@@ -17,6 +17,9 @@ import autoTable from 'jspdf-autotable';
 import { usePort } from '../context/PortContext';
 import { toast } from 'react-hot-toast';
 import { DEFAULT_APP_LOGO_PNG } from '../utils/logo';
+import ShipIcon from '../components/icons/ShipIcon';
+import TankerIcon from '../components/icons/TankerIcon';
+import CargoShipIcon from '../components/icons/CargoShipIcon';
 
 const SETTINGS_KEY = 'vesselDirectorySettings';
 
@@ -35,6 +38,20 @@ const statusColors: { [key in ShipStatus]: string } = {
   [ShipStatus.DEPARTING]: 'bg-blue-500/20 text-blue-300 border-blue-500',
   [ShipStatus.ANCHORED]: 'bg-gray-500/20 text-gray-300 border-gray-500',
   [ShipStatus.LEFT_PORT]: 'bg-gray-600/20 text-gray-400 border-gray-600',
+};
+
+const getShipTypeIcon = (shipType: string): React.ElementType => {
+    const lowerType = shipType.toLowerCase();
+    if (lowerType.includes('tanker')) {
+        return TankerIcon;
+    }
+    if (lowerType.includes('container')) {
+        return ShipIcon;
+    }
+    if (lowerType.includes('cargo') || lowerType.includes('bulk')) {
+        return CargoShipIcon;
+    }
+    return ShipIcon; // Default fallback
 };
 
 const VesselDirectory: React.FC = () => {
@@ -211,6 +228,10 @@ const VesselDirectory: React.FC = () => {
                     <tr key={ship.id} className={`group transition-colors duration-200 ${ship.status === ShipStatus.LEFT_PORT ? 'bg-gray-800/60' : ''} ${ship.hasDangerousGoods ? 'bg-red-900/20 hover:bg-red-900/30' : 'hover:bg-gray-800/50'}`}>
                         <td className="px-4 py-3 font-medium">
                             <div className="flex items-center gap-2">
+                                {(() => {
+                                    const Icon = getShipTypeIcon(ship.type);
+                                    return <Icon className="w-4 h-4 text-gray-400 flex-shrink-0" title={ship.type} />;
+                                })()}
                                 {ship.hasDangerousGoods && <div className="flex-shrink-0" title="Carrying Dangerous Goods"><FireIcon className="w-4 h-4 text-red-400 animate-pulse" /></div>}
                                 <span className={ship.hasDangerousGoods ? 'text-red-300' : 'text-white'}>{ship.name}</span>
                             </div>

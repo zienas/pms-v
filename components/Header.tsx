@@ -48,7 +48,8 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
             <p className="text-sm font-semibold text-white truncate">{currentUser.name}</p>
             <p className="text-xs text-cyan-400 hidden sm:block">{currentUser.role}</p>
          </div>
-         <button onClick={logout} className="px-3 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 transition-colors" aria-label="Logout">Logout</button>
+         {/* FIX: The `logout` function requires an optional string, not a MouseEvent. It must be wrapped in an arrow function. */}
+         <button onClick={() => logout()} className="px-3 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 transition-colors" aria-label="Logout">Logout</button>
       </div>
     </header>
   );

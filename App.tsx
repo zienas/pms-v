@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Header from './components/Header';
 import ShipFormModal from './components/ShipFormModal';
 import type { View } from './types';
@@ -28,6 +28,7 @@ import { useSettings } from './context/SettingsContext';
 import { usePort } from './context/PortContext';
 import SystemLogs from './pages/SystemLogs';
 import ForcePasswordChangeModal from './components/ForcePasswordChangeModal';
+import { toast } from 'react-hot-toast';
 
 const LoadingSpinner: React.FC<{ message: string }> = ({ message }) => (
     <div className="flex items-center justify-center h-full">
@@ -68,8 +69,8 @@ const NoPortsView: React.FC = () => {
 
 
 const MainApp: React.FC = () => {
-  const { currentUser } = useAuth();
-  const { aisSource, approachingThreshold, pilotThreshold } = useSettings();
+  const { currentUser, logout } = useAuth();
+  const { aisSource, approachingThreshold, pilotThreshold, firstShiftStartHour, shiftDurationHours } = useSettings();
   const { state, actions } = usePort();
   const {
     accessiblePorts,
@@ -83,6 +84,7 @@ const MainApp: React.FC = () => {
   
   const [activeView, setActiveView] = useState<View>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const warningShownForShiftEnd = useRef<number | null>(null);
 
   useEffect(() => { actions.loadInitialPorts(); }, [actions]);
 
@@ -111,6 +113,57 @@ const MainApp: React.FC = () => {
     return cleanup;
   }, [ships, actions, approachingThreshold, pilotThreshold]);
   
+  // Effect for shift-based auto-logout
+  useEffect(() => {
+    if (currentUser?.role !== UserRole.OPERATOR || !shiftDurationHours || shiftDurationHours <= 0) {
+        return; // Do nothing if not an operator or settings are invalid
+    }
+
+    const timer = setInterval(() => {
+        const now = new Date();
+
+        // Calculate the start of the first shift on the "operational day"
+        const firstShiftToday = new Date(now);
+        firstShiftToday.setHours(firstShiftStartHour, 0, 0, 0);
+
+        const firstShiftEpoch = (now < firstShiftToday) 
+            ? new Date(firstShiftToday.setDate(firstShiftToday.getDate() - 1)) 
+            : firstShiftToday;
+        
+        const msIntoDay = now.getTime() - firstShiftEpoch.getTime();
+        const shiftDurationMs = shiftDurationHours * 60 * 60 * 1000;
+
+        const currentShiftIndex = Math.floor(msIntoDay / shiftDurationMs);
+        const currentShiftEndMs = firstShiftEpoch.getTime() + (currentShiftIndex + 1) * shiftDurationMs;
+        const logoutTimeMs = currentShiftEndMs + 5 * 60 * 1000; // 5 minutes after shift end
+
+        const msUntilLogout = logoutTimeMs - now.getTime();
+
+        // Check for logout (within a 1-second window to ensure it fires)
+        if (msUntilLogout <= 0 && msUntilLogout > -1000) {
+            logout('Your shift has ended. You have been automatically logged out.');
+            return; // Logout called, no need to continue checking
+        }
+
+        // Check for 2-minute warning (within a 1-second window)
+        const warningTimeMs = logoutTimeMs - 2 * 60 * 1000;
+        const msUntilWarning = warningTimeMs - now.getTime();
+        if (msUntilWarning > 0 && msUntilWarning < 1000) {
+            if (warningShownForShiftEnd.current !== logoutTimeMs) {
+                toast.loading('You will be automatically logged out in 2 minutes.', {
+                    id: 'shift-warning-toast',
+                    duration: 10000,
+                });
+                warningShownForShiftEnd.current = logoutTimeMs;
+            }
+        }
+
+    }, 1000); // Check every second for precision
+
+    return () => clearInterval(timer);
+
+  }, [currentUser, firstShiftStartHour, shiftDurationHours, logout]);
+
   const renderView = () => {
     if (isLoading && !selectedPort) {
         return <LoadingSpinner message="Loading Port Data..." />;

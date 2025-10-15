@@ -80,7 +80,8 @@ const ForcePasswordChangeModal: React.FC = () => {
                     </div>
                 </form>
                 <div className="text-center mt-4">
-                    <button onClick={logout} className="text-sm text-gray-500 hover:text-gray-300">
+                    {/* FIX: The `logout` function requires an optional string, not a MouseEvent. It must be wrapped in an arrow function. */}
+                    <button onClick={() => logout()} className="text-sm text-gray-500 hover:text-gray-300">
                         Logout
                     </button>
                 </div>
