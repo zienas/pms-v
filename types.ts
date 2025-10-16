@@ -104,6 +104,7 @@ export interface Berth {
   quayId: string;
   positionOnQuay: number;
   geometry?: [number, number][]; // Array of [lat, lon] pairs
+  radius?: number; // For anchorages
 }
 
 export interface Alert {

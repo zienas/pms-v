@@ -1,139 +1,118 @@
-import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
+import { MapContainer, TileLayer, Polygon, Marker, useMap, useMapEvents } from 'react-leaflet';
+import L from 'leaflet';
 import type { Port } from '../types';
-import ZoomInIcon from './icons/ZoomInIcon';
-import ZoomOutIcon from './icons/ZoomOutIcon';
+import { destinationPoint, calculateDistanceMeters } from '../utils/geolocation';
 
-interface GeometryEditorProps {
-    port: Port; // The port context for centering and showing boundaries
+// Fix for default marker icon path issue with module bundlers
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+});
+
+// Custom icons for the different points
+const createPointIcon = (color: string) => new L.DivIcon({
+    html: `<div class="bg-${color}-500 border-2 border-white rounded-full w-4 h-4 cursor-grab ring-2 ring-${color}-500 shadow-lg"></div>`,
+    className: '', iconSize: [16, 16], iconAnchor: [8, 8]
+});
+const startIcon = createPointIcon('green');
+const endIcon = createPointIcon('red');
+const centerIcon = createPointIcon('blue');
+const radiusIcon = new L.DivIcon({
+    html: `<div class="bg-yellow-400 border-2 border-white rounded-full w-3 h-3 cursor-ew-resize"></div>`,
+    className: '', iconSize: [12, 12], iconAnchor: [6, 6]
+});
+
+
+interface EditorMapControllerProps {
+    port: Port;
     geometry?: [number, number][];
-    onChange: (geometry: [number, number][]) => void;
+    onPointSet: (latlng: L.LatLng) => void;
+    onPointChange: (type: 'start' | 'end' | 'center', latlng: L.LatLng) => void;
+    onRadiusChange: (radius: number) => void;
+    startPoint: [number, number] | null;
+    endPoint: [number, number] | null;
+    centerPoint: [number, number] | null;
+    radius?: number;
 }
 
-const GeometryEditor: React.FC<GeometryEditorProps> = ({ port, geometry = [], onChange }) => {
-    const svgRef = useRef<SVGSVGElement>(null);
-    const [mapSize, setMapSize] = useState({ width: 0, height: 0 });
-    const [zoomLevel, setZoomLevel] = useState(1);
-    const [isDrawing, setIsDrawing] = useState(false);
-    const [draggingVertexIndex, setDraggingVertexIndex] = useState<number | null>(null);
+const EditorMapController: React.FC<EditorMapControllerProps> = (props) => {
+    const { port, geometry, onPointSet, onPointChange, onRadiusChange, startPoint, endPoint, centerPoint, radius } = props;
+    const map = useMap();
 
     useEffect(() => {
-        const svg = svgRef.current;
-        if (svg) {
-            const updateSize = () => setMapSize({ width: svg.clientWidth, height: svg.clientHeight });
-            updateSize();
-            const resizeObserver = new ResizeObserver(updateSize);
-            resizeObserver.observe(svg);
-            return () => resizeObserver.disconnect();
+        if (port && (port.lat !== 0 || port.lon !== 0)) {
+            map.flyTo([port.lat, port.lon], 15);
         }
-    }, []);
+    }, [port.id, map]);
 
-    const { pixelsPerDegLat, pixelsPerDegLon } = useMemo(() => {
-        const MAP_VIEW_RADIUS_NM = 1;
-        const effectiveMapSize = Math.min(mapSize.width, mapSize.height);
-        const effectivePixelsPerNm = ((effectiveMapSize / 2) / MAP_VIEW_RADIUS_NM) * zoomLevel;
-        const NM_PER_DEG_LAT = 60.0;
-        const portLatRad = (port.lat || 0) * (Math.PI / 180);
-        const NM_PER_DEG_LON = NM_PER_DEG_LAT * Math.cos(portLatRad);
-        return {
-            pixelsPerDegLat: NM_PER_DEG_LAT * effectivePixelsPerNm,
-            pixelsPerDegLon: NM_PER_DEG_LON * effectivePixelsPerNm,
-        };
-    }, [mapSize, zoomLevel, port.lat]);
-
-    const geoToScreen = useCallback((lat: number, lon: number): [number, number] => {
-        const x = (lon - port.lon) * pixelsPerDegLon + mapSize.width / 2;
-        const y = -(lat - port.lat) * pixelsPerDegLat + mapSize.height / 2;
-        return [x, y];
-    }, [port.lat, port.lon, pixelsPerDegLat, pixelsPerDegLon, mapSize]);
-
-    const screenToGeo = useCallback((x: number, y: number): [number, number] => {
-        const lon = (x - mapSize.width / 2) / pixelsPerDegLon + port.lon;
-        const lat = -(y - mapSize.height / 2) / pixelsPerDegLat + port.lat;
-        return [lat, lon];
-    }, [port.lat, port.lon, pixelsPerDegLat, pixelsPerDegLon, mapSize]);
-
-    const handleSvgClick = (e: React.MouseEvent<SVGSVGElement>) => {
-        if (!isDrawing || !svgRef.current) return;
-        const rect = svgRef.current.getBoundingClientRect();
-        const [lat, lon] = screenToGeo(e.clientX - rect.left, e.clientY - rect.top);
-        onChange([...geometry, [lat, lon]]);
-    };
-
-    const handleVertexMouseDown = (e: React.MouseEvent, index: number) => {
-        e.stopPropagation();
-        if (isDrawing) return;
-        setDraggingVertexIndex(index);
-    };
-
-    const handleMouseMove = useCallback((e: MouseEvent) => {
-        if (draggingVertexIndex === null || !svgRef.current) return;
-        const rect = svgRef.current.getBoundingClientRect();
-        const [lat, lon] = screenToGeo(e.clientX - rect.left, e.clientY - rect.top);
-        const newGeometry = [...geometry];
-        newGeometry[draggingVertexIndex] = [lat, lon];
-        onChange(newGeometry);
-    }, [draggingVertexIndex, geometry, onChange, screenToGeo]);
-
-    const handleMouseUp = useCallback(() => {
-        setDraggingVertexIndex(null);
-    }, []);
-
-    useEffect(() => {
-        window.addEventListener('mousemove', handleMouseMove);
-        window.addEventListener('mouseup', handleMouseUp);
-        return () => {
-            window.removeEventListener('mousemove', handleMouseMove);
-            window.removeEventListener('mouseup', handleMouseUp);
-        };
-    }, [handleMouseMove, handleMouseUp]);
-
-    const pointsString = geometry.map(p => geoToScreen(p[0], p[1]).join(',')).join(' ');
+    useMapEvents({
+        click(e) { onPointSet(e.latlng); },
+        mousemove(e) {
+            const container = map.getContainer();
+            if (container) container.style.cursor = 'crosshair';
+        }
+    });
+    
+    const radiusHandlePosition = useMemo(() => {
+        if (centerPoint && radius) {
+            // Place handle to the east (bearing 90 degrees)
+            return destinationPoint(centerPoint[0], centerPoint[1], radius, Math.PI / 2);
+        }
+        return null;
+    }, [centerPoint, radius]);
 
     return (
+        <>
+            {port.geometry && (
+                <Polygon positions={port.geometry} pathOptions={{ color: '#06B6D4', dashArray: '5, 5', weight: 1.5, fillOpacity: 0.1, interactive: false }} />
+            )}
+            {geometry && <Polygon positions={geometry} pathOptions={{ color: '#10B981', weight: 2, fillOpacity: 0.3, interactive: false }} />}
+
+            {/* Draggable markers for berth/quay points */}
+            {startPoint && <Marker position={startPoint} icon={startIcon} draggable={true} eventHandlers={{ dragend: (e) => onPointChange('start', e.target.getLatLng()) }} />}
+            {endPoint && <Marker position={endPoint} icon={endIcon} draggable={true} eventHandlers={{ dragend: (e) => onPointChange('end', e.target.getLatLng()) }} />}
+            
+            {/* Draggable markers for anchorage */}
+            {centerPoint && <Marker position={centerPoint} icon={centerIcon} draggable={true} eventHandlers={{ dragend: (e) => onPointChange('center', e.target.getLatLng()) }} />}
+            {radiusHandlePosition && (
+                <Marker 
+                    position={radiusHandlePosition} 
+                    icon={radiusIcon} 
+                    draggable={true} 
+                    eventHandlers={{ 
+                        drag: (e) => {
+                            const newRadius = calculateDistanceMeters(centerPoint![0], centerPoint![1], e.target.getLatLng().lat, e.target.getLatLng().lng);
+                            onRadiusChange(newRadius);
+                        }
+                    }} 
+                />
+            )}
+        </>
+    );
+};
+
+interface GeometryEditorProps extends EditorMapControllerProps {
+    // Inherits all props from controller
+}
+
+const GeometryEditor: React.FC<GeometryEditorProps> = (props) => {
+    return (
         <div className="w-full h-full relative text-white">
-            <svg ref={svgRef} className="w-full h-full bg-gray-900 rounded-md" onClick={handleSvgClick}>
-                {/* Port Boundary for context */}
-                {port.geometry && (
-                    <polygon
-                        points={port.geometry.map(p => geoToScreen(p[0], p[1]).join(',')).join(' ')}
-                        className="fill-cyan-500/10 stroke-cyan-400"
-                        strokeDasharray="4,4"
-                        strokeWidth={1}
-                    />
-                )}
-                {/* Current Geometry */}
-                <polygon points={pointsString} className="fill-green-500/30 stroke-green-400" strokeWidth={1.5} />
-                {/* Lines connecting vertices */}
-                <polyline points={pointsString} fill="none" className="stroke-green-300" strokeWidth={1.5} />
-                
-                {/* Vertices */}
-                {!isDrawing && geometry.map((point, index) => {
-                    const [x, y] = geoToScreen(point[0], point[1]);
-                    return (
-                        <circle
-                            key={index}
-                            cx={x}
-                            cy={y}
-                            r="5"
-                            className="fill-white stroke-green-400 cursor-move"
-                            strokeWidth="1.5"
-                            onMouseDown={(e) => handleVertexMouseDown(e, index)}
-                        />
-                    );
-                })}
-            </svg>
-            <div className="absolute top-2 left-2 flex gap-2">
-                 <button type="button" onClick={() => setIsDrawing(prev => !prev)} className={`px-3 py-1 text-xs rounded-md ${isDrawing ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'}`}>
-                    {isDrawing ? 'Finish Drawing' : 'Start Drawing'}
-                </button>
-                 <button type="button" onClick={() => onChange([])} className="px-3 py-1 text-xs rounded-md bg-gray-600 hover:bg-gray-700">
-                    Clear
-                </button>
-            </div>
-            <div className="absolute bottom-2 right-2 flex flex-col gap-2">
-                <button type="button" onClick={() => setZoomLevel(z => z * 1.2)} className="p-1.5 bg-gray-700 rounded-full hover:bg-gray-600"><ZoomInIcon className="w-4 h-4" /></button>
-                <button type="button" onClick={() => setZoomLevel(z => z / 1.2)} className="p-1.5 bg-gray-700 rounded-full hover:bg-gray-600"><ZoomOutIcon className="w-4 h-4" /></button>
-            </div>
+            <MapContainer
+                center={[props.port.lat || 0, props.port.lon || 0]}
+                zoom={14}
+                scrollWheelZoom={true}
+                style={{ height: '100%', width: '100%', backgroundColor: '#374151', borderRadius: '0.375rem' }}
+            >
+                <TileLayer
+                    url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                />
+                <EditorMapController {...props} />
+            </MapContainer>
         </div>
     );
 };

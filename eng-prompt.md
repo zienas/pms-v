@@ -39,7 +39,10 @@ The Windows application must implement the full feature set of its web counterpa
 
 -   **Multi-Port & User Management (Admin)**:
     -   Full CRUD functionality for Ports, Berths, and Users.
-    -   Ability to draw and edit port/berth geometry directly on a map interface within the application.
+    -   Ability to draw and edit port/berth geometry directly on a map interface. The implementation must replicate the web app's streamlined workflow:
+        -   **Berths/Quays**: Defined by a start point, end point, and width, with the system calculating the length and generating the rectangular polygon.
+        -   **Anchorages**: Defined by a center point and a radius, with the system calculating the diameter.
+        -   All points must be interactive (drag-and-drop).
     -   A detailed, sortable audit trail of all user login/logout events.
 
 -   **Unified & Auditable System Logs**: A dedicated, tab-based interface for viewing all system events.
@@ -148,6 +151,7 @@ CREATE TABLE berths (
     quay_id TEXT,
     position_on_quay INTEGER,
     geometry GEOMETRY(POLYGON, 4326), -- Store berth shape as a polygon
+    radius NUMERIC(10, 2), -- The radius in meters, used for anchorages
     FOREIGN KEY (port_id) REFERENCES ports(id) ON DELETE CASCADE
 );
 

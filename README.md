@@ -27,8 +27,12 @@ This is a modern frontend application designed to manage and visualize vessel tr
     -   **Full Functionality**: All log views are sortable, filterable, and exportable to both CSV and professional PDF formats.
 -   **Full Authentication & RBAC**: A dedicated login page and an advanced role-based access control system (Admin, Operator, Captain, Pilot, Agent) to restrict access to features and data.
 -   **Admin-Level Management Suite**:
-    -   **Multi-Port Management**: Admins can switch between and manage multiple ports, including their geospatial boundaries.
-    -   **Port & Berth Infrastructure**: Admins can add, edit, and delete entire ports and their associated berths, including drawing their shapes on a map.
+    -   **Multi-Port Management**: Admins can switch between and manage multiple ports.
+    -   **Interactive Port & Berth Infrastructure Management**: Admins can manage all port infrastructure with a powerful, map-centric interface.
+        -   **Port Boundaries**: Draw and edit complex port boundaries directly on an OpenStreetMap layer.
+        -   **Streamlined Berth/Quay Definition**: Instead of free-hand drawing, define straight berths by simply placing a start and end point on the map and specifying a width. The system automatically calculates the length and generates a perfect rectangular polygon.
+        -   **Intuitive Anchorage Definition**: Define anchorages by placing a center point and visually adjusting the radius with a draggable handle. The system calculates the maximum vessel diameter and generates the circular area.
+        -   **Direct Manipulation**: All points are interactive, allowing for precise drag-and-drop adjustments in real-time.
     -   **User Management & Auditing**: Admins can manage all user accounts and view a detailed, sortable audit trail of all user login/logout events.
 -   **Data Export (CSV & PDF)**: Authorized users can export data grids like the Vessel Directory, User Login History, and Vessel Attendance Analytics to CSV. Additionally, a full **Trip Directory report** and detailed **single-trip reports** (including the Stopover Timeline) can be exported to professional, print-ready PDF documents.
 -   **Fully Responsive Design**: Optimized for mobile devices with a collapsible sidebar and responsive tables for a seamless experience on any screen.

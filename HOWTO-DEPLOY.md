@@ -340,6 +340,7 @@ CREATE TABLE berths (
     quay_id TEXT,
     position_on_quay INTEGER,
     geometry GEOMETRY(POLYGON, 4326), -- Store berth shape as a polygon
+    radius NUMERIC(10, 2), -- The radius in meters, used for anchorages
     FOREIGN KEY (port_id) REFERENCES ports(id) ON DELETE CASCADE
 );
 
@@ -441,4 +442,3 @@ Congratulations! You have now fully deployed the frontend application and its re
 -   The **database schema** has been initialized and is ready to accept data.
 
 The next logical step is to build a **backend API service** (e.g., using Node.js, Python, or Go) that will connect the frontend to this database, handle business logic, and manage user authentication.
-```

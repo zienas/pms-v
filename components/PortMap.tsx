@@ -40,7 +40,8 @@ const MapController: React.FC<MapControllerProps> = ({ center, zoom, theme, setT
     }, 400);
 
     return () => clearTimeout(timer);
-  }, [center[0], center[1], zoom, map]); // FIX: Depend on primitive lat/lon values, not the array reference.
+    // FIX: Depend on primitive lat/lon values, not the array reference.
+  }, [center[0], center[1], zoom, map]);
 
   const resetView = () => {
     map.flyTo(center, zoom);
