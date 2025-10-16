@@ -8,37 +8,67 @@ import { useAuth } from '../context/AuthContext';
 import { usePort } from '../context/PortContext';
 import ShipIcon from './icons/ShipIcon';
 import AnchorIcon from './icons/AnchorIcon';
-import FlameIcon from './icons/FlameIcon';
+import TankerIcon from './icons/TankerIcon';
+import CargoShipIcon from './icons/CargoShipIcon';
 
 interface LeafletVesselMarkerProps {
     ship: Ship;
 }
 
-const statusColors: Record<ShipStatus, { base: string; border: string; text: string }> = {
-  [ShipStatus.APPROACHING]: { base: 'bg-orange-500/80', border: 'border-orange-300', text: 'text-white' },
-  [ShipStatus.DOCKED]: { base: 'bg-yellow-500/80', border: 'border-yellow-300', text: 'text-white' },
-  [ShipStatus.DEPARTING]: { base: 'bg-sky-500/80', border: 'border-sky-300', text: 'text-white' },
-  [ShipStatus.ANCHORED]: { base: 'bg-violet-500/80', border: 'border-violet-300', text: 'text-white' },
-  [ShipStatus.LEFT_PORT]: { base: 'bg-slate-600/80', border: 'border-slate-500', text: 'text-white' },
+const getShipTypeIcon = (shipType: string): React.ElementType => {
+    const lowerType = shipType.toLowerCase();
+    if (lowerType.includes('tanker')) {
+        return TankerIcon;
+    }
+    if (lowerType.includes('container')) {
+        return ShipIcon;
+    }
+    if (lowerType.includes('cargo') || lowerType.includes('bulk')) {
+        return CargoShipIcon;
+    }
+    return ShipIcon; // Default fallback
 };
 
-// A simple component to be rendered to string for the icon
+// A modern, SVG-based map marker component.
 const VesselIcon: React.FC<{ ship: Ship }> = ({ ship }) => {
+    // Using brighter, more distinct Tailwind colors for SVG fills and strokes
+    const statusColors: Record<ShipStatus, { base: string; border: string; text: string }> = {
+        [ShipStatus.APPROACHING]: { base: 'fill-amber-500', border: 'stroke-amber-200', text: 'text-white' },
+        [ShipStatus.DOCKED]: { base: 'fill-emerald-500', border: 'stroke-emerald-200', text: 'text-white' },
+        [ShipStatus.DEPARTING]: { base: 'fill-sky-500', border: 'stroke-sky-200', text: 'text-white' },
+        [ShipStatus.ANCHORED]: { base: 'fill-violet-500', border: 'stroke-violet-200', text: 'text-white' },
+        [ShipStatus.LEFT_PORT]: { base: 'fill-slate-500', border: 'stroke-slate-300', text: 'text-white' },
+    };
+
     const color = statusColors[ship.status] || statusColors[ShipStatus.LEFT_PORT];
-    const IconComponent = ship.status === ShipStatus.ANCHORED ? AnchorIcon : ShipIcon;
+    
+    // The icon now represents status (anchored) or vessel type.
+    const IconComponent = ship.status === ShipStatus.ANCHORED 
+        ? AnchorIcon 
+        : getShipTypeIcon(ship.type);
+        
+    // Use a prominent red stroke for the marker if it carries dangerous goods
+    const dangerousGoodsStrokeClass = ship.hasDangerousGoods ? 'stroke-red-500' : color.border;
 
     return (
-        <div className={`flex items-center justify-center w-7 h-7 rounded-full shadow-lg border-2 transition-transform group-hover:scale-125 ${color.base} ${color.border}`}>
-            <IconComponent className={`w-4 h-4 ${color.text}`} />
-            {ship.hasDangerousGoods && (
-                <div className="absolute top-0 right-0 transform translate-x-1/3 -translate-y-1/3" title="Carrying Dangerous Goods">
-                    <FlameIcon className="w-4 h-4 text-red-400 drop-shadow-lg" />
-                    <div className="absolute inset-0 bg-red-500 rounded-full animate-ping opacity-75 -z-10"></div>
-                </div>
-            )}
+        // The drop shadow is applied via an inline style because Tailwind's filter classes won't be in the static HTML passed to Leaflet.
+        <div style={{ filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.4))' }}>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 42" width="32" height="42">
+                {/* Main pointer shape */}
+                <path 
+                    d="M16 0C7.163 0 0 7.163 0 16c0 10 16 26 16 26s16-16 16-26C32 7.163 24.837 0 16 0z" 
+                    className={`${color.base} ${dangerousGoodsStrokeClass}`}
+                    strokeWidth="2"
+                />
+                {/* Inner icon (ship type or anchor) */}
+                <g transform="translate(8 8)">
+                    <IconComponent className={color.text} width="16" height="16" />
+                </g>
+            </svg>
         </div>
     );
 };
+
 
 const LeafletVesselMarker: React.FC<LeafletVesselMarkerProps> = ({ ship }) => {
     const { currentUser } = useAuth();
@@ -50,8 +80,8 @@ const LeafletVesselMarker: React.FC<LeafletVesselMarkerProps> = ({ ship }) => {
         return L.divIcon({
             html: iconHtml,
             className: 'leaflet-vessel-icon', // Use a custom class to remove default leaflet styles
-            iconSize: [28, 28],
-            iconAnchor: [14, 14],
+            iconSize: [32, 42],
+            iconAnchor: [16, 42], // Anchor at the bottom tip of the pointer
         });
     }, [ship]);
 
@@ -72,6 +102,7 @@ const LeafletVesselMarker: React.FC<LeafletVesselMarkerProps> = ({ ship }) => {
             <Tooltip>
                 <div className="text-sm">
                     <p className="font-bold">{ship.name}</p>
+                    <p>Type: {ship.type}</p>
                     <p>Status: {ship.status}</p>
                     {ship.hasDangerousGoods && <p className="text-red-500 font-bold">Warning: Dangerous Goods</p>}
                 </div>
@@ -80,14 +111,22 @@ const LeafletVesselMarker: React.FC<LeafletVesselMarkerProps> = ({ ship }) => {
     );
 };
 
-// Add a minimal style to disable default Leaflet icon styling on our custom divIcons
-const style = document.createElement('style');
-style.innerHTML = `
-.leaflet-vessel-icon {
-  background: transparent;
-  border: none;
+// Add styles to disable default Leaflet icon styling and add a hover effect
+const styleId = 'leaflet-vessel-icon-style';
+if (!document.getElementById(styleId)) {
+    const style = document.createElement('style');
+    style.id = styleId;
+    style.innerHTML = `
+    .leaflet-vessel-icon {
+      background: transparent;
+      border: none;
+      transition: transform 0.2s ease-in-out;
+    }
+    .leaflet-marker-icon.leaflet-vessel-icon:hover {
+      transform: scale(1.1);
+    }
+    `;
+    document.head.appendChild(style);
 }
-`;
-document.head.appendChild(style);
 
 export default LeafletVesselMarker;

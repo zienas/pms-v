@@ -1,16 +1,16 @@
-import { useEffect } from 'react';
+// FIX: Added 'React' to imports to solve "Cannot find namespace 'React'" error.
+import React, { useEffect } from 'react';
 import { useMap } from 'react-leaflet';
 // FIX: Switched to a namespace import for Leaflet. This is a more robust pattern for using plugins
 // that augment the main Leaflet object (like leaflet.heat) and resolves module augmentation issues in TypeScript.
 import * as L from 'leaflet';
 import 'leaflet.heat';
 
-// FIX: Replaced `declare module` with `declare global` to augment the L namespace directly.
-// This is a more robust pattern for legacy Leaflet plugins that modify the L object, resolving the "module cannot be found" error during augmentation.
-declare global {
-  namespace L {
-    function heatLayer(latlngs: L.LatLngExpression[], options?: any): L.Layer;
-  }
+// FIX: Replaced the `declare global` block with the standard `declare module 'leaflet'` for module augmentation.
+// This is the correct way to extend a module and allows TypeScript to find Leaflet-native types like
+// `LatLngExpression` and `Layer` within the module's context, resolving the type errors.
+declare module 'leaflet' {
+    function heatLayer(latlngs: (LatLngExpression | [number, number, number])[], options?: any): Layer;
 }
 
 interface HeatmapLayerProps {
@@ -26,7 +26,8 @@ const HeatmapLayer: React.FC<HeatmapLayerProps> = ({ points }) => {
         }
 
         // The L.heatLayer function is now available at runtime and is recognized by TypeScript.
-        const heatLayer = L.heatLayer(points as L.LatLngExpression[], {
+        // The incorrect type assertion has been removed as the new type signature handles it.
+        const heatLayer = L.heatLayer(points, {
             radius: 25,
             blur: 20,
             maxZoom: 18,

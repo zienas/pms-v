@@ -54,26 +54,23 @@ const MapController: React.FC<MapControllerProps> = ({ center, zoom, theme, setT
 
   return (
     <div className="leaflet-top leaflet-right p-2">
-        <div className="leaflet-control leaflet-bar bg-gray-800/80 backdrop-blur-sm border border-gray-600 rounded-md shadow-lg p-1 flex flex-col gap-1">
+        <div className="leaflet-control leaflet-bar bg-gray-800/80 backdrop-blur-sm border border-gray-600 rounded-md shadow-lg overflow-hidden">
             {/* Reset View Button */}
-            <a href="#" role="button" aria-label="Reset View" title="Reset View" onClick={(e) => { e.preventDefault(); resetView(); }} className="flex items-center justify-center w-8 h-8 text-white hover:bg-gray-700/80 rounded-md transition-colors">
+            <a href="#" role="button" aria-label="Reset View" title="Reset View" onClick={(e) => { e.preventDefault(); resetView(); }} className="flex items-center justify-center w-8 h-8 text-white hover:bg-gray-700/80 transition-colors">
                 <PortCenterIcon className="w-5 h-5" />
             </a>
 
             {/* Heatmap Toggle Button */}
-            <a href="#" role="button" aria-label="Toggle Traffic Heatmap" title="Toggle Traffic Heatmap" onClick={(e) => { e.preventDefault(); setShowHeatmap(!showHeatmap); }} className={`flex items-center justify-center w-8 h-8 rounded-md transition-colors ${showHeatmap ? 'bg-cyan-600 text-white' : 'text-white hover:bg-gray-700/80'}`}>
+            <a href="#" role="button" aria-label="Toggle Traffic Heatmap" title="Toggle Traffic Heatmap" onClick={(e) => { e.preventDefault(); setShowHeatmap(!showHeatmap); }} className={`flex items-center justify-center w-8 h-8 transition-colors border-t border-gray-700 ${showHeatmap ? 'bg-cyan-600 text-white' : 'text-white hover:bg-gray-700/80'}`}>
                 <Squares2x2Icon className="w-5 h-5" />
             </a>
-
-            {/* Separator */}
-            <div className="h-px bg-gray-600 my-1 mx-1"></div>
 
             {/* Theme Buttons */}
             {themeOptions.map(option => {
                 const Icon = option.icon;
                 const isActive = theme === option.name;
                 return (
-                    <a href="#" key={option.name} role="button" aria-label={option.title} title={option.title} onClick={(e) => { e.preventDefault(); setTheme(option.name); }} className={`flex items-center justify-center w-8 h-8 rounded-md transition-colors ${isActive ? 'bg-cyan-600 text-white' : 'text-white hover:bg-gray-700/80'}`}>
+                    <a href="#" key={option.name} role="button" aria-label={option.title} title={option.title} onClick={(e) => { e.preventDefault(); setTheme(option.name); }} className={`flex items-center justify-center w-8 h-8 transition-colors border-t border-gray-700 ${isActive ? 'bg-cyan-600 text-white' : 'text-white hover:bg-gray-700/80'}`}>
                         <Icon className="w-5 h-5" />
                     </a>
                 );
