@@ -27,7 +27,8 @@ const TripDirectory: React.FC = () => {
   const [showCompleted, setShowCompleted] = useState(true);
   
   const userMap = useMemo(() => new Map(users.map(u => [u.id, u.name])), [users]);
-  const canExport = useMemo(() => currentUser?.role === UserRole.ADMIN || currentUser?.role === UserRole.CAPTAIN, [currentUser]);
+  // FIX: Changed UserRole.CAPTAIN to UserRole.SUPERVISOR as the CAPTAIN role does not exist.
+  const canExport = useMemo(() => currentUser?.role === UserRole.ADMIN || currentUser?.role === UserRole.SUPERVISOR, [currentUser]);
 
   const filteredTrips = useMemo(() => {
     return trips

@@ -1,12 +1,17 @@
 import React, { useEffect } from 'react';
 import { useMap } from 'react-leaflet';
-// FIX: Switched to a default import for 'leaflet' to enable module augmentation, as the namespace import was failing to resolve the module for declaration merging.
-import L from 'leaflet';
+import * as L from 'leaflet';
 import 'leaflet.heat';
+// Import types from 'leaflet' to make them available for module augmentation.
+// The type-only import was removed as it can cause issues with module augmentation.
+// The types are available in the augmentation scope below.
 
-// Augment the 'leaflet' module to include type definitions for the leaflet.heat plugin.
-// This allows TypeScript to recognize the .heatLayer() method on the L object.
+// Module augmentation to add type definitions for the 'leaflet.heat' plugin,
+// which extends the 'L' object with a 'heatLayer' function.
+// This requires a value-import of 'leaflet' in the file scope, which is satisfied by `import * as L from 'leaflet'`.
 declare module 'leaflet' {
+    // FIX: Use L.LatLngExpression and L.Layer from the imported 'leaflet' namespace
+    // to resolve type errors and potential module augmentation issues.
     function heatLayer(latlngs: (L.LatLngExpression | [number, number, number])[], options?: any): L.Layer;
 }
 

@@ -24,7 +24,7 @@ const DetailItem: React.FC<{ label: string; value: string | number; fullWidth?: 
 );
 
 const TripDetailModal: React.FC = () => {
-    const { users } = useAuth();
+    const { currentUser, users } = useAuth();
     const { state, actions } = usePort();
     const { modal, ships, selectedPort } = state;
     const { updateTrip, closeModal, openModal } = actions;
@@ -37,6 +37,8 @@ const TripDetailModal: React.FC = () => {
     const [movements, setMovements] = useState<ShipMovement[]>([]);
     const [isLoadingHistory, setIsLoadingHistory] = useState(true);
     const [now, setNow] = useState(new Date());
+    
+    const canEdit = useMemo(() => currentUser && [UserRole.ADMIN, UserRole.SUPERVISOR, UserRole.OPERATOR].includes(currentUser.role), [currentUser]);
 
     useEffect(() => {
         if (!trip) return;
@@ -276,14 +278,14 @@ const TripDetailModal: React.FC = () => {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label htmlFor="agentId" className="block text-sm font-medium text-gray-300">Maritime Agent</label>
-                                <select id="agentId" name="agentId" value={formData.agentId || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                                <select id="agentId" name="agentId" value={formData.agentId || ''} onChange={handleChange} disabled={!canEdit} className="mt-1 block w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:bg-gray-600 disabled:cursor-not-allowed">
                                     <option value="">-- No Agent --</option>
                                     {agents.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                                 </select>
                             </div>
                             <div>
                                 <label htmlFor="pilotId" className="block text-sm font-medium text-gray-300">Assigned Pilot</label>
-                                <select id="pilotId" name="pilotId" value={formData.pilotId || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                                <select id="pilotId" name="pilotId" value={formData.pilotId || ''} onChange={handleChange} disabled={!canEdit} className="mt-1 block w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:bg-gray-600 disabled:cursor-not-allowed">
                                     <option value="">-- No Pilot --</option>
                                     {pilots.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                                 </select>
@@ -344,7 +346,7 @@ const TripDetailModal: React.FC = () => {
                     </div>
                     <div className="flex gap-4">
                         <button type="button" onClick={closeModal} className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors">Cancel</button>
-                        <button type="button" onClick={handleSave} className="px-4 py-2 bg-cyan-600 text-white rounded-md hover:bg-cyan-700 transition-colors">Save Changes</button>
+                        <button type="button" onClick={handleSave} disabled={!canEdit} className="px-4 py-2 bg-cyan-600 text-white rounded-md hover:bg-cyan-700 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed">Save Changes</button>
                     </div>
                 </div>
             </div>

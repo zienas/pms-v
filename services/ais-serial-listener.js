@@ -1,33 +1,34 @@
-// ais-udp-listener.js
+// services/ais-serial-listener.js
 /**
  * NOTE: This is a BACKEND service script for the Raspberry Pi Kiosk setup.
  * It is designed to be run with Node.js, not in the browser.
- * This script listens for AIS data on a UDP port, parses it, and broadcasts
+ * This script listens for AIS data on a serial port, parses it, and broadcasts
  * it over a WebSocket connection to the frontend application running on the same device.
  *
  * --- SETUP ---
  * 1. From the project's root directory (`pvms`), run:
- *    `npm install ws nmea-0183`
+ *    `npm install ws nmea-0183 serialport @serialport/parser-readline`
  *
  * --- TO RUN ---
- * Direct: `node services/ais-udp-listener.js`
+ * Direct: `node services/ais-serial-listener.js`
  * Production (with PM2):
  *   `sudo npm install -g pm2`
- *   `pm2 start services/ais-udp-listener.js --name "ais-udp-service"`
+ *   `pm2 start services/ais-serial-listener.js --name "ais-serial-service"`
  *   `pm2 save`
  *   `pm2 startup` (and follow instructions)
  */
 
-const dgram = require('dgram');
+const { SerialPort } = require('serialport');
+const { ReadlineParser } = require('@serialport/parser-readline');
 const { Nmea0183, AisMessage, Vdm } = require('nmea-0183');
 const WebSocket = require('ws');
 
 // --- Configuration ---
-const AIS_UDP_PORT = 10110; // The port your AIS receiver is broadcasting to
-const AIS_UDP_HOST = '0.0.0.0'; // Listen on all available network interfaces
+const SERIAL_PORT_PATH = '/dev/ttyUSB0'; // Linux path. For Windows, use 'COM3', etc.
+const BAUD_RATE = 38400; // Common for AIS, but check your receiver's manual
 const WEBSOCKET_PORT = 8080; // Port for the WebSocket server (must match frontend)
 // ** IMPORTANT: Change this to match the Port ID you are monitoring in the app **
-const PORT_ID_FOR_THIS_FEED = 'port-sg'; 
+const PORT_ID_FOR_THIS_FEED = 'port-sg';
 
 // --- WebSocket Server Setup ---
 const wss = new WebSocket.Server({ port: WEBSOCKET_PORT });
@@ -49,9 +50,9 @@ function broadcastToClients(message) {
   });
 }
 
-
-// --- AIS UDP Listener Setup ---
-const udpServer = dgram.createSocket('udp4');
+// --- AIS Serial Port Listener Setup ---
+const serialPort = new SerialPort({ path: SERIAL_PORT_PATH, baudRate: BAUD_RATE });
+const lineParser = serialPort.pipe(new ReadlineParser({ delimiter: '\r\n' }));
 const nmeaParser = new Nmea0183();
 const mmsiToImoMap = new Map();
 
@@ -66,16 +67,12 @@ nmeaParser.on('data', (data) => {
 });
 
 function handleAisMessage(message) {
-    // Type 5: Static and Voyage Related Data (IMO, name, type)
     if (message.messageType === 5 && message.imo) {
-        // When we get a Type 5 message, we learn the ship's IMO number and can link it to its MMSI.
         mmsiToImoMap.set(message.mmsi, message.imo);
     }
 
-    // Type 1, 2, 3: Position Report Class A
     if ([1, 2, 3].includes(message.messageType) && message.lat && message.lon) {
         const { mmsi } = message;
-        // We only broadcast updates for vessels we have an IMO for.
         if (mmsiToImoMap.has(mmsi)) {
             const imo = mmsiToImoMap.get(mmsi);
             const positionUpdate = {
@@ -93,22 +90,15 @@ function handleAisMessage(message) {
     }
 }
 
-// --- UDP Server Event Handlers ---
-udpServer.on('error', (err) => {
-    console.error(`[UDP] Server error:\n${err.stack}`);
-    udpServer.close();
+// --- Serial Port Event Handlers ---
+serialPort.on('open', () => {
+    console.log(`[Serial] Port ${SERIAL_PORT_PATH} opened successfully.`);
 });
 
-udpServer.on('message', (msg, rinfo) => {
-    const sentence = msg.toString().trim();
-    // Feed every raw NMEA sentence into the parser.
-    nmeaParser.parse(sentence);
+serialPort.on('error', (err) => {
+    console.error('[Serial] Port Error: ', err.message);
 });
 
-udpServer.on('listening', () => {
-    const address = udpServer.address();
-    console.log(`[UDP] AIS listener started on ${address.address}:${address.port}`);
+lineParser.on('data', (sentence) => {
+    nmeaParser.parse(sentence.trim());
 });
-
-// Start listening for UDP packets.
-udpServer.bind(AIS_UDP_PORT, AIS_UDP_HOST);

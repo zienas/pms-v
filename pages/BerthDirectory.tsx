@@ -45,6 +45,7 @@ const BerthDirectory: React.FC = () => {
   const { state, actions } = usePort();
   const { berths, ships, selectedPort, movements } = state;
   const [filter, setFilter] = useState('');
+  const [typeFilter, setTypeFilter] = useState<BerthType | 'all'>('all');
 
   const stats = useMemo(() => {
     const totalBerths = berths.length;
@@ -110,16 +111,15 @@ const BerthDirectory: React.FC = () => {
   }, [berths, movements]);
 
   const filteredBerths = useMemo(() => {
-    return berths.filter(berth => 
-        berth.name.toLowerCase().includes(filter.toLowerCase()) ||
-        berth.type.toLowerCase().includes(filter.toLowerCase())
-    );
-  }, [berths, filter]);
+    return berths
+        .filter(berth => typeFilter === 'all' || berth.type === typeFilter)
+        .filter(berth => berth.name.toLowerCase().includes(filter.toLowerCase()));
+  }, [berths, filter, typeFilter]);
   
   const { items: sortedBerths, requestSort, sortConfig } = useSortableData<Berth>(filteredBerths, { key: 'name', direction: 'ascending' });
   
   const canManageBerths = useMemo(() => currentUser?.role === UserRole.ADMIN, [currentUser]);
-  const canManageShips = useMemo(() => currentUser?.role === UserRole.ADMIN || currentUser?.role === UserRole.OPERATOR, [currentUser]);
+  const canManageShips = useMemo(() => !!currentUser && [UserRole.ADMIN, UserRole.SUPERVISOR, UserRole.OPERATOR].includes(currentUser.role), [currentUser]);
 
   const getSortDirectionFor = (key: keyof Berth) => sortConfig?.key === key ? sortConfig.direction : undefined;
 
@@ -148,8 +148,12 @@ const BerthDirectory: React.FC = () => {
         </div>
       </div>
 
-      <div className="mb-4">
-        <input type="text" placeholder="Filter by berth name or type..." value={filter} onChange={(e) => setFilter(e.target.value)} className="w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+      <div className="flex flex-col md:flex-row gap-4 mb-4">
+        <input type="text" placeholder="Filter by berth name..." value={filter} onChange={(e) => setFilter(e.target.value)} className="w-full md:w-1/2 px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+        <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value as BerthType | 'all')} className="w-full md:w-auto px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500">
+            <option value="all">All Types</option>
+            {Object.values(BerthType).map(type => <option key={type} value={type}>{type}</option>)}
+        </select>
       </div>
 
       <div className="flex-1 overflow-x-auto">
@@ -173,8 +177,8 @@ const BerthDirectory: React.FC = () => {
                 <tr key={berth.id} onClick={() => actions.openModal({ type: 'berthDetail', berth })} className={`group cursor-pointer transition-colors ${hasDangerousGoods ? 'bg-red-900/20 hover:bg-red-900/40' : 'hover:bg-gray-800/50'}`}>
                   <td className="px-4 py-3 font-medium text-white">{berth.name}</td>
                   <td className="px-4 py-3"><span className={`px-2 py-1 text-xs font-medium rounded-full ${berthTypeColors[berth.type]}`}>{berth.type}</span></td>
-                  <td className="px-4 py-3">{berth.maxLength}</td>
-                  <td className="px-4 py-3">{berth.maxDraft}</td>
+                  <td className="px-4 py-3">{berth.maxLength}m</td>
+                  <td className="px-4 py-3">{berth.maxDraft}m</td>
                   <td className="px-4 py-3">
                     <span className={`px-2 py-1 text-xs font-semibold rounded-full ${occupyingShip ? (hasDangerousGoods ? 'text-red-300 bg-red-900/50' : 'text-green-300 bg-green-900/50') : 'text-gray-300 bg-gray-700/50'}`}>{occupyingShip ? 'Occupied' : 'Available'}</span>
                   </td>

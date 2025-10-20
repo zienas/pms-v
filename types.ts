@@ -1,36 +1,33 @@
-export enum ShipStatus {
-  APPROACHING = 'Approaching',
-  DOCKED = 'Docked',
-  DEPARTING = 'Departing',
-  ANCHORED = 'At Anchorage',
-  LEFT_PORT = 'Left Port',
-}
-
-export enum BerthType {
-  QUAY = 'Quay',
-  BERTH = 'Berth',
-  ANCHORAGE = 'Anchorage',
-}
-
-export enum AlertType {
-  WARNING = 'Warning',
-  ERROR = 'Error',
-}
+// --- ENUMS ---
 
 export enum UserRole {
-  ADMIN = 'Admin',
+  ADMIN = 'Administrator',
+  SUPERVISOR = 'Supervisor',
   OPERATOR = 'Port Operator',
-  CAPTAIN = 'Captain',
   AGENT = 'Maritime Agent',
   PILOT = 'Pilot',
 }
 
+export enum ShipStatus {
+  APPROACHING = 'Approaching',
+  ANCHORED = 'Anchored',
+  DOCKED = 'Docked',
+  DEPARTING = 'Departing',
+  LEFT_PORT = 'Left Port',
+}
+
+export enum BerthType {
+  BERTH = 'Berth',
+  QUAY = 'Quay',
+  ANCHORAGE = 'Anchorage',
+}
+
 export enum MovementEventType {
   CREATED = 'Vessel Registered',
-  STATUS_CHANGE = 'Status Updated',
+  AIS_UPDATE = 'AIS Update',
+  STATUS_CHANGE = 'Status Change',
   BERTH_ASSIGNMENT = 'Berth Assignment',
   PILOT_ASSIGNMENT = 'Pilot Assignment',
-  AIS_UPDATE = 'AIS Update',
   AGENT_ASSIGNMENT = 'Agent Assignment',
 }
 
@@ -39,36 +36,36 @@ export enum TripStatus {
   COMPLETED = 'Completed',
 }
 
-export interface Trip {
-  id: string;
-  shipId: string;
-  portId: string;
-  arrivalTimestamp: string;
-  departureTimestamp: string | null;
-  status: TripStatus;
-  // Enriched fields for directory view
-  vesselName?: string;
-  vesselImo?: string;
-  agentId?: string;
-  pilotId?: string;
+export enum AlertType {
+  WARNING = 'Warning',
+  ERROR = 'Error',
 }
 
-export interface User {
-  id: string;
-  name: string;
-  role: UserRole;
-  password?: string;
-  portId?: string; // Used to scope non-admin users to a specific port
-  forcePasswordChange?: boolean;
-}
+// --- INTERFACES ---
 
 export interface Port {
   id: string;
   name: string;
   lat: number;
   lon: number;
-  logoImage?: string; // Base64 Data URL for the port logo
-  geometry?: [number, number][]; // Array of [lat, lon] pairs for the port boundary
+  geometry?: [number, number][];
+  boundaryType?: 'polygon' | 'circle';
+  boundaryRadius?: number;
+  logoImage?: string;
+}
+
+export interface Berth {
+  id: string;
+  portId: string;
+  name: string;
+  type: BerthType;
+  maxLength: number;
+  maxDraft: number;
+  equipment: string[];
+  quayId: string;
+  positionOnQuay: number;
+  geometry?: [number, number][];
+  radius?: number; // for anchorage
 }
 
 export interface Ship {
@@ -77,76 +74,75 @@ export interface Ship {
   name: string;
   imo: string;
   type: string;
-  length: number; // in meters
-  draft: number; // in meters
+  length: number;
+  draft: number;
   flag: string;
-  eta: string;
-  etd: string;
+  eta: string; // ISO string
+  etd: string; // ISO string
+  departureDate?: string; // ISO string, set when status becomes LEFT_PORT
   status: ShipStatus;
   berthIds: string[];
-  departureDate?: string;
   pilotId?: string;
-  agentId?: string; // Assigned agent for the current trip
+  agentId?: string;
   hasDangerousGoods: boolean;
   lat?: number;
   lon?: number;
   currentTripId?: string;
 }
 
-export interface Berth {
+export interface User {
   id: string;
-  portId: string;
   name: string;
-  type: BerthType;
-  maxLength: number; // in meters
-  maxDraft: number; // in meters
-  equipment: string[];
-  quayId: string;
-  positionOnQuay: number;
-  geometry?: [number, number][]; // Array of [lat, lon] pairs
-  radius?: number; // For anchorages
+  role: UserRole;
+  portId?: string;
+  password?: string; // Should not be sent to client, but needed for simulation
+  forcePasswordChange?: boolean;
 }
 
-export interface Alert {
+export interface Trip {
   id: string;
-  portId: string;
-  type: AlertType;
-  message: string;
   shipId: string;
-  timestamp: string;
-  acknowledged?: boolean;
+  portId: string;
+  arrivalTimestamp: string; // ISO string
+  departureTimestamp: string | null; // ISO string
+  status: TripStatus;
+  // Enriched fields for directory view
+  vesselName?: string;
+  vesselImo?: string;
+  agentId?: string;
+  pilotId?: string;
 }
 
 export interface ShipMovement {
-    id: string;
-    shipId: string;
-    portId: string;
-    tripId: string;
-    eventType: MovementEventType;
-    timestamp: string;
-    details: {
-        status?: ShipStatus;
-        fromStatus?: ShipStatus;
-        berthIds?: string[];
-        fromBerthIds?: string[];
-        berthNames?: string[];
-        fromBerthNames?: string[];
-        pilotId?: string;
-        fromPilotId?: string;
-        agentId?: string;
-        fromAgentId?: string;
-        message: string;
-    };
+  id: string;
+  shipId: string;
+  portId: string;
+  tripId: string;
+  eventType: MovementEventType;
+  timestamp: string; // ISO string
+  details: {
+    message: string;
+    fromStatus?: ShipStatus;
+    status?: ShipStatus;
+    fromBerthIds?: string[];
+    berthIds?: string[];
+    fromBerthNames?: string[];
+    berthNames?: string[];
+    fromPilotId?: string;
+    pilotId?: string;
+    fromAgentId?: string;
+    agentId?: string;
+  };
 }
 
 export interface LoginHistoryEntry {
-    id: string;
-    userId: string;
-    userName: string;
-    portId: string;
-    portName: string;
-    timestamp: string;
-    logoutTimestamp?: string;
+  id: string;
+  userId: string;
+  userName: string;
+  portId: string;
+  portName: string;
+  timestamp: string; // ISO string
+  logoutTimestamp?: string; // ISO string
 }
 
 export interface AisData {
@@ -159,18 +155,39 @@ export interface AisData {
   lon?: number;
 }
 
+export interface Alert {
+  id: string;
+  portId: string;
+  type: AlertType;
+  message: string;
+  shipId?: string;
+  timestamp: string; // ISO string
+  acknowledged?: boolean;
+}
+
+// --- GENERAL & UI TYPES ---
+
+export type View =
+  | 'dashboard'
+  | 'vessels'
+  | 'berths'
+  | 'alerts'
+  | 'trips'
+  | 'vessel-analytics'
+  | 'logs'
+  | 'management'
+  | 'users'
+  | 'settings';
+
 export type AisSource = 'simulator' | 'udp' | 'serial';
 
-export type View = 'dashboard' | 'vessels' | 'berths' | 'alerts' | 'management' | 'users' | 'settings' | 'vessel-analytics' | 'trips' | 'logs';
-
-// FIX: Added ModalState type export
 export type ModalState =
   | { type: 'shipForm'; ship: Ship | null }
   | { type: 'history'; ship: Ship }
   | { type: 'portForm'; port: Port | null }
   | { type: 'berthForm'; port: Port; berth: Berth | null }
   | { type: 'berthDetail'; berth: Berth }
+  | { type: 'userForm'; user: User | null }
   | { type: 'tripDetail'; trip: Trip }
   | { type: 'reassignBerth'; ship: Ship }
-  | { type: 'assignPilot'; ship: Ship }
-  | { type: 'userForm'; user: User | null };
+  | { type: 'assignPilot'; ship: Ship };

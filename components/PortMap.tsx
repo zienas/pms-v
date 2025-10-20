@@ -10,7 +10,6 @@ import SunIcon from './icons/SunIcon';
 import SunsetIcon from './icons/SunsetIcon';
 import MoonIcon from './icons/MoonIcon';
 import Squares2x2Icon from './icons/Squares2x2Icon';
-import HeatmapLayer from './HeatmapLayer';
 
 const FILTERABLE_STATUSES: ShipStatus[] = [ShipStatus.APPROACHING, ShipStatus.DOCKED, ShipStatus.ANCHORED, ShipStatus.DEPARTING];
 
@@ -21,12 +20,10 @@ interface MapControllerProps {
   zoom: number;
   theme: MapTheme;
   setTheme: (theme: MapTheme) => void;
-  showHeatmap: boolean;
-  setShowHeatmap: (show: boolean) => void;
 }
 
 // Helper component to control map view and add custom controls
-const MapController: React.FC<MapControllerProps> = ({ center, zoom, theme, setTheme, showHeatmap, setShowHeatmap }) => {
+const MapController: React.FC<MapControllerProps> = ({ center, zoom, theme, setTheme }) => {
   const map = useMap();
 
   // This effect handles view changes when the port changes, and fixes tile rendering issues.
@@ -61,11 +58,6 @@ const MapController: React.FC<MapControllerProps> = ({ center, zoom, theme, setT
                 <PortCenterIcon className="w-5 h-5" />
             </a>
 
-            {/* Heatmap Toggle Button */}
-            <a href="#" role="button" aria-label="Toggle Traffic Heatmap" title="Toggle Traffic Heatmap" onClick={(e) => { e.preventDefault(); setShowHeatmap(!showHeatmap); }} className={`flex items-center justify-center w-8 h-8 transition-colors border-t border-gray-700 ${showHeatmap ? 'bg-cyan-600 text-white' : 'text-white hover:bg-gray-700/80'}`}>
-                <Squares2x2Icon className="w-5 h-5" />
-            </a>
-
             {/* Theme Buttons */}
             {themeOptions.map(option => {
                 const Icon = option.icon;
@@ -91,8 +83,7 @@ interface PortMapProps {
 const PortMap: React.FC<PortMapProps> = ({ ships, berths, selectedPort }) => {
   const { actions } = usePort();
   const [statusFilters, setStatusFilters] = useState<Set<ShipStatus>>(new Set(FILTERABLE_STATUSES));
-  const [theme, setTheme] = useState<MapTheme>('night');
-  const [showHeatmap, setShowHeatmap] = useState(false);
+  const [theme, setTheme] = useState<MapTheme>('day');
 
   const themes = {
     night: {
@@ -111,13 +102,6 @@ const PortMap: React.FC<PortMapProps> = ({ ships, berths, selectedPort }) => {
 
   const allActiveShips = useMemo(() => ships.filter(s => s.status !== ShipStatus.LEFT_PORT), [ships]);
   const filteredShips = useMemo(() => allActiveShips.filter(s => statusFilters.has(s.status)), [allActiveShips, statusFilters]);
-
-  const heatPoints = useMemo(() => {
-    return allActiveShips
-      .filter(ship => ship.lat && ship.lon)
-      // FIX: Explicitly type the returned array to ensure it matches the expected [number, number, number] tuple format.
-      .map((ship): [number, number, number] => [ship.lat!, ship.lon!, 1.0]); // lat, lng, intensity
-  }, [allActiveShips]);
 
   const handleFilterChange = (status: ShipStatus) => {
     setStatusFilters(prev => {
@@ -146,15 +130,13 @@ const PortMap: React.FC<PortMapProps> = ({ ships, berths, selectedPort }) => {
           scrollWheelZoom={true}
           style={mapContainerStyle}
         >
-          <MapController center={mapCenter} zoom={mapZoom} theme={theme} setTheme={setTheme} showHeatmap={showHeatmap} setShowHeatmap={setShowHeatmap} />
+          <MapController center={mapCenter} zoom={mapZoom} theme={theme} setTheme={setTheme} />
           <TileLayer
             key={theme}
             attribution={themes[theme].attribution}
             url={themes[theme].url}
           />
           
-          {showHeatmap && <HeatmapLayer points={heatPoints} />}
-
           {/* Port Boundary */}
           {selectedPort.geometry && (
             <Polygon
@@ -167,12 +149,12 @@ const PortMap: React.FC<PortMapProps> = ({ ships, berths, selectedPort }) => {
           {berths.map(berth => {
             if (!berth.geometry) return null;
             const occupyingShip = allActiveShips.find(s => s.berthIds.includes(berth.id));
-            let pathOptions = { color: '#06B6D4', weight: 1.5, opacity: 0.8, fillColor: '#06B6D4', fillOpacity: 0.3 };
+            let pathOptions = { color: '#06B6D4', weight: 1.5, opacity: 0.8, fillColor: '#06B6D4', fillOpacity: 0.3 }; // Available
             if (occupyingShip) {
                 if (occupyingShip.hasDangerousGoods) {
-                    pathOptions = { color: '#F87171', weight: 1.5, opacity: 0.8, fillColor: '#F87171', fillOpacity: 0.4 };
+                    pathOptions = { color: '#F87171', weight: 1.5, opacity: 0.8, fillColor: '#EF4444', fillOpacity: 0.4 }; // Occupied with DG
                 } else {
-                    pathOptions = { color: '#34D399', weight: 1.5, opacity: 0.8, fillColor: '#34D399', fillOpacity: 0.3 };
+                    pathOptions = { color: '#34D399', weight: 1.5, opacity: 0.8, fillColor: '#10B981', fillOpacity: 0.3 }; // Occupied
                 }
             }
             return (

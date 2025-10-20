@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import type { User, LoginHistoryEntry } from '../types';
+import { UserRole } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { useSortableData } from '../hooks/useSortableData';
 import SortIcon from '../components/icons/SortIcon';
@@ -12,7 +13,7 @@ import { formatDuration } from '../utils/formatters';
 import { usePort } from '../context/PortContext';
 
 const UserManagement: React.FC = () => {
-    const { users, deleteUser } = useAuth();
+    const { currentUser, users, deleteUser } = useAuth();
     const { state, actions } = usePort();
     const { ports } = state;
     const [loginHistory, setLoginHistory] = useState<LoginHistoryEntry[]>([]);
@@ -20,6 +21,18 @@ const UserManagement: React.FC = () => {
     const { items: sortedHistory, requestSort: requestHistorySort, sortConfig: historySortConfig } = useSortableData<LoginHistoryEntry>(loginHistory, { key: 'timestamp', direction: 'descending' });
     const { items: sortedUsers, requestSort: requestUserSort, sortConfig: userSortConfig } = useSortableData<User>(users, { key: 'name', direction: 'ascending' });
     
+    const usersToDisplay = useMemo(() => {
+        if (currentUser?.role === UserRole.ADMIN) {
+            return sortedUsers;
+        }
+        if (currentUser?.role === UserRole.SUPERVISOR) {
+            // Supervisors can manage Operators, Agents, and Pilots.
+            const manageableRoles = [UserRole.OPERATOR, UserRole.AGENT, UserRole.PILOT];
+            return sortedUsers.filter(user => manageableRoles.includes(user.role));
+        }
+        return [];
+    }, [sortedUsers, currentUser?.role]);
+
     useEffect(() => {
         api.getLoginHistory().then(setLoginHistory).catch(err => console.error("Failed to fetch login history", err));
     }, []);
@@ -68,7 +81,7 @@ const UserManagement: React.FC = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-700">
-                            {sortedUsers.map(user => (
+                            {usersToDisplay.map(user => (
                                 <tr key={user.id} className="hover:bg-gray-800/50 group">
                                     <td className="px-4 py-3 font-medium">{user.name}</td>
                                     <td className="px-4 py-3">{user.role}</td>

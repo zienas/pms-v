@@ -67,8 +67,8 @@ const VesselDirectory: React.FC = () => {
   const userMap = useMemo(() => new Map(users.map(u => [u.id, u.name])), [users]);
   const berthMap = useMemo(() => new Map(berths.map(b => [b.id, b.name])), [berths]);
 
-  const canModify = useMemo(() => currentUser?.role === UserRole.ADMIN || currentUser?.role === UserRole.OPERATOR, [currentUser]);
-  const canExport = useMemo(() => currentUser?.role === UserRole.ADMIN || currentUser?.role === UserRole.CAPTAIN, [currentUser]);
+  const canModify = useMemo(() => !!currentUser && [UserRole.ADMIN, UserRole.SUPERVISOR, UserRole.OPERATOR].includes(currentUser.role), [currentUser]);
+  const canExport = useMemo(() => !!currentUser && [UserRole.ADMIN, UserRole.SUPERVISOR].includes(currentUser.role), [currentUser]);
 
   const filteredShips = useMemo(() => {
     return ships

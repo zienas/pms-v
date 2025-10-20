@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Marker, Tooltip } from 'react-leaflet';
-import L from 'leaflet';
+import * as L from 'leaflet';
 import ReactDOMServer from 'react-dom/server';
 import type { Ship } from '../types';
 import { ShipStatus, UserRole } from '../types';

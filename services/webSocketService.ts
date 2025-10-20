@@ -2,7 +2,7 @@
 interface WebSocketMessage {
     type: 'ship_position_update';
     payload: {
-        shipId: string;
+        imo: string;
         portId: string;
         lat: number;
         lon: number;

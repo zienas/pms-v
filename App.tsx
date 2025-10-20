@@ -165,7 +165,7 @@ const MainApp: React.FC = () => {
   }, [currentUser, firstShiftStartHour, shiftDurationHours, logout]);
 
   const renderView = () => {
-    if (isLoading && !selectedPort) {
+    if (isLoading) {
         return <LoadingSpinner message="Loading Port Data..." />;
     }
     if (!selectedPort && accessiblePorts.length > 0) {

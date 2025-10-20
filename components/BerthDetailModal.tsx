@@ -71,9 +71,9 @@ const BerthDetailModal: React.FC<BerthDetailModalProps> = ({ berth }) => {
                                 <DetailItem label="Name" value={occupyingShip.name} />
                                 <DetailItem label="IMO" value={occupyingShip.imo} />
                                 <DetailItem label="Status" value={occupyingShip.status} />
-                                <DetailItem label="ETA" value={
-                                    occupyingShip.eta && !isNaN(new Date(occupyingShip.eta).getTime())
-                                    ? new Date(occupyingShip.eta).toLocaleString()
+                                <DetailItem label="ETD" value={
+                                    occupyingShip.etd && !isNaN(new Date(occupyingShip.etd).getTime())
+                                    ? new Date(occupyingShip.etd).toLocaleString()
                                     : 'Invalid Date'
                                 } />
                             </div>

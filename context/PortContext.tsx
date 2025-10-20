@@ -42,7 +42,8 @@ type Action =
   | { type: 'SET_ALERTS'; payload: Alert[] }
   | { type: 'OPEN_MODAL'; payload: ModalState }
   | { type: 'CLOSE_MODAL' }
-  | { type: 'UPDATE_SHIP_POSITION'; payload: { shipId: string; lat: number; lon: number } };
+  | { type: 'UPDATE_SHIP_POSITION'; payload: { shipId: string; lat: number; lon: number } }
+  | { type: 'UPDATE_SHIP_AIS'; payload: Ship };
 
 const initialState: PortState = {
   ships: [], berths: [], trips: [], alerts: [], ports: [], allBerths: [], movements: [], loginHistory: [],
@@ -61,7 +62,18 @@ const portReducer = (state: PortState, action: Action): PortState => {
     case 'SET_PORT_DATA': return { ...state, ...action.payload };
     case 'SET_SELECTED_PORT_ID': {
         const selectedPort = state.ports.find(p => p.id === action.payload) ?? null;
-        return { ...state, selectedPortId: action.payload, selectedPort };
+        return { 
+            ...state, 
+            selectedPortId: action.payload, 
+            selectedPort,
+            // Clear data from the old port to prevent showing stale information while new data loads
+            ships: [],
+            berths: [],
+            trips: [],
+            alerts: [],
+            movements: [],
+            loginHistory: [],
+        };
     }
     case 'CLEAR_DATA': return { ...state, ships: [], berths: [], trips: [], alerts: [], movements: [], loginHistory: [] };
     case 'SET_ALERTS': return { ...state, alerts: action.payload };
@@ -76,6 +88,14 @@ const portReducer = (state: PortState, action: Action): PortState => {
                 : ship
             )
         };
+    case 'UPDATE_SHIP_AIS': {
+        const updatedShip = action.payload;
+        const shipExists = state.ships.some(s => s.id === updatedShip.id);
+        const updatedShips = shipExists
+            ? state.ships.map(s => s.id === updatedShip.id ? updatedShip : s)
+            : [...state.ships, updatedShip];
+        return { ...state, ships: updatedShips };
+    }
     default: return state;
   }
 };
@@ -112,7 +132,7 @@ const PortContext = createContext<PortContextType | undefined>(undefined);
 
 export const PortProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [state, dispatch] = useReducer(portReducer, initialState);
-    const { currentUser } = useAuth();
+    const { currentUser, loggedInPortId } = useAuth();
     
     // Create a ref to hold the current state. This allows action functions to access
     // the latest state without needing to be recreated on every state change,
@@ -143,7 +163,9 @@ export const PortProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 
                 if (currentUser.role === UserRole.ADMIN) {
                     accessiblePorts = fetchedPorts;
-                    if (fetchedPorts.length > 0) {
+                    if (loggedInPortId && fetchedPorts.some(p => p.id === loggedInPortId)) {
+                        selectedPortId = loggedInPortId;
+                    } else if (fetchedPorts.length > 0) {
                         selectedPortId = fetchedPorts[0].id;
                     }
                 } else {
@@ -335,9 +357,9 @@ export const PortProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     
                     if (shipData) {
                         const aisData: AisData = { imo: shipData.imo, portId: shipData.portId, name: shipData.name, type: shipData.type, status: shipData.status, lat: shipData.lat, lon: shipData.lon };
-                        await api.updateShipFromAIS(aisData);
-                        if (shipData.portId === selectedPortId) {
-                            await fetchDataForPort(selectedPortId, new AbortController().signal);
+                        const updatedShip = await api.updateShipFromAIS(aisData);
+                        if (updatedShip && updatedShip.portId === selectedPortId) {
+                            dispatch({ type: 'UPDATE_SHIP_AIS', payload: updatedShip });
                         }
                     }
                 }
@@ -350,7 +372,17 @@ export const PortProvider: React.FC<{ children: React.ReactNode }> = ({ children
             webSocketService.start();
             const sub = webSocketService.subscribe(msg => {
                 if (msg.type === 'ship_position_update' && msg.payload.portId === portId) {
-                    dispatch({ type: 'UPDATE_SHIP_POSITION', payload: msg.payload });
+                    const shipToUpdate = stateRef.current.ships.find(s => s.imo === msg.payload.imo);
+                    if (shipToUpdate) {
+                        dispatch({
+                            type: 'UPDATE_SHIP_POSITION',
+                            payload: {
+                                shipId: shipToUpdate.id,
+                                lat: msg.payload.lat,
+                                lon: msg.payload.lon,
+                            },
+                        });
+                    }
                 }
             });
             return () => webSocketService.unsubscribe(sub);
@@ -381,7 +413,7 @@ export const PortProvider: React.FC<{ children: React.ReactNode }> = ({ children
             removeAlert,
             ...crudActions
         };
-    }, [currentUser]);
+    }, [currentUser, loggedInPortId]);
 
     const value: PortContextType = { state, actions };
 

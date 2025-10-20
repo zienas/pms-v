@@ -25,7 +25,7 @@ const ShipHistoryModal: React.FC<ShipHistoryModalProps> = ({ ship, portId, onClo
   const contentRef = useRef<HTMLDivElement>(null);
   
   const canExport = useMemo(() => {
-    return currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.CAPTAIN;
+    return currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.SUPERVISOR;
   }, [currentUser.role]);
   
   const userMap = useMemo(() => new Map(users.map(u => [u.id, u.name])), [users]);

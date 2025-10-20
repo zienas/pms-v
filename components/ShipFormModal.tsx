@@ -57,9 +57,21 @@ const ShipFormModal: React.FC = () => {
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [primaryBerthId, setPrimaryBerthId] = useState<string>('');
   const [assignmentStatus, setAssignmentStatus] = useState<AssignmentStatus>({ isValid: true, message: '', berthIds: [] });
+  const [pilotSearch, setPilotSearch] = useState('');
+  const [agentSearch, setAgentSearch] = useState('');
 
   const otherShips = useMemo(() => ships.filter(s => s.id !== shipToEdit?.id), [ships, shipToEdit]);
-  const canAssignPersonnel = useMemo(() => [UserRole.ADMIN, UserRole.OPERATOR].includes(currentUser.role), [currentUser]);
+  const canAssignPersonnel = useMemo(() => [UserRole.ADMIN, UserRole.SUPERVISOR, UserRole.OPERATOR].includes(currentUser.role), [currentUser]);
+
+  const filteredPilots = useMemo(() =>
+    pilots.filter(p =>
+      p.name.toLowerCase().includes(pilotSearch.toLowerCase()) || p.id === formData.pilotId
+    ), [pilots, pilotSearch, formData.pilotId]);
+
+  const filteredAgents = useMemo(() =>
+    agents.filter(a =>
+      a.name.toLowerCase().includes(agentSearch.toLowerCase()) || a.id === formData.agentId
+    ), [agents, agentSearch, formData.agentId]);
 
   const checkBerthAssignment = useCallback((shipLength: number, shipDraft: number, selectedBerthId: string): AssignmentStatus => {
     if (!selectedBerthId) return { isValid: true, message: '', berthIds: [] };
@@ -144,16 +156,7 @@ const ShipFormModal: React.FC = () => {
     // Date validation
     const etaDate = new Date(formData.eta);
     const etdDate = new Date(formData.etd);
-    const now = new Date();
-
-    if (etaDate <= now) {
-        newErrors.eta = 'ETA must be in the future.';
-    }
-
-    if (etdDate <= now) {
-        newErrors.etd = 'ETD must be in the future.';
-    }
-
+    
     if (etaDate >= etdDate) {
         newErrors.eta = (newErrors.eta ? newErrors.eta + ' ' : '') + 'ETA must be before ETD.';
         newErrors.etd = (newErrors.etd ? newErrors.etd + ' ' : '') + 'ETD must be after ETA.';
@@ -263,17 +266,33 @@ const ShipFormModal: React.FC = () => {
             {canAssignPersonnel && (
               <>
                 <div>
-                  <label htmlFor="agentId" className="block text-sm font-medium text-gray-300">Maritime Agent</label>
-                  <select id="agentId" name="agentId" value={formData.agentId || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                  <label htmlFor="agent-search" className="block text-sm font-medium text-gray-300">Maritime Agent</label>
+                  <input
+                    id="agent-search"
+                    type="text"
+                    placeholder="Search agents..."
+                    value={agentSearch}
+                    onChange={e => setAgentSearch(e.target.value)}
+                    className="mt-1 block w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  />
+                  <select id="agentId" name="agentId" value={formData.agentId || ''} onChange={handleChange} className="mt-2 block w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500" aria-label="Filtered maritime agents">
                       <option value="">-- No Agent --</option>
-                      {agents.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                      {filteredAgents.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label htmlFor="pilotId" className="block text-sm font-medium text-gray-300">Assigned Pilot</label>
-                  <select id="pilotId" name="pilotId" value={formData.pilotId || ''} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                  <label htmlFor="pilot-search" className="block text-sm font-medium text-gray-300">Assigned Pilot</label>
+                  <input
+                    id="pilot-search"
+                    type="text"
+                    placeholder="Search pilots..."
+                    value={pilotSearch}
+                    onChange={e => setPilotSearch(e.target.value)}
+                    className="mt-1 block w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                  />
+                  <select id="pilotId" name="pilotId" value={formData.pilotId || ''} onChange={handleChange} className="mt-2 block w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500" aria-label="Filtered assigned pilots">
                       <option value="">-- No Pilot --</option>
-                      {pilots.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                      {filteredPilots.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                   </select>
                 </div>
               </>

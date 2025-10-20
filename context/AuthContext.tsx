@@ -15,6 +15,7 @@ interface AuthContextType {
   isLoading: boolean;
   isPasswordChangeRequired: boolean;
   updateOwnPassword: (newPassword: string) => Promise<void>;
+  loggedInPortId: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -24,6 +25,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isPasswordChangeRequired, setIsPasswordChangeRequired] = useState(false);
+  const [loggedInPortId, setLoggedInPortId] = useState<string | null>(null);
 
   const fetchUsers = useCallback(async () => {
     try {
@@ -49,6 +51,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
         const user = await api.loginUser(name, password_provided, portId);
         setCurrentUser(user);
+        setLoggedInPortId(portId);
         if (user.forcePasswordChange && user.role !== UserRole.ADMIN) {
             setIsPasswordChangeRequired(true);
         }
@@ -65,9 +68,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await api.logoutUser(currentUser.id);
     }
     if (reason) {
-        toast.info(reason, { duration: 6000 });
+        // FIX: Replaced `toast.info` with a standard `toast` call as `info` is not a standard method in react-hot-toast.
+        toast(reason, { duration: 6000 });
     }
     setCurrentUser(null);
+    setLoggedInPortId(null);
     setIsPasswordChangeRequired(false);
   }, [currentUser]);
 
@@ -115,7 +120,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       currentUser, users, login, logout, addUser, updateUser, deleteUser, isLoading,
       isPasswordChangeRequired,
       updateOwnPassword,
-  }), [currentUser, users, isLoading, isPasswordChangeRequired, logout]);
+      loggedInPortId,
+  }), [currentUser, users, isLoading, isPasswordChangeRequired, loggedInPortId, logout]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

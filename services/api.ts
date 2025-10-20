@@ -61,7 +61,7 @@ const seedData = () => {
         { id: uuid(), name: 'Admin User', role: UserRole.ADMIN, password: 'password', forcePasswordChange: false },
         { id: uuid(), name: 'SG Operator', role: UserRole.OPERATOR, password: 'password', portId: portId1, forcePasswordChange: true },
         { id: uuid(), name: 'RT Operator', role: UserRole.OPERATOR, password: 'password', portId: portId2, forcePasswordChange: true },
-        { id: uuid(), name: 'Capt. Ahab (SG)', role: UserRole.CAPTAIN, password: 'password', portId: portId1, forcePasswordChange: true },
+        { id: uuid(), name: 'Susan Supervisor (SG)', role: UserRole.SUPERVISOR, password: 'password', portId: portId1, forcePasswordChange: true },
         { id: uuid(), name: 'Maritime Agent (SG)', role: UserRole.AGENT, password: 'password', portId: portId1, forcePasswordChange: true },
         { id: uuid(), name: 'John Smith (Pilot)', role: UserRole.PILOT, password: 'password', portId: portId1, forcePasswordChange: true },
         { id: uuid(), name: 'Jane Doe (Pilot)', role: UserRole.PILOT, password: 'password', portId: portId1, forcePasswordChange: true },
@@ -366,12 +366,13 @@ export const deleteShip = async (portId: string, shipId: string): Promise<void> 
     saveDB(db);
 };
 
-export const updateShipFromAIS = async (data: AisData): Promise<void> => {
+export const updateShipFromAIS = async (data: AisData): Promise<Ship | undefined> => {
     await delay(50);
     const db = getDB();
-    let ship = db.ships.find(s => s.imo === data.imo && s.portId === data.portId);
+    const shipIndex = db.ships.findIndex(s => s.imo === data.imo && s.portId === data.portId);
 
-    if (ship) {
+    if (shipIndex > -1) {
+        const ship = db.ships[shipIndex];
         const oldShip = { ...ship };
         ship.lat = data.lat ?? ship.lat;
         ship.lon = data.lon ?? ship.lon;
@@ -379,6 +380,8 @@ export const updateShipFromAIS = async (data: AisData): Promise<void> => {
         if (data.name) ship.name = data.name;
         if (data.type) ship.type = data.type;
         createShipMovement(db, oldShip, ship, 'Received AIS update.');
+        saveDB(db);
+        return ship;
     } else {
         const newShipData: Omit<Ship, 'id'> = {
             portId: data.portId,
@@ -399,8 +402,9 @@ export const updateShipFromAIS = async (data: AisData): Promise<void> => {
         db.ships.push(newShip);
         db.trips.push(newTrip);
         createShipMovement(db, null, newShip, `Vessel ${newShip.name} created from AIS feed.`);
+        saveDB(db);
+        return newShip;
     }
-    saveDB(db);
 };
 
 export const getShipHistory = async (portId: string, shipId: string): Promise<ShipMovement[]> => {

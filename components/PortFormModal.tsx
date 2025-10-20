@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import type { Port } from '../types';
 import GeometryEditor from './GeometryEditor';
 import { usePort } from '../context/PortContext';
+import { createCircle } from '../utils/geolocation';
 
 const PortFormModal: React.FC = () => {
     const { state, actions } = usePort();
@@ -12,6 +13,8 @@ const PortFormModal: React.FC = () => {
         lon: '',
         geometry: [] as [number, number][],
         logoImage: undefined as string | undefined,
+        boundaryType: 'polygon' as 'polygon' | 'circle',
+        boundaryRadius: 1000, // Default radius in meters
     });
     const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
@@ -23,9 +26,11 @@ const PortFormModal: React.FC = () => {
                 lon: String(portToEdit.lon),
                 geometry: portToEdit.geometry || [],
                 logoImage: portToEdit.logoImage,
+                boundaryType: portToEdit.boundaryType || 'polygon',
+                boundaryRadius: portToEdit.boundaryRadius || 1000,
             });
         } else {
-            setFormData({ name: '', lat: '', lon: '', geometry: [], logoImage: undefined });
+            setFormData({ name: '', lat: '0', lon: '0', geometry: [], logoImage: undefined, boundaryType: 'polygon', boundaryRadius: 1000 });
         }
     }, [portToEdit]);
 
@@ -39,6 +44,50 @@ const PortFormModal: React.FC = () => {
 
     const handleGeometryChange = (newGeometry: [number, number][]) => {
         setFormData(prev => ({ ...prev, geometry: newGeometry }));
+    };
+
+    const handlePortCenterChange = (latlng: { lat: number, lng: number }) => {
+        const newCenter: [number, number] = [latlng.lat, latlng.lng];
+        setFormData(prev => ({
+            ...prev,
+            lat: String(newCenter[0]),
+            lon: String(newCenter[1]),
+            geometry: prev.boundaryType === 'circle' ? createCircle(newCenter, prev.boundaryRadius, 64) : prev.geometry,
+        }));
+    };
+    
+    const handleCirclePointChange = (type: 'center', latlng: { lat: number, lng: number }) => {
+        const newCenter: [number, number] = [latlng.lat, latlng.lng];
+        setFormData(prev => ({
+            ...prev,
+            lat: String(newCenter[0]),
+            lon: String(newCenter[1]),
+            geometry: createCircle(newCenter, prev.boundaryRadius, 64),
+        }));
+    };
+
+    const handleCircleRadiusChange = (newRadius: number) => {
+        setFormData(prev => ({
+            ...prev,
+            boundaryRadius: newRadius,
+            geometry: createCircle([parseFloat(prev.lat), parseFloat(prev.lon)], newRadius, 64),
+        }));
+    };
+
+    const handleTypeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const newType = e.target.value as 'polygon' | 'circle';
+        setFormData(prev => {
+            const newLat = parseFloat(prev.lat) || portToEdit?.lat || 0;
+            const newLon = parseFloat(prev.lon) || portToEdit?.lon || 0;
+            const newGeom = newType === 'circle'
+                ? createCircle([newLat, newLon], prev.boundaryRadius, 64)
+                : [];
+            return {
+                ...prev,
+                boundaryType: newType,
+                geometry: newGeom,
+            };
+        });
     };
 
     const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -69,72 +118,44 @@ const PortFormModal: React.FC = () => {
         setErrors(newErrors);
 
         if (Object.keys(newErrors).length === 0) {
-            const portData = {
+            const portData: Partial<Port> = {
                 name: formData.name.trim(), lat: latNum, lon: lonNum,
                 geometry: formData.geometry, logoImage: formData.logoImage,
+                boundaryType: formData.boundaryType,
+                boundaryRadius: formData.boundaryType === 'circle' ? formData.boundaryRadius : undefined,
             };
             
             if (portToEdit) {
                 await actions.updatePort(portToEdit.id, { ...portToEdit, ...portData });
             } else {
-                await actions.addPort(portData);
+                await actions.addPort(portData as Omit<Port, 'id'>);
             }
         }
     };
 
-    const currentPortForEditor = {
+    const currentPortForEditor: Port = {
         id: portToEdit?.id || 'new-port',
         name: formData.name,
         lat: parseFloat(formData.lat) || 0,
         lon: parseFloat(formData.lon) || 0,
     };
+    
+    const portCenter = useMemo((): [number, number] | undefined => {
+        const lat = parseFloat(formData.lat);
+        const lon = parseFloat(formData.lon);
+        return !isNaN(lat) && !isNaN(lon) ? [lat, lon] : undefined;
+    }, [formData.lat, formData.lon]);
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
             <div className="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-2xl border border-gray-700 max-h-full overflow-y-auto">
                 <h2 className="text-2xl font-bold mb-4 text-white">{portToEdit ? 'Edit Port' : 'Add New Port'}</h2>
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    <div>
-                        <label htmlFor="name" className="block text-sm font-medium text-gray-300">Port Name</label>
-                        <input
-                            type="text"
-                            id="name"
-                            name="name"
-                            value={formData.name}
-                            onChange={handleChange}
-                            className={`mt-1 block w-full px-3 py-2 bg-gray-700 text-white border rounded-md focus:outline-none focus:ring-2 ${errors.name ? 'border-red-500 focus:ring-red-500' : 'border-gray-600 focus:ring-cyan-500'}`}
-                        />
-                        {errors.name && <p className="text-red-500 text-xs mt-1">{errors.name}</p>}
-                    </div>
+                    <InputField label="Port Name" name="name" value={formData.name} onChange={handleChange} error={errors.name} />
+                    
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label htmlFor="lat" className="block text-sm font-medium text-gray-300">Center Latitude</label>
-                            <input
-                                type="number"
-                                id="lat"
-                                name="lat"
-                                value={formData.lat}
-                                onChange={handleChange}
-                                step="any"
-                                placeholder="e.g. 1.2647"
-                                className={`mt-1 block w-full px-3 py-2 bg-gray-700 text-white border rounded-md focus:outline-none focus:ring-2 ${errors.lat ? 'border-red-500 focus:ring-red-500' : 'border-gray-600 focus:ring-cyan-500'}`}
-                            />
-                            {errors.lat && <p className="text-red-500 text-xs mt-1">{errors.lat}</p>}
-                        </div>
-                        <div>
-                            <label htmlFor="lon" className="block text-sm font-medium text-gray-300">Center Longitude</label>
-                            <input
-                                type="number"
-                                id="lon"
-                                name="lon"
-                                value={formData.lon}
-                                onChange={handleChange}
-                                step="any"
-                                placeholder="e.g. 103.8225"
-                                className={`mt-1 block w-full px-3 py-2 bg-gray-700 text-white border rounded-md focus:outline-none focus:ring-2 ${errors.lon ? 'border-red-500 focus:ring-red-500' : 'border-gray-600 focus:ring-cyan-500'}`}
-                            />
-                            {errors.lon && <p className="text-red-500 text-xs mt-1">{errors.lon}</p>}
-                        </div>
+                        <InputField label="Center Latitude" name="lat" type="number" step="any" value={formData.lat} onChange={handleChange} error={errors.lat} placeholder="e.g. 1.2647" readOnly={formData.boundaryType === 'circle'} />
+                        <InputField label="Center Longitude" name="lon" type="number" step="any" value={formData.lon} onChange={handleChange} error={errors.lon} placeholder="e.g. 103.8225" readOnly={formData.boundaryType === 'circle'}/>
                     </div>
                      <div>
                         <label className="block text-sm font-medium text-gray-300">Port Logo</label>
@@ -165,14 +186,40 @@ const PortFormModal: React.FC = () => {
                         </div>
                     </div>
                      <div>
-                        <label className="block text-sm font-medium text-gray-300">Port Boundary Geometry</label>
-                        <p className="text-xs text-gray-400 mb-2">Click 'Start Drawing' to add points to the map. Drag corners to adjust. The map is centered on the port's coordinates.</p>
-                        <div className="h-64 w-full bg-gray-900 rounded-md border border-gray-600">
-                            <GeometryEditor 
-                                port={currentPortForEditor}
-                                geometry={formData.geometry}
-                                onChange={handleGeometryChange}
-                            />
+                        <div className="flex justify-between items-center">
+                            <label className="block text-sm font-medium text-gray-300">Port Boundary</label>
+                            <button type="button" onClick={() => handleGeometryChange([])} className="text-xs font-medium text-red-400 hover:text-red-300 transition-colors">Clear Boundary</button>
+                        </div>
+                        <div className="mt-2 flex items-center space-x-6">
+                            <label className="flex items-center text-sm text-gray-200 cursor-pointer"><input type="radio" name="boundaryType" value="polygon" checked={formData.boundaryType === 'polygon'} onChange={handleTypeChange} className="w-4 h-4 text-cyan-600 bg-gray-700 border-gray-600 focus:ring-cyan-500" /><span className="ml-2">Polygon</span></label>
+                            <label className="flex items-center text-sm text-gray-200 cursor-pointer"><input type="radio" name="boundaryType" value="circle" checked={formData.boundaryType === 'circle'} onChange={handleTypeChange} className="w-4 h-4 text-cyan-600 bg-gray-700 border-gray-600 focus:ring-cyan-500" /><span className="ml-2">Circle</span></label>
+                        </div>
+                        
+                        <p className="text-xs text-gray-400 mt-2">Drag the blue teardrop marker to set the port's center coordinates.</p>
+                        {formData.boundaryType === 'polygon' && <p className="text-xs text-gray-400 mt-1">Click map to add points. Right-click a point to delete it. Drag points or mid-points to adjust.</p>}
+                        {formData.boundaryType === 'circle' && <p className="text-xs text-gray-400 mt-1">Drag the yellow handle to adjust the radius. Drag the blue handle to move the center.</p>}
+                        
+                        <div className="h-64 w-full bg-gray-900 rounded-md border border-gray-600 mt-2">
+                             {formData.boundaryType === 'polygon' ? (
+                                <GeometryEditor 
+                                    port={currentPortForEditor}
+                                    geometry={formData.geometry}
+                                    onChange={handleGeometryChange}
+                                    portCenter={portCenter}
+                                    onPortCenterChange={handlePortCenterChange}
+                                />
+                            ) : (
+                                <GeometryEditor
+                                    port={currentPortForEditor}
+                                    geometry={formData.geometry} // for preview
+                                    centerPoint={[parseFloat(formData.lat) || currentPortForEditor.lat, parseFloat(formData.lon) || currentPortForEditor.lon]}
+                                    radius={formData.boundaryRadius}
+                                    onPointChange={handleCirclePointChange as any} 
+                                    onRadiusChange={handleCircleRadiusChange}
+                                    portCenter={portCenter}
+                                    onPortCenterChange={handlePortCenterChange}
+                                />
+                            )}
                         </div>
                     </div>
                     <div className="flex justify-end gap-4 pt-4">
@@ -184,5 +231,16 @@ const PortFormModal: React.FC = () => {
         </div>
     );
 };
+
+const InputField: React.FC<{ label: string; name: string; type?: string; value: any; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; error?: string; step?: string; readOnly?: boolean; placeholder?: string; }> = 
+    ({ label, name, type = 'text', value, onChange, error, step, readOnly, placeholder }) => (
+    <div>
+        <label htmlFor={name} className="block text-sm font-medium text-gray-300">{label}</label>
+        <input
+            type={type} id={name} name={name} value={value} onChange={onChange} step={step} readOnly={readOnly} placeholder={placeholder}
+            className={`mt-1 block w-full px-3 py-2 bg-gray-700 text-white border rounded-md focus:outline-none focus:ring-2 ${readOnly ? 'bg-gray-600 cursor-not-allowed' : ''} ${error ? 'border-red-500 focus:ring-red-500' : 'border-gray-600 focus:ring-cyan-500'}`} />
+        {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+    </div>
+);
 
 export default PortFormModal;

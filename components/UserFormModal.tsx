@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { usePort } from '../context/PortContext';
 
 const UserFormModal: React.FC = () => {
-    const { addUser, updateUser } = useAuth();
+    const { currentUser, addUser, updateUser } = useAuth();
     const { state, actions } = usePort();
     const { ports, modal } = state;
     const { closeModal } = actions;
@@ -20,6 +20,17 @@ const UserFormModal: React.FC = () => {
     const [errors, setErrors] = useState<{ [key: string]: string }>({});
     
     const isPortRequired = ![UserRole.ADMIN].includes(formData.role);
+    
+    const availableRoles = useMemo(() => {
+        if (!currentUser) return [];
+        if (currentUser.role === UserRole.ADMIN) {
+            return Object.values(UserRole);
+        }
+        if (currentUser.role === UserRole.SUPERVISOR) {
+            return [UserRole.OPERATOR, UserRole.AGENT, UserRole.PILOT];
+        }
+        return [];
+    }, [currentUser]);
 
     useEffect(() => {
         if (userToEdit) {
@@ -30,9 +41,9 @@ const UserFormModal: React.FC = () => {
                 password: '', // Password is not fetched, so it's blank for editing
             });
         } else {
-            setFormData({ name: '', role: UserRole.OPERATOR, portId: ports[0]?.id || undefined, password: '' });
+            setFormData({ name: '', role: availableRoles[0] || UserRole.OPERATOR, portId: ports[0]?.id || undefined, password: '' });
         }
-    }, [userToEdit, ports]);
+    }, [userToEdit, ports, availableRoles]);
     
     const validate = (): boolean => {
         const newErrors: { [key: string]: string } = {};
@@ -101,7 +112,7 @@ const UserFormModal: React.FC = () => {
                      <div>
                         <label htmlFor="role" className="block text-sm font-medium text-gray-300">Role</label>
                         <select id="role" name="role" value={formData.role} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-gray-700 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500">
-                            {Object.values(UserRole).map(r => <option key={r} value={r}>{r}</option>)}
+                            {availableRoles.map(r => <option key={r} value={r}>{r}</option>)}
                         </select>
                     </div>
                      {isPortRequired && (

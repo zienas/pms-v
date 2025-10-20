@@ -65,9 +65,9 @@ const SidebarNav: React.FC<SidebarNavProps> = ({ activeView, setActiveView, aler
     ], [alertCount]);
     
     const settingsItems: NavItemConfig[] = useMemo(() => [
-        { view: 'settings', label: 'Settings', icon: SettingsIcon, requiresRoles: [UserRole.ADMIN, UserRole.OPERATOR, UserRole.CAPTAIN] },
+        { view: 'settings', label: 'Settings', icon: SettingsIcon, requiresRoles: [UserRole.ADMIN, UserRole.SUPERVISOR, UserRole.OPERATOR] },
         { view: 'management', label: 'Manage Ports', icon: CogIcon, requiresAdmin: true },
-        { view: 'users', label: 'Manage Users', icon: UsersIcon, requiresAdmin: true },
+        { view: 'users', label: 'Manage Users', icon: UsersIcon, requiresRoles: [UserRole.ADMIN, UserRole.SUPERVISOR] },
     ], []);
 
     const handleViewChange = (view: View) => {
