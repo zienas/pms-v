@@ -87,7 +87,8 @@ const EditorMapController: React.FC<EditorMapControllerProps> = (props) => {
 
 
     useMapEvents({
-        click(e) {
+        // FIX: Specify LeafletMouseEvent type for the event object to access latlng property.
+        click(e: L.LeafletMouseEvent) {
             if (isDraggingRef.current) {
                 return;
             }
@@ -139,7 +140,8 @@ const EditorMapController: React.FC<EditorMapControllerProps> = (props) => {
                     draggable={true}
                     eventHandlers={{
                         dragstart: () => { isDraggingRef.current = true; },
-                        drag: (e) => { onPortCenterChange(e.target.getLatLng()); },
+                        // FIX: The `L.DragEvent` type is reported as not exported. Replaced with `L.LeafletEvent` and using `(e.target as L.Marker).getLatLng()` to get coordinates during drag.
+                        drag: (e: L.LeafletEvent) => { if (onPortCenterChange) onPortCenterChange((e.target as L.Marker).getLatLng()); },
                         dragend: () => { setTimeout(() => { isDraggingRef.current = false; }, 10); }
                     }}
                 />
@@ -156,15 +158,17 @@ const EditorMapController: React.FC<EditorMapControllerProps> = (props) => {
                         dragstart: () => {
                             isDraggingRef.current = true;
                         },
-                        drag(e) {
+                        // FIX: The `L.DragEvent` type is reported as not exported. Replaced with `L.LeafletEvent` and using `(e.target as L.Marker).getLatLng()` to get coordinates during drag.
+                        drag(e: L.LeafletEvent) {
                             const newGeometry = [...geometry];
-                            newGeometry[index] = [e.latlng.lat, e.latlng.lng];
+                            const latlng = (e.target as L.Marker).getLatLng();
+                            newGeometry[index] = [latlng.lat, latlng.lng];
                             onChange(newGeometry);
                         },
                         dragend: () => {
                             setTimeout(() => { isDraggingRef.current = false; }, 10);
                         },
-                        contextmenu(e) { // Right click to delete a point
+                        contextmenu(e: L.LeafletMouseEvent) { // Right click to delete a point
                             L.DomEvent.stopPropagation(e);
                             const newGeometry = geometry.filter((_, i) => i !== index);
                             onChange(newGeometry);
@@ -189,10 +193,12 @@ const EditorMapController: React.FC<EditorMapControllerProps> = (props) => {
                             newGeometry.splice(mid.insertIndex, 0, newPoint);
                             onChange(newGeometry);
                         },
-                        drag: (e) => {
-                            if (activeMidpointRef.current !== null && geometry) {
+                        // FIX: The `L.DragEvent` type is reported as not exported. Replaced with `L.LeafletEvent` and using `(e.target as L.Marker).getLatLng()` to get coordinates during drag.
+                        drag: (e: L.LeafletEvent) => {
+                            if (activeMidpointRef.current !== null && geometry && onChange) {
                                 const newGeometry = [...geometry];
-                                newGeometry[activeMidpointRef.current] = [e.latlng.lat, e.latlng.lng];
+                                const latlng = (e.target as L.Marker).getLatLng();
+                                newGeometry[activeMidpointRef.current] = [latlng.lat, latlng.lng];
                                 onChange(newGeometry);
                             }
                         },
@@ -207,14 +213,14 @@ const EditorMapController: React.FC<EditorMapControllerProps> = (props) => {
             {/* Draggable markers for berth/quay points */}
             {startPoint && onPointChange && <Marker position={startPoint} icon={startIcon} draggable={true} eventHandlers={{ 
                 dragstart: () => { isDraggingRef.current = true; },
-                dragend: (e) => { 
+                dragend: (e: L.DragEndEvent) => { 
                     onPointChange('start', e.target.getLatLng());
                     setTimeout(() => { isDraggingRef.current = false; }, 10);
                 } 
             }} />}
             {endPoint && onPointChange && <Marker position={endPoint} icon={endIcon} draggable={true} eventHandlers={{
                 dragstart: () => { isDraggingRef.current = true; },
-                dragend: (e) => { 
+                dragend: (e: L.DragEndEvent) => { 
                     onPointChange('end', e.target.getLatLng());
                     setTimeout(() => { isDraggingRef.current = false; }, 10);
                 } 
@@ -223,7 +229,7 @@ const EditorMapController: React.FC<EditorMapControllerProps> = (props) => {
             {/* Draggable markers for anchorage */}
             {centerPoint && onPointChange && <Marker position={centerPoint} icon={centerIcon} draggable={true} eventHandlers={{
                 dragstart: () => { isDraggingRef.current = true; },
-                dragend: (e) => { 
+                dragend: (e: L.DragEndEvent) => { 
                     onPointChange('center', e.target.getLatLng());
                     setTimeout(() => { isDraggingRef.current = false; }, 10);
                 }
@@ -235,9 +241,11 @@ const EditorMapController: React.FC<EditorMapControllerProps> = (props) => {
                     draggable={true} 
                     eventHandlers={{ 
                         dragstart: () => { isDraggingRef.current = true; },
-                        drag: (e) => {
+                        // FIX: The `L.DragEvent` type is reported as not exported. Replaced with `L.LeafletEvent` and using `(e.target as L.Marker).getLatLng()` to get coordinates during drag.
+                        drag: (e: L.LeafletEvent) => {
                             if (centerPoint) {
-                                const newRadius = calculateDistanceMeters(centerPoint[0], centerPoint[1], e.target.getLatLng().lat, e.target.getLatLng().lng);
+                                const latlng = (e.target as L.Marker).getLatLng();
+                                const newRadius = calculateDistanceMeters(centerPoint[0], centerPoint[1], latlng.lat, latlng.lng);
                                 onRadiusChange(newRadius);
                             }
                         },

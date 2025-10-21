@@ -1,7 +1,7 @@
 import React from 'react';
 import type { Ship, Berth } from '../types';
 import { ShipStatus } from '../types';
-import AnchorIcon from './icons/AnchorIcon';
+import BerthIcon from './icons/BerthIcon';
 import ShipIcon from './icons/ShipIcon';
 import ChartBarIcon from './icons/ChartBarIcon';
 
@@ -27,6 +27,7 @@ const StatCard: React.FC<{ icon: React.ElementType; title: string; value?: strin
 
 const DashboardStats: React.FC<DashboardStatsProps> = ({ ships, berths }) => {
   const activeShips = ships.filter(s => s.status !== ShipStatus.LEFT_PORT);
+  // FIX: Corrected property access from `s.berths` to `s.berthIds` to align with the Ship interface.
   const occupiedBerthIds = new Set(activeShips.flatMap(s => s.berthIds));
   
   const berthOccupancy = berths.length > 0 ? (occupiedBerthIds.size / berths.length) * 100 : 0;
@@ -38,7 +39,7 @@ const DashboardStats: React.FC<DashboardStatsProps> = ({ ships, berths }) => {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-      <StatCard icon={AnchorIcon} title="Berth Occupancy" value={`${berthOccupancy.toFixed(1)}%`}>
+      <StatCard icon={BerthIcon} title="Berth Occupancy" value={`${berthOccupancy.toFixed(1)}%`}>
         <div className="w-full bg-gray-700 rounded-full h-3">
           <div 
             className="bg-gradient-to-r from-cyan-500 to-blue-500 h-3 rounded-full transition-all duration-500 ease-out" 

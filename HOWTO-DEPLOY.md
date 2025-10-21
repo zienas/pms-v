@@ -178,8 +178,6 @@ We need to tell Nginx where to find our files and how to handle requests.
 
 The application needs a database. The modern, standard way to run services like a database is with Docker, which isolates the database into a secure, manageable container.
 
-> **Note on the Simulated API**: The current application uses a file (`services/api.ts`) to **simulate** a backend. The following steps set up a real PostgreSQL database, but you would need to build a real backend application (e.g., with Node.js, Python, etc.) to connect the deployed frontend to this database.
-
 ### Step 1: Install Docker and Docker Compose
 
 1.  **Install Docker Engine:**
@@ -214,12 +212,12 @@ docker-compose --version
 
 ### Step 2: Define the Database Service with Docker Compose
 
-We will use a `docker-compose.yml` file to define our database service.
+We will use a `docker-compose.yml` file to define our database service. This file will live inside a unified backend directory that will later also contain the API source code.
 
-1.  **Create a directory for your backend configuration:**
+1.  **Create a directory for all backend components:**
     ```bash
-    mkdir ~/port-backend
-    cd ~/port-backend
+    mkdir ~/pms-backend
+    cd ~/pms-backend
     ```
 
 2.  **Create the `docker-compose.yml` file:**
@@ -259,7 +257,7 @@ We will use a `docker-compose.yml` file to define our database service.
 ### Step 3: Launch the Database Container
 
 ```bash
-# Run this from the ~/port-backend directory.
+# Run this from the ~/pms-backend directory.
 # The '-d' flag runs the container in detached mode (in the background).
 docker-compose up -d
 ```
@@ -300,10 +298,10 @@ Copy the **entire SQL script** below and paste it into the `psql` prompt. This w
 CREATE EXTENSION IF NOT EXISTS postgis;
 
 -- Create custom ENUM types to ensure data consistency, matching the application's TypeScript types.
-CREATE TYPE user_role AS ENUM ('Admin', 'Port Operator', 'Captain', 'Maritime Agent', 'Pilot');
+CREATE TYPE user_role AS ENUM ('Administrator', 'Supervisor', 'Port Operator', 'Maritime Agent', 'Pilot');
 CREATE TYPE berth_type AS ENUM ('Quay', 'Berth', 'Anchorage');
-CREATE TYPE ship_status AS ENUM ('Approaching', 'Docked', 'Departing', 'At Anchorage', 'Left Port');
-CREATE TYPE movement_event_type AS ENUM ('Vessel Registered', 'Status Updated', 'Berth Assignment', 'Pilot Assignment', 'AIS Update', 'Agent Assignment');
+CREATE TYPE ship_status AS ENUM ('Approaching', 'Anchored', 'Docked', 'Departing', 'Left Port');
+CREATE TYPE movement_event_type AS ENUM ('Vessel Registered', 'AIS Update', 'Status Change', 'Berth Assignment', 'Pilot Assignment', 'Agent Assignment');
 CREATE TYPE trip_status AS ENUM ('Active', 'Completed');
 
 -- Table for Ports
@@ -420,6 +418,16 @@ CREATE TABLE login_history (
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (port_id) REFERENCES ports(id) ON DELETE CASCADE
 );
+
+-- Table for connect-pg-simple session store
+CREATE TABLE "user_sessions" (
+  "sid" varchar NOT NULL COLLATE "default",
+  "sess" json NOT NULL,
+  "expire" timestamp(6) NOT NULL
+)
+WITH (OIDS=FALSE);
+ALTER TABLE "user_sessions" ADD CONSTRAINT "user_sessions_pkey" PRIMARY KEY ("sid") NOT DEFERRABLE INITIALLY IMMEDIATE;
+
 ```
 Press `Enter` after pasting to execute the script. You should see a series of `CREATE TYPE` and `CREATE TABLE` messages.
 

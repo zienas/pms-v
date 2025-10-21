@@ -1,5 +1,5 @@
 import { Ship, Port, ShipStatus, AisData } from '../types';
-import { calculateDistanceNM } from '../utils/geolocation';
+import { calculateDistanceNM, calculateBearing, toDeg } from '../utils/geolocation';
 
 const MOVEMENT_SPEED_DEGREES = 0.005; // Approx speed in lat/lon degrees
 
@@ -13,6 +13,10 @@ export const runAisUpdateStep = (ports: Port[], allShips: Ship[], pilotThreshold
 
     if (shouldCreateNewShip) {
         const port = ports[Math.floor(Math.random() * ports.length)];
+        const newShipLat = port.lat + (Math.random() > 0.5 ? 1 : -1) * (0.1 + Math.random() * 0.1);
+        const newShipLon = port.lon + (Math.random() > 0.5 ? 1 : -1) * (0.1 + Math.random() * 0.1);
+        const bearingToPort = calculateBearing(newShipLat, newShipLon, port.lat, port.lon);
+
         const newShip: Omit<Ship, 'id'> = {
             portId: port.id,
             name: `Newcomer ${Math.floor(Math.random() * 1000)}`,
@@ -26,12 +30,12 @@ export const runAisUpdateStep = (ports: Port[], allShips: Ship[], pilotThreshold
             status: ShipStatus.APPROACHING,
             berthIds: [],
             hasDangerousGoods: Math.random() < 0.1,
-            // Spawn outside the port
-            lat: port.lat + (Math.random() > 0.5 ? 1 : -1) * (0.1 + Math.random() * 0.1),
-            lon: port.lon + (Math.random() > 0.5 ? 1 : -1) * (0.1 + Math.random() * 0.1),
+            lat: newShipLat,
+            lon: newShipLon,
+            heading: (toDeg(bearingToPort) + 360) % 360,
         };
         // The context will call api.updateShipFromAIS which handles creation
-        return { updatedShip: { ...newShip, id: 'temp-id' } };
+        return { updatedShip: { ...newShip, id: 'temp-id' } as Ship };
     }
 
     // If we didn't create a new ship, update an existing one.
@@ -49,6 +53,9 @@ export const runAisUpdateStep = (ports: Port[], allShips: Ship[], pilotThreshold
                     const angle = Math.atan2(port.lat - shipToUpdate.lat, port.lon - shipToUpdate.lon);
                     shipToUpdate.lat += MOVEMENT_SPEED_DEGREES * Math.sin(angle);
                     shipToUpdate.lon += MOVEMENT_SPEED_DEGREES * Math.cos(angle);
+                    
+                    const bearingRad = calculateBearing(shipToUpdate.lat, shipToUpdate.lon, port.lat, port.lon);
+                    shipToUpdate.heading = (toDeg(bearingRad) + 360) % 360;
                 }
                 // When within pilot threshold, it has a chance to move to anchorage. It doesn't auto-dock.
                 if (distanceToPort < pilotThreshold) {
@@ -84,6 +91,10 @@ export const runAisUpdateStep = (ports: Port[], allShips: Ship[], pilotThreshold
                 const angle = Math.atan2(port.lat - shipToUpdate.lat, port.lon - shipToUpdate.lon);
                 shipToUpdate.lat -= MOVEMENT_SPEED_DEGREES * Math.sin(angle);
                 shipToUpdate.lon -= MOVEMENT_SPEED_DEGREES * Math.cos(angle);
+
+                const bearingRad = calculateBearing(port.lat, port.lon, shipToUpdate.lat, shipToUpdate.lon);
+                shipToUpdate.heading = (toDeg(bearingRad) + 360) % 360;
+
                 if (distanceToPort > 10) {
                     shipToUpdate.status = ShipStatus.LEFT_PORT;
                 }

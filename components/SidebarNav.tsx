@@ -4,7 +4,7 @@ import { UserRole } from '../types';
 import { useAuth } from '../context/AuthContext';
 import DashboardIcon from './icons/DashboardIcon';
 import ShipIcon from './icons/ShipIcon';
-import AnchorIcon from './icons/AnchorIcon';
+import BerthIcon from './icons/BerthIcon';
 import WarningIcon from './icons/WarningIcon';
 import SettingsIcon from './icons/SettingsIcon';
 import CogIcon from './icons/CogIcon';
@@ -57,7 +57,7 @@ const SidebarNav: React.FC<SidebarNavProps> = ({ activeView, setActiveView, aler
     const navItems: NavItemConfig[] = useMemo(() => [
         { view: 'dashboard', label: 'Dashboard', icon: DashboardIcon },
         { view: 'vessels', label: 'Vessels', icon: ShipIcon },
-        { view: 'berths', label: 'Berths', icon: AnchorIcon },
+        { view: 'berths', label: 'Berths', icon: BerthIcon },
         { view: 'alerts', label: 'Alerts', icon: WarningIcon, count: alertCount },
         { view: 'trips', label: 'Trips', icon: RouteIcon },
         { view: 'vessel-analytics', label: 'Vessel Analytics', icon: ChartBarIcon },

@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import type { Berth, Ship } from '../types';
 import { ShipStatus } from '../types';
-import AnchorIcon from './icons/AnchorIcon';
+import BerthIcon from './icons/BerthIcon';
 import CloseIcon from './icons/CloseIcon';
 import ShipIcon from './icons/ShipIcon';
 import { usePort } from '../context/PortContext';
@@ -49,7 +49,7 @@ const BerthDetailModal: React.FC<BerthDetailModalProps> = ({ berth }) => {
                     {/* Berth Information */}
                     <div className="p-4 bg-gray-900/50 rounded-lg border border-gray-700">
                         <h3 className="text-lg font-semibold mb-3 text-gray-200 flex items-center gap-2">
-                           <AnchorIcon className="w-5 h-5 text-gray-400" />
+                           <BerthIcon className="w-5 h-5 text-gray-400" />
                            Berth Specifications
                         </h3>
                         <div className="grid grid-cols-2 gap-4">

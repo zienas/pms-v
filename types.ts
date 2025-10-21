@@ -87,6 +87,7 @@ export interface Ship {
   hasDangerousGoods: boolean;
   lat?: number;
   lon?: number;
+  heading?: number; // Vessel's true heading in degrees (0-359)
   currentTripId?: string;
 }
 
@@ -153,6 +154,7 @@ export interface AisData {
   status?: ShipStatus;
   lat?: number;
   lon?: number;
+  heading?: number;
 }
 
 export interface Alert {

@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import EditIcon from '../components/icons/EditIcon';
 import DeleteIcon from '../components/icons/DeleteIcon';
 import { usePort } from '../context/PortContext';
-import AnchorIcon from '../components/icons/AnchorIcon';
+import BerthIcon from '../components/icons/BerthIcon';
 import ChartBarIcon from '../components/icons/ChartBarIcon';
 import FireIcon from '../components/icons/FlameIcon';
 
@@ -133,9 +133,9 @@ const BerthDirectory: React.FC = () => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
-        <StatCard icon={AnchorIcon} title="Total Berths" value={stats.totalBerths} />
-        <StatCard icon={AnchorIcon} title="Occupied" value={stats.occupiedCount} />
-        <StatCard icon={AnchorIcon} title="Available" value={stats.availableCount} />
+        <StatCard icon={BerthIcon} title="Total Berths" value={stats.totalBerths} />
+        <StatCard icon={BerthIcon} title="Occupied" value={stats.occupiedCount} />
+        <StatCard icon={BerthIcon} title="Available" value={stats.availableCount} />
         <div className="bg-gray-800 p-4 rounded-lg">
             <div className="flex items-center">
                 <div className="p-3 bg-cyan-500/10 rounded-full mr-4"><ChartBarIcon className="w-6 h-6 text-cyan-400" /></div>
