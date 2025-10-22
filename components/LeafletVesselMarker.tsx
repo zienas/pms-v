@@ -13,13 +13,17 @@ import CargoShipIcon from './icons/CargoShipIcon';
 import { calculateBearing, toDeg } from '../utils/geolocation';
 
 // FIX: Augment Leaflet's MarkerOptions to include properties from the leaflet-rotatedmarker plugin,
-// which are passed down by React-Leaflet's Marker component.
-declare module 'leaflet' {
-  interface MarkerOptions {
-      rotationAngle?: number;
-      rotationOrigin?: string;
-  }
+// which are passed down by React-Leaflet's Marker component. By augmenting the L namespace directly,
+// we avoid module resolution issues that can occur with `declare module 'leaflet'`.
+declare global {
+    namespace L {
+        interface MarkerOptions {
+            rotationAngle?: number;
+            rotationOrigin?: string;
+        }
+    }
 }
+
 
 interface LeafletVesselMarkerProps {
     ship: Ship;

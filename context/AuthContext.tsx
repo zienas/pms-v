@@ -68,7 +68,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await api.logoutUser(currentUser.id);
     }
     if (reason) {
-        // FIX: Replaced `toast.info` with a standard `toast` call as `info` is not a standard method in react-hot-toast.
         toast(reason, { duration: 6000 });
     }
     setCurrentUser(null);

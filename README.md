@@ -113,8 +113,8 @@ The application is architected to be robust and scalable, separating concerns be
 
 **`React Frontend (Client)`** <--> **`Backend API (e.g., Node.js/Python)`** <--> **`PostgreSQL Database with PostGIS`**
 
--   **Frontend**: Responsible for rendering the user interface and managing user interactions. It does not contain any business logic or direct data.
--   **API Layer (`services/api.ts`)**: All communication between the frontend and the backend is handled through a dedicated API service layer. In the current version, this service simulates a backend to allow the frontend to be developed independently.
+-   **Frontend**: Responsible for rendering the user interface and managing user interactions.
+-   **API Simulation Layer (`services/api.ts`)**: For demonstration purposes, the application does not require a live backend. Instead, it simulates a full backend API using the browser's `localStorage`. This file contains an in-memory database that is seeded with sample data on first load. All "API calls" from the application read from and write to this `localStorage` object, providing a fully interactive experience without any network dependency. To switch to a real backend, this file would be replaced with one that makes `fetch` requests to a live server.
 -   **Backend API (Conceptual)**: A server-side application would handle the core business logic: validating data, managing user sessions, querying the database, and pushing real-time updates (e.g., via WebSockets).
 -   **Database (PostgreSQL with PostGIS)**: The single source of truth for all data. PostgreSQL provides reliability, and the PostGIS extension allows for powerful geospatial queries, essential for a port management system.
 

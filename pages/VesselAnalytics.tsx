@@ -11,6 +11,7 @@ import ChartBarIcon from '../components/icons/ChartBarIcon';
 import DownloadIcon from '../components/icons/DownloadIcon';
 import { usePort } from '../context/PortContext';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { toast } from 'react-hot-toast';
 
 interface VesselStat {
     shipId: string; shipName: string; shipImo: string; attendanceCount: number;
@@ -31,74 +32,134 @@ const KPICard: React.FC<{ icon: React.ElementType; title: string; value: string 
 
 const VesselAnalytics: React.FC = () => {
     const { state } = usePort();
-    const { ships, berths, selectedPort } = state;
+    const { ships, berths, selectedPort, isLoading: isPortLoading } = state;
     const [stats, setStats] = useState<VesselStat[]>([]);
     const [portStats, setPortStats] = useState({ uniqueVessels: 0, totalVisits: 0, portWideAvgStay: 0, portWideAvgDockStay: 0, portWideAvgAnchorageStay: 0 });
-    const [isLoading, setIsLoading] = useState(true);
-
-    const shipMap = useMemo(() => new Map(ships.map(s => [s.id, s])), [ships]);
-    const berthMap = useMemo(() => new Map(berths.map(b => [b.id, b])), [berths]);
+    const [isCalculating, setIsCalculating] = useState(true);
 
     useEffect(() => {
-        if (!selectedPort) return;
-        setIsLoading(true);
+        setIsCalculating(true);
+        
+        if (isPortLoading || !selectedPort) {
+            setStats([]);
+            setPortStats({ uniqueVessels: 0, totalVisits: 0, portWideAvgStay: 0, portWideAvgDockStay: 0, portWideAvgAnchorageStay: 0 });
+            return;
+        }
+
+        let isMounted = true;
+        
         api.getHistoryForPort(selectedPort.id).then(history => {
-            const historyByShip: { [shipId: string]: ShipMovement[] } = {};
-            for (const mov of history) {
-                if (!historyByShip[mov.shipId]) historyByShip[mov.shipId] = [];
-                historyByShip[mov.shipId].push(mov);
+            if (!isMounted) return;
+
+            const shipMap = new Map(ships.map(s => [s.id, s]));
+            const berthMap = new Map(berths.map(b => [b.id, b]));
+
+            // 1. Filter for data before today ("day-1")
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const historicalMovements = history.filter(mov => new Date(mov.timestamp).getTime() < today.getTime());
+
+            // 2. Group all movements by trip ID
+            const trips: { [tripId: string]: ShipMovement[] } = {};
+            for (const mov of historicalMovements) {
+                if (!mov.tripId) continue;
+                if (!trips[mov.tripId]) trips[mov.tripId] = [];
+                trips[mov.tripId].push(mov);
+            }
+
+            const statsByShip: { [shipId: string]: { durations: number[], dockMs: number, anchorageMs: number } } = {};
+
+            // 3. Process each trip
+            for (const tripId in trips) {
+                const tripMovements = trips[tripId].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
+                // 4. A trip is only complete for analytics if it has a "Left Port" event.
+                const hasLeftPortEvent = tripMovements.some(m => m.details.status === ShipStatus.LEFT_PORT);
+                if (!hasLeftPortEvent || tripMovements.length < 2) {
+                    continue; // Skip active or incomplete trips
+                }
+
+                const shipId = tripMovements[0].shipId;
+                if (!shipId || !shipMap.has(shipId)) continue; 
+
+                if (!statsByShip[shipId]) {
+                    statsByShip[shipId] = { durations: [], dockMs: 0, anchorageMs: 0 };
+                }
+
+                // 5. Calculate total trip duration
+                const tripStart = new Date(tripMovements[0].timestamp).getTime();
+                const tripEnd = new Date(tripMovements[tripMovements.length - 1].timestamp).getTime();
+                statsByShip[shipId].durations.push(tripEnd - tripStart);
+
+                // 6. Calculate dwell and anchorage time for this trip
+                for (let i = 0; i < tripMovements.length - 1; i++) {
+                    const currentMov = tripMovements[i];
+                    const nextMov = tripMovements[i + 1];
+                    const durationInState = new Date(nextMov.timestamp).getTime() - new Date(currentMov.timestamp).getTime();
+                    
+                    const berthIds = currentMov.details.berthIds || [];
+                    const isAtDock = berthIds.some(id => {
+                        const berth = berthMap.get(id);
+                        return berth && (berth.type === BerthType.BERTH || berth.type === BerthType.QUAY);
+                    });
+                    const isAtAnchorage = berthIds.some(id => berthMap.get(id)?.type === BerthType.ANCHORAGE);
+
+                    if (isAtDock) {
+                        statsByShip[shipId].dockMs += durationInState;
+                    } else if (isAtAnchorage) {
+                        statsByShip[shipId].anchorageMs += durationInState;
+                    }
+                }
             }
             
-            const vesselStats: VesselStat[] = [];
-            let totalVisits = 0, totalStayMs = 0, totalDockStayMs = 0, totalAnchorageStayMs = 0;
-
-            for (const shipId in historyByShip) {
-                const movements = historyByShip[shipId].sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-                const visitDurations: number[] = [];
-                let shipTotalDockStay = 0, shipTotalAnchorageStay = 0;
-                
-                let visitStartIdx = 0;
-                while (visitStartIdx < movements.length) {
-                    const visitEndIdx = movements.findIndex((m, i) => i > visitStartIdx && (m.details.status === ShipStatus.LEFT_PORT || m.details.fromStatus !== m.details.status));
-                    if (visitEndIdx === -1) break;
-
-                    const visitMovements = movements.slice(visitStartIdx, visitEndIdx + 1);
-                    if (visitMovements.length < 2) { visitStartIdx = visitEndIdx + 1; continue; }
-                    
-                    visitDurations.push(new Date(visitMovements[visitMovements.length - 1].timestamp).getTime() - new Date(visitMovements[0].timestamp).getTime());
-                    
-                    for (let i = 0; i < visitMovements.length - 1; i++) {
-                        const duration = new Date(visitMovements[i+1].timestamp).getTime() - new Date(visitMovements[i].timestamp).getTime();
-                        const berthId = visitMovements[i].details.berthIds?.[0];
-                        const berth = berthId ? berthMap.get(berthId) : null;
-                        if (berth?.type === BerthType.ANCHORAGE) shipTotalAnchorageStay += duration;
-                        else if (berth) shipTotalDockStay += duration;
-                    }
-                    visitStartIdx = visitEndIdx + 1;
-                }
-
-                if (visitDurations.length > 0) {
-                    const totalDuration = visitDurations.reduce((a, b) => a + b, 0);
+            // 7. Consolidate stats
+            const finalStats: VesselStat[] = [];
+            for (const shipId in statsByShip) {
+                const shipData = statsByShip[shipId];
+                if (shipData.durations.length > 0) {
+                    const totalStay = shipData.durations.reduce((a, b) => a + b, 0);
                     const shipInfo = shipMap.get(shipId);
-                    vesselStats.push({
-                        shipId, shipName: shipInfo?.name || 'Unknown', shipImo: shipInfo?.imo || 'N/A',
-                        attendanceCount: visitDurations.length, totalStay: totalDuration, avgStay: totalDuration / visitDurations.length,
-                        minStay: Math.min(...visitDurations), maxStay: Math.max(...visitDurations),
-                        totalDockStay: shipTotalDockStay, totalAnchorageStay: shipTotalAnchorageStay,
+                    finalStats.push({
+                        shipId: shipId,
+                        shipName: shipInfo?.name || 'Unknown',
+                        shipImo: shipInfo?.imo || 'N/A',
+                        attendanceCount: shipData.durations.length,
+                        totalStay: totalStay,
+                        avgStay: totalStay / shipData.durations.length,
+                        minStay: Math.min(...shipData.durations),
+                        maxStay: Math.max(...shipData.durations),
+                        totalDockStay: shipData.dockMs,
+                        totalAnchorageStay: shipData.anchorageMs,
                     });
-                    totalVisits += visitDurations.length; totalStayMs += totalDuration;
-                    totalDockStayMs += shipTotalDockStay; totalAnchorageStayMs += shipTotalAnchorageStay;
                 }
             }
-            setStats(vesselStats);
+
+            // 8. Calculate port-wide stats and update state once
+            const totalVisits = finalStats.reduce((sum, stat) => sum + stat.attendanceCount, 0);
+            const totalStayMs = finalStats.reduce((sum, stat) => sum + stat.totalStay, 0);
+            const totalDockStayMs = finalStats.reduce((sum, stat) => sum + stat.totalDockStay, 0);
+            const totalAnchorageStayMs = finalStats.reduce((sum, stat) => sum + stat.totalAnchorageStay, 0);
+            
+            setStats(finalStats);
             setPortStats({
-                uniqueVessels: vesselStats.length, totalVisits,
+                uniqueVessels: finalStats.length,
+                totalVisits: totalVisits,
                 portWideAvgStay: totalVisits > 0 ? totalStayMs / totalVisits : 0,
                 portWideAvgDockStay: totalVisits > 0 ? totalDockStayMs / totalVisits : 0,
                 portWideAvgAnchorageStay: totalVisits > 0 ? totalAnchorageStayMs / totalVisits : 0,
             });
-        }).finally(() => setIsLoading(false));
-    }, [selectedPort, shipMap, berthMap]);
+
+        }).catch(err => {
+            console.error("Failed to calculate vessel analytics:", err);
+            toast.error("Could not load analytics data.");
+        }).finally(() => {
+            if (isMounted) {
+                setIsCalculating(false);
+            }
+        });
+
+        return () => { isMounted = false; };
+    }, [selectedPort, isPortLoading, ships, berths]);
     
     const { items: sortedStats, requestSort, sortConfig } = useSortableData<VesselStat>(stats, { key: 'shipName', direction: 'ascending' });
     const getSortDirectionFor = (key: keyof VesselStat) => sortConfig?.key === key ? sortConfig.direction : undefined;
@@ -110,7 +171,7 @@ const VesselAnalytics: React.FC = () => {
             .slice(0, 5)
             .map(stat => ({
                 name: stat.shipName,
-                'Dock Stay (Hours)': parseFloat((stat.totalDockStay / (1000 * 60 * 60)).toFixed(1)),
+                'Dwell Time (Hours)': parseFloat((stat.totalDockStay / (1000 * 60 * 60)).toFixed(1)),
                 'Anchorage Stay (Hours)': parseFloat((stat.totalAnchorageStay / (1000 * 60 * 60)).toFixed(1)),
             }));
     }, [stats]);
@@ -119,14 +180,45 @@ const VesselAnalytics: React.FC = () => {
         if (!selectedPort) return;
         const dataToExport = sortedStats.map(stat => ({
             'Vessel Name': stat.shipName, 'IMO': stat.shipImo, 'Visits': stat.attendanceCount,
-            'Total Stay': formatDuration(stat.totalStay), 'Avg Stay': formatDuration(stat.avgStay),
+            'Total Stay': formatDuration(stat.totalStay), 
+            'Total Dwell Time': formatDuration(stat.totalDockStay),
+            'Total Anchorage Stay': formatDuration(stat.totalAnchorageStay),
+            'Avg Stay': formatDuration(stat.avgStay),
             'Min Stay': formatDuration(stat.minStay), 'Max Stay': formatDuration(stat.maxStay),
-            'Total Dock Stay': formatDuration(stat.totalDockStay), 'Total Anchorage Stay': formatDuration(stat.totalAnchorageStay),
         }));
         downloadCSV(dataToExport, `vessel_analytics_${selectedPort.name.replace(/\s+/g, '_')}.csv`);
     };
     
-    if (isLoading) return <div className="text-center p-8 text-gray-200">Loading vessel analytics...</div>;
+    const columnLabels: Record<string, string> = {
+        shipName: 'Vessel',
+        attendanceCount: 'Visits',
+        totalStay: 'Total Stay',
+        totalDockStay: 'Total Dwell Time',
+        totalAnchorageStay: 'Total Anchorage Stay',
+        avgStay: 'Avg Stay',
+        minStay: 'Min Stay',
+        maxStay: 'Max Stay',
+    };
+
+    const columns: (keyof VesselStat)[] = ['shipName', 'attendanceCount', 'totalStay', 'totalDockStay', 'totalAnchorageStay', 'avgStay', 'minStay', 'maxStay'];
+    
+    if (isPortLoading || isCalculating) {
+        return (
+            <div className="flex items-center justify-center h-full">
+                <div className="flex flex-col items-center">
+                    <svg className="animate-spin h-8 w-8 text-cyan-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <p className="mt-4 text-lg text-gray-200">Calculating Vessel Analytics...</p>
+                </div>
+            </div>
+        );
+    }
+    
+    if (!selectedPort) {
+        return <div className="text-center p-8 text-gray-400">Please select a port to view analytics.</div>;
+    }
 
     return (
         <div className="bg-gray-900/50 rounded-lg p-3 sm:p-4 h-full flex flex-col">
@@ -139,7 +231,7 @@ const VesselAnalytics: React.FC = () => {
                 <KPICard icon={ShipIcon} title="Unique Vessels" value={portStats.uniqueVessels} description="Total distinct vessels with recorded visits" />
                 <KPICard icon={ChartBarIcon} title="Total Visits" value={portStats.totalVisits} description="Total completed visits by all vessels" />
                 <KPICard icon={ChartBarIcon} title="Avg. Port Stay" value={formatDuration(portStats.portWideAvgStay)} description="Average duration of a single port visit" />
-                <KPICard icon={ChartBarIcon} title="Avg. Dock Stay" value={formatDuration(portStats.portWideAvgDockStay)} description="Average time spent at berth/quay" />
+                <KPICard icon={ChartBarIcon} title="Avg. Dwell Time" value={formatDuration(portStats.portWideAvgDockStay)} description="Average time spent at berth/quay" />
                 <KPICard icon={ChartBarIcon} title="Avg. Anchorage Stay" value={formatDuration(portStats.portWideAvgAnchorageStay)} description="Average time spent at anchorage" />
             </div>
 
@@ -158,13 +250,13 @@ const VesselAnalytics: React.FC = () => {
                                     formatter={(value: number) => `${value.toFixed(1)} hrs`}
                                 />
                                 <Legend wrapperStyle={{ color: '#E2E8F0' }}/>
-                                <Bar dataKey="Dock Stay (Hours)" fill="#38B2AC" />
+                                <Bar dataKey="Dwell Time (Hours)" fill="#38B2AC" />
                                 <Bar dataKey="Anchorage Stay (Hours)" fill="#63B3ED" />
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
                 ) : (
-                    <p className="text-gray-500 text-center py-8">Not enough data to display chart.</p>
+                    <p className="text-gray-500 text-center py-8">Not enough historical data to display chart.</p>
                 )}
             </div>
 
@@ -172,8 +264,8 @@ const VesselAnalytics: React.FC = () => {
                 <table className="w-full text-left text-sm text-gray-300 min-w-[1000px]">
                     <thead className="bg-gray-700/50 text-xs text-gray-400 uppercase sticky top-0">
                         <tr>
-                             {['shipName', 'attendanceCount', 'totalStay', 'totalDockStay', 'totalAnchorageStay', 'avgStay', 'minStay', 'maxStay'].map(key => (
-                                <th className="px-4 py-3" key={key}><button onClick={() => requestSort(key as keyof VesselStat)} className="flex items-center gap-1 hover:text-white capitalize">{key.replace('shipName','Vessel').replace('Stay',' Stay').replace('attendanceCount','Visits')} <SortIcon direction={getSortDirectionFor(key as keyof VesselStat)} /></button></th>
+                             {columns.map(key => (
+                                <th className="px-4 py-3" key={key}><button onClick={() => requestSort(key)} className="flex items-center gap-1 hover:text-white capitalize">{columnLabels[key]} <SortIcon direction={getSortDirectionFor(key)} /></button></th>
                             ))}
                         </tr>
                     </thead>
