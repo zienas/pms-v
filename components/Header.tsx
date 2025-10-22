@@ -3,7 +3,7 @@ import MenuIcon from './icons/MenuIcon';
 import { useAuth } from '../context/AuthContext';
 import { usePort } from '../context/PortContext';
 import { UserRole } from '../types';
-import { DEFAULT_APP_LOGO_PNG } from '../utils/logo';
+import { DEFAULT_APP_LOGO_PNG } from '../utils/pdfUtils';
 
 interface HeaderProps {
     onMenuClick: () => void;

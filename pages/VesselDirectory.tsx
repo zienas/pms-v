@@ -16,7 +16,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { usePort } from '../context/PortContext';
 import { toast } from 'react-hot-toast';
-import { DEFAULT_APP_LOGO_PNG } from '../utils/logo';
+import addHeaderWithLogo from '../utils/pdfUtils';
 import ShipIcon from '../components/icons/ShipIcon';
 import TankerIcon from '../components/icons/TankerIcon';
 import CargoShipIcon from '../components/icons/CargoShipIcon';
@@ -148,46 +148,8 @@ const VesselDirectory: React.FC = () => {
         styles: { fontSize: 8, cellPadding: 2 }, headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold', halign: 'center' },
         columnStyles: { 0: { fontStyle: 'bold' } },
         didDrawPage: (data: any) => {
-            doc.setFontSize(20); doc.setFont('helvetica', 'bold'); doc.setTextColor(40);
-            const marginLeft = data.settings.margin.left;
-            let titleX = marginLeft;
-            
-            // --- Add Logo ---
-            const getMimeType = (dataUrl: string): string | null => {
-                const match = dataUrl.match(/^data:image\/([a-zA-Z+]+);base64,/);
-                return match ? match[1].toUpperCase() : null;
-            };
-
-            const customLogo = selectedPort.logoImage;
-            const customLogoFormat = customLogo ? getMimeType(customLogo) : null;
-            const isCustomLogoValid = customLogo && customLogoFormat && ['PNG', 'JPEG', 'JPG', 'WEBP'].includes(customLogoFormat);
-            let logoAdded = false;
-
-            if (isCustomLogoValid) {
-                try {
-                    doc.addImage(customLogo!, customLogoFormat!, marginLeft, 15, 20, 20);
-                    logoAdded = true;
-                } catch (e) {
-                    console.warn('Failed to add custom port logo. It might be corrupt. Falling back.', e);
-                }
-            }
-
-            if (!logoAdded) {
-                try {
-                    doc.addImage(DEFAULT_APP_LOGO_PNG, 'PNG', marginLeft, 15, 20, 20);
-                    logoAdded = true;
-                } catch (e) {
-                    console.error('CRITICAL: Failed to add default logo. Proceeding without logo.', e);
-                }
-            }
-            
-            if (logoAdded) {
-                titleX += 25; // 20px logo width + 5px padding
-            }
-
-            doc.text("Vessel Directory", titleX, 22);
-            doc.setFontSize(12); doc.setFont('helvetica', 'normal'); doc.setTextColor(100); doc.text(selectedPort.name, titleX, 29);
-            doc.setFontSize(10); doc.text(`Generated: ${new Date().toLocaleString()}`, doc.internal.pageSize.getWidth() - data.settings.margin.right, 29, { align: 'right' });
+            addHeaderWithLogo(doc, selectedPort, "Vessel Directory");
+            doc.setFontSize(10);
             doc.text(`Page ${doc.getNumberOfPages()}`, data.settings.margin.left, doc.internal.pageSize.getHeight() - 10);
         },
         margin: { top: 38 }

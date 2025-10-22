@@ -1,0 +1,63 @@
+import jsPDF from 'jspdf';
+import type { Port } from '../types';
+
+// This is a base64 encoded PNG of the application's ship icon,
+// used as a fallback for PDF exports when a port-specific logo is not available.
+// This is explicitly PNG to avoid issues with SVG rendering in jsPDF.
+export const DEFAULT_APP_LOGO_PNG = 'data:image/png;base64,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';
+
+export const addHeaderWithLogo = (doc: jsPDF, port: Port, title: string) => {
+    const marginLeft = 14;
+    let titleX = marginLeft;
+    let logoAdded = false;
+
+    // Helper to extract MIME type from data URL
+    const getMimeType = (dataUrl: string): string | null => {
+        const match = dataUrl.match(/^data:image\/([a-zA-Z+]+);base64,/);
+        return match ? match[1].toUpperCase() : null;
+    };
+
+    const customLogo = port.logoImage;
+    const customLogoFormat = customLogo ? getMimeType(customLogo) : null;
+    const isCustomLogoValid = customLogo && customLogoFormat && ['PNG', 'JPEG', 'JPG', 'WEBP'].includes(customLogoFormat);
+
+    if (isCustomLogoValid) {
+        try {
+            doc.addImage(customLogo!, customLogoFormat!, marginLeft, 15, 20, 20);
+            logoAdded = true;
+        } catch (e) {
+            console.warn('Failed to add custom port logo. It might be corrupt. Falling back.', e);
+        }
+    }
+
+    if (!logoAdded) {
+        try {
+            // Use the guaranteed PNG fallback
+            doc.addImage(DEFAULT_APP_LOGO_PNG, 'PNG', marginLeft, 15, 20, 20);
+            logoAdded = true;
+        } catch (e) {
+            console.error('CRITICAL: Failed to add default logo. Proceeding without logo.', e);
+        }
+    }
+    
+    if (logoAdded) {
+        titleX += 25; // 20px logo width + 5px padding
+    }
+    
+    // -- Draw Title & Subtitle --
+    doc.setFontSize(18);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(40);
+    doc.text(title, titleX, 22);
+    
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100);
+    doc.text(`Port: ${port.name}`, titleX, 30);
+    
+    // -- Draw Generated Date --
+    doc.setFontSize(9);
+    doc.text(`Generated: ${new Date().toLocaleString()}`, doc.internal.pageSize.getWidth() - marginLeft, 30, { align: 'right' });
+};
+
+export default addHeaderWithLogo;

@@ -14,7 +14,7 @@ import { useLogger } from '../context/InteractionLoggerContext';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { usePort } from '../context/PortContext';
-import { DEFAULT_APP_LOGO_PNG } from '../utils/logo';
+import addHeaderWithLogo from '../utils/pdfUtils';
 import PDFIcon from './icons/PDFIcon';
 import { toast } from 'react-hot-toast';
 
@@ -214,52 +214,12 @@ const ShipHistoryModal: React.FC<ShipHistoryModalProps> = ({ ship, portId, onClo
     });
 
     const doc = new jsPDF();
-    const marginLeft = 14;
     let finalY = 0;
 
-    // --- PDF Header ---
-    doc.setFontSize(18);
-    let titleX = marginLeft;
-
-    // --- Add Logo ---
-    const getMimeType = (dataUrl: string): string | null => {
-        const match = dataUrl.match(/^data:image\/([a-zA-Z+]+);base64,/);
-        return match ? match[1].toUpperCase() : null;
-    };
-
-    const customLogo = selectedPort.logoImage;
-    const customLogoFormat = customLogo ? getMimeType(customLogo) : null;
-    const isCustomLogoValid = customLogo && customLogoFormat && ['PNG', 'JPEG', 'JPG', 'WEBP'].includes(customLogoFormat);
-    let logoAdded = false;
-
-    if (isCustomLogoValid) {
-        try {
-            doc.addImage(customLogo!, customLogoFormat!, marginLeft, 15, 20, 20);
-            logoAdded = true;
-        } catch (e) {
-            console.warn('Failed to add custom port logo. It might be corrupt. Falling back.', e);
-        }
-    }
-
-    if (!logoAdded) {
-        try {
-            doc.addImage(DEFAULT_APP_LOGO_PNG, 'PNG', marginLeft, 15, 20, 20);
-            logoAdded = true;
-        } catch (e) {
-            console.error('CRITICAL: Failed to add default logo. Proceeding without logo.', e);
-        }
-    }
-
-    if (logoAdded) {
-        titleX += 25; // 20px logo width + 5px padding
-    }
-
-    doc.text(`Movement History: ${ship.name}`, titleX, 22);
+    addHeaderWithLogo(doc, selectedPort, `Movement History: ${ship.name}`);
     doc.setFontSize(11);
     doc.setTextColor(100);
-    doc.text(`Port: ${selectedPort.name} | IMO: ${ship.imo}`, titleX, 30);
-    doc.setFontSize(9);
-    doc.text(`Generated: ${new Date().toLocaleString()}`, doc.internal.pageSize.getWidth() - marginLeft, 30, { align: 'right' });
+    doc.text(`IMO: ${ship.imo}`, 14, 30);
     finalY = 35;
 
     // --- Location Summary Table ---

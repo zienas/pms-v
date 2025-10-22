@@ -5,7 +5,7 @@ import SortIcon from '../components/icons/SortIcon';
 import EditIcon from '../components/icons/EditIcon';
 import DeleteIcon from '../components/icons/DeleteIcon';
 import { usePort } from '../context/PortContext';
-import { DEFAULT_APP_LOGO_PNG } from '../utils/logo';
+import { DEFAULT_APP_LOGO_PNG } from '../utils/pdfUtils';
 
 const PortManagement: React.FC = () => {
     const { state, actions } = usePort();

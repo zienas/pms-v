@@ -14,7 +14,7 @@ import { usePort } from '../context/PortContext';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-hot-toast';
 import { MovementEventType } from '../types';
-import { DEFAULT_APP_LOGO_PNG } from '../utils/logo';
+import addHeaderWithLogo from '../utils/pdfUtils';
 
 const DetailItem: React.FC<{ label: string; value: string | number; fullWidth?: boolean }> = ({ label, value, fullWidth }) => (
     <div className={fullWidth ? 'col-span-2' : ''}>
@@ -150,47 +150,10 @@ const TripDetailModal: React.FC = () => {
         const agentName = agents.find(a => a.id === trip.agentId)?.name || 'N/A';
         const pilotName = pilots.find(p => p.id === trip.pilotId)?.name || 'N/A';
 
-        doc.setFontSize(18);
-        const marginLeft = 14;
-        let titleX = marginLeft;
-
-        // --- Add Logo ---
-        const getMimeType = (dataUrl: string): string | null => {
-            const match = dataUrl.match(/^data:image\/([a-zA-Z+]+);base64,/);
-            return match ? match[1].toUpperCase() : null;
-        };
-
-        const customLogo = selectedPort.logoImage;
-        const customLogoFormat = customLogo ? getMimeType(customLogo) : null;
-        const isCustomLogoValid = customLogo && customLogoFormat && ['PNG', 'JPEG', 'JPG', 'WEBP'].includes(customLogoFormat);
-        let logoAdded = false;
-
-        if (isCustomLogoValid) {
-            try {
-                doc.addImage(customLogo!, customLogoFormat!, marginLeft, 15, 20, 20);
-                logoAdded = true;
-            } catch (e) {
-                console.warn('Failed to add custom port logo. It might be corrupt. Falling back.', e);
-            }
-        }
-
-        if (!logoAdded) {
-            try {
-                doc.addImage(DEFAULT_APP_LOGO_PNG, 'PNG', marginLeft, 15, 20, 20);
-                logoAdded = true;
-            } catch (e) {
-                console.error('CRITICAL: Failed to add default logo. Proceeding without logo.', e);
-            }
-        }
-        
-        if (logoAdded) {
-            titleX += 25; // 20px logo width + 5px padding
-        }
-        
-        doc.text(`Trip Detail Report: ${trip.id}`, titleX, 22);
+        addHeaderWithLogo(doc, selectedPort, `Trip Detail Report: ${trip.id}`);
         doc.setFontSize(11);
         doc.setTextColor(100);
-        doc.text(`Vessel: ${trip.vesselName} (IMO: ${trip.vesselImo})`, titleX, 30);
+        doc.text(`Vessel: ${trip.vesselName} (IMO: ${trip.vesselImo})`, 14 + 25, 30);
         
         const tableBody = [
             ['Status', trip.status],
