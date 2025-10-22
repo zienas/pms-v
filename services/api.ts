@@ -1,448 +1,466 @@
 // services/api.ts
-// This file simulates a backend API using localStorage for demonstration purposes.
+// This file SIMULATES a backend API using localStorage.
+// It is designed to be a drop-in replacement for a service that would make real HTTP requests.
 
-import {
-  Ship, Berth, Port, User, ShipMovement, LoginHistoryEntry, Trip, AisData,
-  UserRole, ShipStatus, MovementEventType, TripStatus, BerthType
+import type {
+  Ship, Berth, Port, User, ShipMovement, LoginHistoryEntry, Trip, AisData, InteractionLogEntry, InteractionEventType, View
 } from '../types';
+import { initialSeedData } from './seedData';
+import { UserRole, ShipStatus, TripStatus, MovementEventType } from '../types';
 
-const initialSeedData = {
-    ports: [
-        { id: 'port-sg', name: 'Port of Singapore', lat: 1.2647, lon: 103.8225, geometry: [[1.29, 103.75], [1.29, 103.90], [1.22, 103.90], [1.22, 103.75]] },
-        { id: 'port-rt', name: 'Port of Rotterdam', lat: 51.9470, lon: 4.1500, geometry: [[51.98, 4.0], [51.98, 4.3], [51.90, 4.3], [51.90, 4.0]] },
-    ],
-    berths: [
-        { id: 'berth-sg-1', portId: 'port-sg', name: 'Tanjong Pagar Berth 1', type: BerthType.BERTH, maxLength: 250, maxDraft: 12, equipment: ['Crane', 'Water'], quayId: 'quay-tp', positionOnQuay: 1 },
-        { id: 'berth-sg-2', portId: 'port-sg', name: 'Tanjong Pagar Berth 2', type: BerthType.BERTH, maxLength: 300, maxDraft: 14, equipment: ['Crane', 'Fuel'], quayId: 'quay-tp', positionOnQuay: 2 },
-        { id: 'anch-sg-A', portId: 'port-sg', name: 'Eastern Anchorage A', type: BerthType.ANCHORAGE, maxLength: 500, maxDraft: 20, equipment: [] },
-        { id: 'berth-rt-1', portId: 'port-rt', name: 'Europoort Berth 80', type: BerthType.QUAY, maxLength: 400, maxDraft: 18, equipment: ['Gantry Crane'], quayId: 'quay-eu', positionOnQuay: 1 },
-    ],
-    ships: [
-        { id: 'ship-1', portId: 'port-sg', name: 'Ever Ace', imo: '9893890', type: 'Container Ship', length: 400, draft: 16, flag: 'PA', eta: new Date(Date.now() - 3600000).toISOString(), etd: new Date(Date.now() + 86400000 * 2).toISOString(), status: ShipStatus.DOCKED, berthIds: ['berth-sg-2'], hasDangerousGoods: false, lat: 1.255, lon: 103.82, heading: 90, currentTripId: 'trip-1' },
-        // FIX: Replaced 'ANCHORAGE' with 'ANCHORED' to match the enum definition in 'types.ts'.
-        { id: 'ship-2', portId: 'port-sg', name: 'Sirius Star', imo: '9384179', type: 'Oil Tanker', length: 330, draft: 22, flag: 'LR', eta: new Date().toISOString(), etd: new Date(Date.now() + 86400000 * 3).toISOString(), status: ShipStatus.ANCHORED, berthIds: ['anch-sg-A'], hasDangerousGoods: true, lat: 1.24, lon: 103.85, heading: 180, currentTripId: 'trip-2' },
-    ],
-    users: [
-        { id: 'user-admin', name: 'Admin', role: UserRole.ADMIN, password: 'password', forcePasswordChange: false },
-        { id: 'user-sup', name: 'Supervisor', role: UserRole.SUPERVISOR, portId: 'port-sg', password: 'password', forcePasswordChange: true },
-        { id: 'user-op-sg', name: 'Operator SG', role: UserRole.OPERATOR, portId: 'port-sg', password: 'password', forcePasswordChange: false },
-        { id: 'user-op-rt', name: 'Operator RT', role: UserRole.OPERATOR, portId: 'port-rt', password: 'password', forcePasswordChange: false },
-        { id: 'user-pilot-1', name: 'John Doe', role: UserRole.PILOT, portId: 'port-sg', password: 'password' },
-        { id: 'user-agent-1', name: 'Maritime Masters', role: UserRole.AGENT, portId: 'port-sg', password: 'password' },
-    ],
-    trips: [
-        { id: 'trip-1', shipId: 'ship-1', portId: 'port-sg', arrivalTimestamp: new Date(Date.now() - 7200000).toISOString(), departureTimestamp: null, status: TripStatus.ACTIVE },
-        { id: 'trip-2', shipId: 'ship-2', portId: 'port-sg', arrivalTimestamp: new Date(Date.now() - 3600000).toISOString(), departureTimestamp: null, status: TripStatus.ACTIVE },
-    ],
-    shipMovements: [],
-    loginHistory: [],
-};
+const DB_KEY = 'pms_database';
 
-const DB_KEY = 'pms_data';
-const LATENCY = 200; // ms to simulate network latency
+// --- Database Simulation ---
 
-// --- DB HELPER FUNCTIONS ---
-
-const getDb = (): any => {
+const getDatabase = (): typeof initialSeedData => {
+  try {
     const data = localStorage.getItem(DB_KEY);
-    return data ? JSON.parse(data) : {};
+    return data ? JSON.parse(data) : initializeDatabase();
+  } catch (error) {
+    console.error("Error reading from localStorage, re-initializing database.", error);
+    return initializeDatabase();
+  }
 };
 
-const saveDb = (db: any): void => {
+const saveDatabase = (db: typeof initialSeedData): void => {
+  try {
     localStorage.setItem(DB_KEY, JSON.stringify(db));
+  } catch (error) {
+    console.error("Error writing to localStorage.", error);
+  }
 };
 
-const initializeDb = (): void => {
-    if (!localStorage.getItem(DB_KEY)) {
-        console.log("Initializing database with seed data...");
-        saveDb(initialSeedData);
-    }
+const initializeDatabase = (): typeof initialSeedData => {
+  saveDatabase(initialSeedData);
+  return initialSeedData;
 };
 
-// Call initialization on script load
-initializeDb();
+// Ensure database is initialized on first load
+if (!localStorage.getItem(DB_KEY)) {
+  initializeDatabase();
+}
 
-// --- API IMPLEMENTATION ---
-
-// Wrapper to simulate async API calls
-const simulate = <T,>(data: T): Promise<T> => {
-    return new Promise(resolve => setTimeout(() => resolve(JSON.parse(JSON.stringify(data))), LATENCY));
-};
-
-const generateId = (prefix: string): string => `${prefix}-${new Date().getTime()}-${Math.random().toString(36).substr(2, 5)}`;
-
-const addMovement = (db: any, shipId: string, portId: string, tripId: string, eventType: MovementEventType, details: any): void => {
-    const newMovement: ShipMovement = {
-        id: generateId('mov'),
-        shipId, portId, tripId, eventType,
-        timestamp: new Date().toISOString(),
-        details,
-    };
-    if(!db.shipMovements) db.shipMovements = [];
-    db.shipMovements.push(newMovement);
-};
+// Helper to simulate network delay
+const simulateDelay = (ms = 200) => new Promise(res => setTimeout(res, ms));
 
 
 // --- User & Auth ---
 
-export const getUsers = (): Promise<User[]> => {
-    const db = getDb();
-    return simulate(db.users || []);
+export const getUsers = async (): Promise<User[]> => {
+  await simulateDelay();
+  const db = getDatabase();
+  return db.users.map(({ password, ...user }) => user); // Don't send password to client
 };
 
-export const loginUser = (name: string, password_provided: string, portId: string): Promise<User> => {
-    return new Promise((resolve, reject) => {
-        setTimeout(() => {
-            const db = getDb();
-            const user = db.users.find((u: User) => u.name === name);
+export const loginUser = async (name: string, password_provided: string, portId: string): Promise<User> => {
+    await simulateDelay(500);
+    const db = getDatabase();
+    const user = db.users.find(u => u.name === name);
 
-            if (!user) {
-                return reject(new Error('User not found.'));
-            }
-            if (user.password !== password_provided) {
-                return reject(new Error('Invalid password. (Hint: password is "password")'));
-            }
-            
-            const port = db.ports.find((p: Port) => p.id === portId);
-            if (!port) {
-                return reject(new Error('Invalid port selected.'));
-            }
+    if (!user || user.password !== password_provided) {
+        throw new Error('Invalid username or password.');
+    }
 
-            const historyEntry: LoginHistoryEntry = {
-                id: generateId('log'),
-                userId: user.id,
-                userName: user.name,
-                portId: port.id,
-                portName: port.name,
-                timestamp: new Date().toISOString(),
-            };
-            db.loginHistory.push(historyEntry);
-            saveDb(db);
+    if (user.role !== UserRole.ADMIN && user.portId !== portId) {
+        throw new Error('User not assigned to this port.');
+    }
 
-            resolve(JSON.parse(JSON.stringify(user)));
-        }, LATENCY);
-    });
+    const portName = db.ports.find(p => p.id === portId)?.name || 'N/A';
+    const newHistoryEntry: LoginHistoryEntry = {
+        id: `hist-${Date.now()}`,
+        userId: user.id,
+        userName: user.name,
+        portId: portId,
+        portName: portName,
+        timestamp: new Date().toISOString(),
+    };
+    db.loginHistory.push(newHistoryEntry);
+    saveDatabase(db);
+    
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password, ...userToReturn } = user;
+    return userToReturn;
 };
 
-export const logoutUser = (userId: string): Promise<void> => {
-    return new Promise(resolve => {
-        setTimeout(() => {
-            const db = getDb();
-            const lastLogin = db.loginHistory
-                .filter((h: LoginHistoryEntry) => h.userId === userId && !h.logoutTimestamp)
-                .sort((a: LoginHistoryEntry, b: LoginHistoryEntry) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
+export const logoutUser = async (userId: string): Promise<void> => {
+    await simulateDelay();
+    const db = getDatabase();
+    const lastLogin = db.loginHistory
+        .filter(h => h.userId === userId && !h.logoutTimestamp)
+        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())[0];
 
-            if (lastLogin) {
-                lastLogin.logoutTimestamp = new Date().toISOString();
-                db.loginHistory = db.loginHistory.map((h: LoginHistoryEntry) => h.id === lastLogin.id ? lastLogin : h);
-                saveDb(db);
-            }
-            resolve();
-        }, LATENCY);
-    });
+    if (lastLogin) {
+        lastLogin.logoutTimestamp = new Date().toISOString();
+        saveDatabase(db);
+    }
 };
 
-
-export const addUser = (userData: Omit<User, 'id'>): Promise<User> => {
-    const db = getDb();
-    const newUser: User = { ...userData, id: generateId('user') };
+export const addUser = async (userData: Omit<User, 'id'>): Promise<User> => {
+    await simulateDelay();
+    const db = getDatabase();
+    const newUser: User = {
+        ...userData,
+        id: `user-${Date.now()}`,
+        // By default, non-admins require a password change
+        forcePasswordChange: userData.role !== UserRole.ADMIN,
+    };
     db.users.push(newUser);
-    saveDb(db);
-    return simulate(newUser);
+    saveDatabase(db);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password, ...userToReturn } = newUser;
+    return userToReturn;
 };
 
-export const updateUser = (id: string, userData: User): Promise<User> => {
-    const db = getDb();
-    const userIndex = db.users.findIndex((u: User) => u.id === id);
-    if (userIndex > -1) {
-        db.users[userIndex] = { ...db.users[userIndex], ...userData };
-        saveDb(db);
-        return simulate(db.users[userIndex]);
+export const updateUser = async (id: string, userData: User): Promise<User> => {
+    await simulateDelay();
+    const db = getDatabase();
+    const userIndex = db.users.findIndex(u => u.id === id);
+    if (userIndex === -1) throw new Error('User not found.');
+    
+    // Preserve original password if not provided in update
+    const newPassword = userData.password ? userData.password : db.users[userIndex].password;
+
+    db.users[userIndex] = { ...db.users[userIndex], ...userData, password: newPassword };
+    saveDatabase(db);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password, ...userToReturn } = db.users[userIndex];
+    return userToReturn;
+};
+
+export const updateOwnPassword = async (userId: string, newPassword: string): Promise<User> => {
+    await simulateDelay();
+    const db = getDatabase();
+    const user = db.users.find(u => u.id === userId);
+    if (!user) throw new Error("User not found.");
+    user.password = newPassword;
+    user.forcePasswordChange = false; // Clear the flag
+    saveDatabase(db);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password, ...userToReturn } = user;
+    return userToReturn;
+};
+
+export const deleteUser = async (id: string): Promise<void> => {
+    await simulateDelay();
+    const db = getDatabase();
+    db.users = db.users.filter(u => u.id !== id);
+    saveDatabase(db);
+};
+
+export const getLoginHistory = async (): Promise<LoginHistoryEntry[]> => {
+    await simulateDelay();
+    return getDatabase().loginHistory;
+};
+
+// --- Interaction Logs ---
+export const logInteraction = async (entry: Omit<InteractionLogEntry, 'id' | 'timestamp'>): Promise<InteractionLogEntry> => {
+    // No delay for logging to not slow down UI
+    const db = getDatabase();
+    const newLog: InteractionLogEntry = {
+        ...entry,
+        id: `int-${Date.now()}-${Math.random()}`,
+        timestamp: new Date().toISOString(),
+    };
+    db.interactionLog.unshift(newLog);
+    // To avoid performance issues, cap the log size
+    if (db.interactionLog.length > 1000) {
+        db.interactionLog = db.interactionLog.slice(0, 1000);
     }
-    return Promise.reject(new Error('User not found'));
+    saveDatabase(db);
+    return newLog;
 };
 
-export const updateOwnPassword = (userId: string, newPassword: string): Promise<User> => {
-    const db = getDb();
-    const userIndex = db.users.findIndex((u: User) => u.id === userId);
-    if (userIndex > -1) {
-        db.users[userIndex].password = newPassword;
-        db.users[userIndex].forcePasswordChange = false;
-        saveDb(db);
-        return simulate(db.users[userIndex]);
-    }
-    return Promise.reject(new Error('User not found'));
-};
-
-export const deleteUser = (id: string): Promise<void> => {
-    const db = getDb();
-    db.users = db.users.filter((u: User) => u.id !== id);
-    saveDb(db);
-    return simulate(undefined);
-};
-
-export const getLoginHistory = (): Promise<LoginHistoryEntry[]> => {
-    const db = getDb();
-    return simulate(db.loginHistory || []);
+export const getInteractionLogs = async (portId: string): Promise<InteractionLogEntry[]> => {
+    await simulateDelay();
+    return getDatabase().interactionLog.filter(log => log.portId === portId);
 };
 
 
 // --- Ports ---
 
-export const getPorts = (): Promise<Port[]> => {
-    const db = getDb();
-    return simulate(db.ports || []);
+export const getPorts = async (): Promise<Port[]> => {
+    await simulateDelay();
+    return getDatabase().ports;
 };
 
-export const addPort = (portData: Omit<Port, 'id'>): Promise<Port> => {
-    const db = getDb();
-    const newPort = { ...portData, id: generateId('port') };
+export const addPort = async (portData: Omit<Port, 'id'>): Promise<Port> => {
+    await simulateDelay();
+    const db = getDatabase();
+    const newPort: Port = { ...portData, id: `port-${Date.now()}` };
     db.ports.push(newPort);
-    saveDb(db);
-    return simulate(newPort);
+    saveDatabase(db);
+    return newPort;
 };
 
-export const updatePort = (id: string, portData: Port): Promise<Port> => {
-    const db = getDb();
-    db.ports = db.ports.map((p: Port) => p.id === id ? { ...p, ...portData } : p);
-    saveDb(db);
-    return simulate(portData);
+export const updatePort = async (id: string, portData: Port): Promise<Port> => {
+    await simulateDelay();
+    const db = getDatabase();
+    const index = db.ports.findIndex(p => p.id === id);
+    if (index === -1) throw new Error('Port not found.');
+    db.ports[index] = { ...db.ports[index], ...portData };
+    saveDatabase(db);
+    return db.ports[index];
 };
 
-// FIX: Added implementation for the deletePort function.
-export const deletePort = (id: string): Promise<void> => {
-    const db = getDb();
-    // Also delete associated berths, ships, etc.
-    db.ports = db.ports.filter((p: Port) => p.id !== id);
-    db.berths = db.berths.filter((b: Berth) => b.portId !== id);
-    db.ships = db.ships.filter((s: Ship) => s.portId !== id);
-    db.trips = db.trips.filter((t: Trip) => t.portId !== id);
-    db.shipMovements = db.shipMovements.filter((m: ShipMovement) => m.portId !== id);
-    saveDb(db);
-    return simulate(undefined);
+export const deletePort = async (id: string): Promise<void> => {
+    await simulateDelay();
+    const db = getDatabase();
+    db.ports = db.ports.filter(p => p.id !== id);
+    db.berths = db.berths.filter(b => b.portId !== id);
+    db.ships = db.ships.filter(s => s.portId !== id);
+    db.movements = db.movements.filter(m => m.portId !== id);
+    saveDatabase(db);
 };
 
 // --- Berths ---
-export const getBerths = (portId: string): Promise<Berth[]> => {
-    const db = getDb();
-    return simulate(db.berths.filter((b: Berth) => b.portId === portId) || []);
+export const getBerths = async (portId: string): Promise<Berth[]> => {
+    await simulateDelay();
+    return getDatabase().berths.filter(b => b.portId === portId);
 };
 
-export const getAllBerths = (): Promise<Berth[]> => {
-    const db = getDb();
-    return simulate(db.berths || []);
+export const getAllBerths = async (): Promise<Berth[]> => {
+    await simulateDelay();
+    return getDatabase().berths;
 };
 
-export const addBerth = (portId: string, berthData: Omit<Berth, 'id' | 'portId'>): Promise<Berth> => {
-    const db = getDb();
-    const newBerth: Berth = { ...berthData, id: generateId('berth'), portId };
+export const addBerth = async (portId: string, berthData: Omit<Berth, 'id' | 'portId'>): Promise<Berth> => {
+    await simulateDelay();
+    const db = getDatabase();
+    const newBerth: Berth = { ...berthData, id: `berth-${Date.now()}`, portId };
     db.berths.push(newBerth);
-    saveDb(db);
-    return simulate(newBerth);
+    saveDatabase(db);
+    return newBerth;
 };
 
-export const updateBerth = (portId: string, id: string, berthData: Berth): Promise<Berth> => {
-    const db = getDb();
-    db.berths = db.berths.map((b: Berth) => b.id === id ? { ...b, ...berthData } : b);
-    saveDb(db);
-    return simulate(berthData);
+export const updateBerth = async (portId: string, id: string, berthData: Berth): Promise<Berth> => {
+    await simulateDelay();
+    const db = getDatabase();
+    const index = db.berths.findIndex(b => b.id === id);
+    if (index === -1) throw new Error('Berth not found.');
+    db.berths[index] = { ...db.berths[index], ...berthData };
+    saveDatabase(db);
+    return db.berths[index];
 };
 
-export const deleteBerth = (portId: string, berthId: string): Promise<void> => {
-    const db = getDb();
-    db.berths = db.berths.filter((b: Berth) => b.id !== berthId);
-    // Also unassign this berth from any ships
-    db.ships = db.ships.map((s: Ship) => ({
-        ...s,
-        berthIds: s.berthIds.filter(id => id !== berthId)
-    }));
-    saveDb(db);
-    return simulate(undefined);
+export const deleteBerth = async (portId: string, berthId: string): Promise<void> => {
+    await simulateDelay();
+    const db = getDatabase();
+    db.berths = db.berths.filter(b => b.id !== berthId);
+    saveDatabase(db);
 };
 
 // --- Ships ---
-export const getShips = (portId: string): Promise<Ship[]> => {
-    const db = getDb();
-    return simulate(db.ships.filter((s: Ship) => s.portId === portId) || []);
+export const getShips = async (portId: string): Promise<Ship[]> => {
+    await simulateDelay();
+    return getDatabase().ships.filter(s => s.portId === portId);
 };
 
-export const getAllShips = (): Promise<Ship[]> => {
-    const db = getDb();
-    return simulate(db.ships || []);
+export const getAllShips = async (): Promise<Ship[]> => {
+    await simulateDelay();
+    return getDatabase().ships;
 };
 
-export const addShip = (shipData: Omit<Ship, 'id'>): Promise<Ship> => {
-    const db = getDb();
+const createMovement = (db: typeof initialSeedData, ship: Ship, eventType: MovementEventType, details: ShipMovement['details']): void => {
+    const movement: ShipMovement = {
+        id: `mov-${Date.now()}-${Math.random()}`,
+        shipId: ship.id,
+        portId: ship.portId,
+        tripId: ship.currentTripId || 'unknown-trip',
+        eventType,
+        timestamp: new Date().toISOString(),
+        details,
+    };
+    db.movements.unshift(movement);
+};
+
+export const addShip = async (shipData: Omit<Ship, 'id'>): Promise<Ship> => {
+    await simulateDelay();
+    const db = getDatabase();
+    
+    // Create new Trip
     const newTrip: Trip = {
-        id: generateId('trip'),
-        shipId: '', // will be set after ship is created
+        id: `trip-${Date.now()}`,
+        shipId: '', // Will be set below
         portId: shipData.portId,
         arrivalTimestamp: shipData.eta,
         departureTimestamp: null,
-        status: TripStatus.ACTIVE
+        status: TripStatus.ACTIVE,
+        vesselName: shipData.name,
+        vesselImo: shipData.imo,
     };
-
-    const newShip: Ship = { ...shipData, id: generateId('ship'), currentTripId: newTrip.id };
+    
+    const newShip: Ship = {
+        ...shipData,
+        id: `ship-${Date.now()}`,
+        currentTripId: newTrip.id,
+    };
     newTrip.shipId = newShip.id;
 
     db.ships.push(newShip);
     db.trips.push(newTrip);
-
-    addMovement(db, newShip.id, newShip.portId, newTrip.id, MovementEventType.CREATED, { message: `Vessel registered in port.` });
-    
-    saveDb(db);
-    return simulate(newShip);
+    createMovement(db, newShip, MovementEventType.CREATED, { message: `Vessel ${newShip.name} was registered in the system.` });
+    saveDatabase(db);
+    return newShip;
 };
 
-export const updateShip = (id: string, shipData: Ship): Promise<Ship> => {
-    const db = getDb();
-    const shipIndex = db.ships.findIndex((s: Ship) => s.id === id);
-    if (shipIndex > -1) {
-        const oldShip = db.ships[shipIndex];
-        // Create movement logs for changes
-        if (oldShip.status !== shipData.status) {
-            addMovement(db, id, shipData.portId, shipData.currentTripId!, MovementEventType.STATUS_CHANGE, { message: `Status changed from ${oldShip.status} to ${shipData.status}.`, fromStatus: oldShip.status, status: shipData.status });
-        }
-        if (JSON.stringify(oldShip.berthIds.sort()) !== JSON.stringify(shipData.berthIds.sort())) {
-            const getBerthNames = (ids: string[]) => ids.map(berthId => db.berths.find((b: Berth) => b.id === berthId)?.name).filter(Boolean);
-            addMovement(db, id, shipData.portId, shipData.currentTripId!, MovementEventType.BERTH_ASSIGNMENT, { message: `Berth assignment changed.`, fromBerthIds: oldShip.berthIds, berthIds: shipData.berthIds, fromBerthNames: getBerthNames(oldShip.berthIds), berthNames: getBerthNames(shipData.berthIds) });
-        }
-        if (oldShip.pilotId !== shipData.pilotId) {
-            addMovement(db, id, shipData.portId, shipData.currentTripId!, MovementEventType.PILOT_ASSIGNMENT, { message: `Pilot assignment changed.`, fromPilotId: oldShip.pilotId, pilotId: shipData.pilotId });
-        }
-        if (oldShip.agentId !== shipData.agentId) {
-            addMovement(db, id, shipData.portId, shipData.currentTripId!, MovementEventType.AGENT_ASSIGNMENT, { message: `Agent assignment changed.`, fromAgentId: oldShip.agentId, agentId: shipData.agentId });
-        }
-        
-        db.ships[shipIndex] = { ...oldShip, ...shipData };
+export const updateShip = async (id: string, shipData: Ship): Promise<Ship> => {
+    await simulateDelay();
+    const db = getDatabase();
+    const index = db.ships.findIndex(s => s.id === id);
+    if (index === -1) throw new Error('Ship not found.');
+    const oldShip = { ...db.ships[index] };
+    db.ships[index] = { ...oldShip, ...shipData };
+    const updatedShip = db.ships[index];
 
-        // Handle trip completion
-        if(shipData.status === ShipStatus.LEFT_PORT && oldShip.status !== ShipStatus.LEFT_PORT) {
-            const tripIndex = db.trips.findIndex((t: Trip) => t.id === shipData.currentTripId);
-            if(tripIndex > -1) {
-                db.trips[tripIndex].status = TripStatus.COMPLETED;
-                db.trips[tripIndex].departureTimestamp = new Date().toISOString();
+    // Status Change
+    if (oldShip.status !== updatedShip.status) {
+        createMovement(db, updatedShip, MovementEventType.STATUS_CHANGE, {
+            message: `Status changed from ${oldShip.status} to ${updatedShip.status}.`,
+            fromStatus: oldShip.status,
+            status: updatedShip.status
+        });
+        if (updatedShip.status === ShipStatus.LEFT_PORT) {
+            updatedShip.departureDate = new Date().toISOString();
+            const trip = db.trips.find(t => t.id === updatedShip.currentTripId);
+            if (trip) {
+                trip.status = TripStatus.COMPLETED;
+                trip.departureTimestamp = updatedShip.departureDate;
             }
-            db.ships[shipIndex].departureDate = new Date().toISOString();
+            updatedShip.currentTripId = undefined; // Clear trip ID on departure
         }
-
-        saveDb(db);
-        return simulate(db.ships[shipIndex]);
     }
-    return Promise.reject(new Error('Ship not found'));
+    
+    // Berth Assignment Change
+    const oldBerths = JSON.stringify((oldShip.berthIds || []).sort());
+    const newBerths = JSON.stringify((updatedShip.berthIds || []).sort());
+    if (oldBerths !== newBerths) {
+        const berthNames = (ids: string[]) => ids.map(id => db.berths.find(b => b.id === id)?.name).filter(Boolean);
+        createMovement(db, updatedShip, MovementEventType.BERTH_ASSIGNMENT, {
+            message: `Berth assignment changed from ${berthNames(oldShip.berthIds).join(', ') || 'None'} to ${berthNames(updatedShip.berthIds).join(', ') || 'None'}.`,
+            fromBerthIds: oldShip.berthIds,
+            berthIds: updatedShip.berthIds,
+            fromBerthNames: berthNames(oldShip.berthIds),
+            berthNames: berthNames(updatedShip.berthIds),
+            pilotId: updatedShip.pilotId,
+        });
+    }
+
+    // Pilot Assignment Change
+    if (oldShip.pilotId !== updatedShip.pilotId) {
+         createMovement(db, updatedShip, MovementEventType.PILOT_ASSIGNMENT, {
+            message: `Pilot changed from ${db.users.find(u=>u.id === oldShip.pilotId)?.name || 'None'} to ${db.users.find(u=>u.id === updatedShip.pilotId)?.name || 'None'}.`,
+            fromPilotId: oldShip.pilotId,
+            pilotId: updatedShip.pilotId,
+        });
+    }
+
+    // Agent Assignment Change
+    if (oldShip.agentId !== updatedShip.agentId) {
+        createMovement(db, updatedShip, MovementEventType.AGENT_ASSIGNMENT, {
+            message: `Agent changed from ${db.users.find(u=>u.id === oldShip.agentId)?.name || 'None'} to ${db.users.find(u=>u.id === updatedShip.agentId)?.name || 'None'}.`,
+            fromAgentId: oldShip.agentId,
+            agentId: updatedShip.agentId,
+        });
+    }
+
+    saveDatabase(db);
+    return updatedShip;
 };
 
-export const deleteShip = (portId: string, shipId: string): Promise<void> => {
-    const db = getDb();
-    db.ships = db.ships.filter((s: Ship) => s.id !== shipId);
-    // Optionally delete related trips and movements for cleanliness
-    db.trips = db.trips.filter((t: Trip) => t.shipId !== shipId);
-    db.shipMovements = db.shipMovements.filter((m: ShipMovement) => m.shipId !== shipId);
-    saveDb(db);
-    return simulate(undefined);
+export const deleteShip = async (portId: string, shipId: string): Promise<void> => {
+    await simulateDelay();
+    const db = getDatabase();
+    db.ships = db.ships.filter(s => s.id !== shipId);
+    db.movements = db.movements.filter(m => m.shipId !== shipId);
+    saveDatabase(db);
 };
 
 // --- Trips ---
-export const getTripsForPort = (portId: string): Promise<Trip[]> => {
-    const db = getDb();
-    const portTrips = db.trips.filter((t: Trip) => t.portId === portId) || [];
-    // Enrich with ship details for directory view
-    const enrichedTrips = portTrips.map((trip: Trip) => {
-        const ship = db.ships.find((s: Ship) => s.id === trip.shipId);
-        return {
-            ...trip,
-            vesselName: ship?.name,
-            vesselImo: ship?.imo,
-            agentId: ship?.agentId,
-            pilotId: ship?.pilotId,
-        };
-    });
-    return simulate(enrichedTrips);
+export const getTripsForPort = async (portId: string): Promise<Trip[]> => {
+    await simulateDelay();
+    return getDatabase().trips.filter(t => t.portId === portId);
 };
 
-export const updateTrip = (id: string, tripData: Trip): Promise<Trip> => {
-    const db = getDb();
-    const tripIndex = db.trips.findIndex((t: Trip) => t.id === id);
-    if (tripIndex > -1) {
-        db.trips[tripIndex] = { ...db.trips[tripIndex], ...tripData };
-        
-        // Also update the agent/pilot on the ship record for consistency
-        const shipIndex = db.ships.findIndex((s: Ship) => s.id === db.trips[tripIndex].shipId);
-        if(shipIndex > -1) {
-            db.ships[shipIndex].agentId = tripData.agentId;
-            db.ships[shipIndex].pilotId = tripData.pilotId;
-        }
-
-        saveDb(db);
-        return simulate(db.trips[tripIndex]);
-    }
-    return Promise.reject(new Error('Trip not found'));
+export const updateTrip = async (id: string, tripData: Trip): Promise<Trip> => {
+    await simulateDelay();
+    const db = getDatabase();
+    const index = db.trips.findIndex(t => t.id === id);
+    if (index === -1) throw new Error('Trip not found.');
+    db.trips[index] = { ...db.trips[index], ...tripData };
+    saveDatabase(db);
+    return db.trips[index];
 };
+
 
 // --- Movements / History ---
-export const getHistoryForPort = (portId: string): Promise<ShipMovement[]> => {
-    const db = getDb();
-    return simulate(db.shipMovements.filter((m: ShipMovement) => m.portId === portId).sort((a: ShipMovement, b: ShipMovement) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()) || []);
+export const getHistoryForPort = async (portId: string): Promise<ShipMovement[]> => {
+    await simulateDelay();
+    return getDatabase().movements.filter(m => m.portId === portId);
 };
 
-export const getShipHistory = (portId: string, shipId: string): Promise<ShipMovement[]> => {
-    const db = getDb();
-    return simulate(db.shipMovements.filter((m: ShipMovement) => m.shipId === shipId).sort((a: ShipMovement, b: ShipMovement) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()) || []);
+export const getShipHistory = async (portId: string, shipId: string): Promise<ShipMovement[]> => {
+    await simulateDelay();
+    return getDatabase().movements.filter(m => m.shipId === shipId);
 };
-
 
 // --- AIS ---
-export const updateShipFromAIS = (aisData: AisData): Promise<Ship> => {
-    const db = getDb();
-    let ship = db.ships.find((s: Ship) => s.imo === aisData.imo && s.portId === aisData.portId);
+export const updateShipFromAIS = async (aisData: AisData): Promise<Ship> => {
+    await simulateDelay(50); // AIS updates should be fast
+    const db = getDatabase();
     
-    if (ship) {
-        // Update existing ship
+    let ship = db.ships.find(s => s.imo === aisData.imo);
+
+    if (ship) { // Update existing ship
         const oldStatus = ship.status;
         ship.lat = aisData.lat ?? ship.lat;
         ship.lon = aisData.lon ?? ship.lon;
         ship.heading = aisData.heading ?? ship.heading;
-        if(aisData.status && aisData.status !== ship.status) {
+        ship.name = aisData.name ?? ship.name;
+        ship.type = aisData.type ?? ship.type;
+        if (aisData.status && aisData.status !== ship.status) {
             ship.status = aisData.status;
-            addMovement(db, ship.id, ship.portId, ship.currentTripId!, MovementEventType.STATUS_CHANGE, { message: `Status changed from ${oldStatus} to ${ship.status}.`, fromStatus: oldStatus, status: ship.status });
+            createMovement(db, ship, MovementEventType.STATUS_CHANGE, {
+                message: `Status updated from AIS: ${oldStatus} to ${ship.status}.`,
+                fromStatus: oldStatus,
+                status: ship.status
+            });
         }
-        addMovement(db, ship.id, ship.portId, ship.currentTripId!, MovementEventType.AIS_UPDATE, { message: `Received AIS position update.` });
-        db.ships = db.ships.map((s: Ship) => s.id === ship!.id ? ship : s);
-    } else {
-        // Create new ship from AIS data if it has enough info
+        createMovement(db, ship, MovementEventType.AIS_UPDATE, { message: 'Received AIS position update.' });
+    } else { // Create new ship from AIS data
+         // Ensure we have a name before creating
+        if (!aisData.name) throw new Error("Cannot create ship from AIS without a name.");
+        
         const newTrip: Trip = {
-            id: generateId('trip'),
-            shipId: '', // will be set after ship is created
-            portId: aisData.portId,
-            arrivalTimestamp: new Date().toISOString(),
-            departureTimestamp: null,
-            status: TripStatus.ACTIVE
+            id: `trip-${Date.now()}`, shipId: '', portId: aisData.portId,
+            arrivalTimestamp: new Date().toISOString(), departureTimestamp: null,
+            status: TripStatus.ACTIVE, vesselName: aisData.name, vesselImo: aisData.imo,
         };
-        ship = {
-            id: generateId('ship'),
+        
+        const newShip: Ship = {
+            id: `ship-${Date.now()}`,
             portId: aisData.portId,
             imo: aisData.imo,
-            name: aisData.name || `Vessel ${aisData.imo}`,
+            name: aisData.name,
             type: aisData.type || 'Unknown',
-            length: 150, // default
-            draft: 8, // default
-            flag: 'XX', // default
-            eta: new Date().toISOString(),
-            etd: new Date(Date.now() + 3 * 24 * 3600 * 1000).toISOString(),
-            status: aisData.status || ShipStatus.APPROACHING,
-            berthIds: [],
-            hasDangerousGoods: false,
+            status: ShipStatus.APPROACHING,
             lat: aisData.lat,
             lon: aisData.lon,
             heading: aisData.heading,
             currentTripId: newTrip.id,
+            // Defaults for new ships
+            length: 150, draft: 8, flag: 'N/A',
+            eta: new Date().toISOString(),
+            etd: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+            berthIds: [],
+            hasDangerousGoods: false,
         };
-        newTrip.shipId = ship.id;
-        db.ships.push(ship);
+        newTrip.shipId = newShip.id;
+        db.ships.push(newShip);
         db.trips.push(newTrip);
-        addMovement(db, ship.id, ship.portId, newTrip.id, MovementEventType.CREATED, { message: `Vessel registered via AIS feed.` });
+        createMovement(db, newShip, MovementEventType.CREATED, { message: `Vessel ${newShip.name} registered via AIS feed.` });
+        ship = newShip;
     }
-
-    saveDb(db);
-    return simulate(ship);
+    
+    saveDatabase(db);
+    return ship;
 };

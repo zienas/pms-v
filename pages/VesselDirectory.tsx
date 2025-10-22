@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import type { Ship } from '../types';
-import { ShipStatus, UserRole } from '../types';
+import { ShipStatus, UserRole, InteractionEventType } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { useSortableData } from '../hooks/useSortableData';
 import SortIcon from '../components/icons/SortIcon';
@@ -20,6 +20,7 @@ import { DEFAULT_APP_LOGO_PNG } from '../utils/logo';
 import ShipIcon from '../components/icons/ShipIcon';
 import TankerIcon from '../components/icons/TankerIcon';
 import CargoShipIcon from '../components/icons/CargoShipIcon';
+import { useLogger } from '../context/InteractionLoggerContext';
 
 const SETTINGS_KEY = 'vesselDirectorySettings';
 
@@ -58,6 +59,7 @@ const VesselDirectory: React.FC = () => {
   const { state, actions } = usePort();
   const { ships, berths, selectedPort } = state;
   const { currentUser, users } = useAuth();
+  const { log } = useLogger();
 
   const [settings, setSettings] = useState(() => loadSettings());
   const filter = settings.filter || '';
@@ -92,6 +94,9 @@ const VesselDirectory: React.FC = () => {
   }, [filter, showDeparted, sortConfig]);
 
   const updateSetting = (key: string, value: any) => {
+    if (key === 'filter') {
+        log(InteractionEventType.FILTER_APPLIED, { action: 'Filter vessels', value });
+    }
     setSettings((prev: any) => ({ ...prev, [key]: value }));
   };
 
@@ -106,9 +111,15 @@ const VesselDirectory: React.FC = () => {
     if (!sortConfig) return undefined;
     return sortConfig.key === key ? sortConfig.direction : undefined;
   };
+  
+  const handleRequestSort = (key: keyof Ship) => {
+    log(InteractionEventType.SORT_APPLIED, { action: 'Sort vessels', value: key });
+    requestSort(key);
+  };
 
   const handleExportCSV = () => {
     if (!selectedPort) return;
+    log(InteractionEventType.DATA_EXPORT, { action: 'Export Vessel Directory to CSV' });
     const dataToExport = sortedShips.map(ship => ({
       'Name': ship.name, 'IMO': ship.imo, 'Trip ID': ship.currentTripId || '', 'Type': ship.type,
       'Dangerous Goods': ship.hasDangerousGoods ? 'YES' : 'NO', 'Length (m)': ship.length, 'Draft (m)': ship.draft,
@@ -123,6 +134,7 @@ const VesselDirectory: React.FC = () => {
 
   const handleExportPDF = () => {
     if (!selectedPort) return;
+    log(InteractionEventType.DATA_EXPORT, { action: 'Export Vessel Directory to PDF' });
     const doc = new jsPDF();
     const tableColumns = ["Name", "IMO", "Trip ID", "Type", "Status", "Assigned Berths", "Pilot"];
     const tableRows = sortedShips.map(ship => [
@@ -185,6 +197,15 @@ const VesselDirectory: React.FC = () => {
     doc.save(`vessel_directory_${selectedPort.name.replace(/\s+/g, '_')}.pdf`);
   };
 
+  const handleActionClick = (type: 'history' | 'reassignBerth' | 'shipForm', ship: Ship) => {
+    log(InteractionEventType.BUTTON_CLICK, {
+        action: `Open modal: ${type}`,
+        targetId: ship.id,
+        value: ship.name,
+    });
+    actions.openModal({ type, ship } as any);
+  };
+
   return (
     <div className="bg-gray-900/50 rounded-lg p-3 sm:p-4 h-full flex flex-col">
       <div className="flex flex-col md:flex-row justify-between md:items-center mb-4 gap-4">
@@ -215,7 +236,7 @@ const VesselDirectory: React.FC = () => {
                 <tr>
                     {['name', 'imo', 'currentTripId', 'type', 'pilotId', 'status'].map(key => (
                         <th className="px-4 py-3" key={key}>
-                            <button onClick={() => requestSort(key as keyof Ship)} className="flex items-center gap-1 hover:text-white capitalize">
+                            <button onClick={() => handleRequestSort(key as keyof Ship)} className="flex items-center gap-1 hover:text-white capitalize">
                                 {key.replace('currentTripId', 'Trip ID').replace('pilotId', 'Pilot')} <SortIcon direction={getSortDirectionFor(key as keyof Ship)} />
                             </button>
                         </th>
@@ -243,11 +264,11 @@ const VesselDirectory: React.FC = () => {
                         <td className="px-4 py-3"><span className={`px-2 py-1 text-xs font-medium rounded-full border border-current ${Object.values(ShipStatus).includes(ship.status) ? statusColors[ship.status] : statusColors[ShipStatus.LEFT_PORT]}`}>{ship.status}</span></td>
                         <td className="px-4 py-3 text-right">
                            <div className="flex items-center justify-end gap-1">
-                                <button onClick={() => actions.openModal({ type: 'history', ship })} className="p-1 text-gray-300 hover:text-blue-400" title="View Movement History"><ClockIcon className="h-5 w-5" /></button>
+                                <button onClick={() => handleActionClick('history', ship)} className="p-1 text-gray-300 hover:text-blue-400" title="View Movement History"><ClockIcon className="h-5 w-5" /></button>
                                 {canModify && (
                                     <>
-                                        <button onClick={() => actions.openModal({ type: 'reassignBerth', ship })} className="p-1 text-gray-300 hover:text-green-400" title="Reassign Berth"><ReassignIcon className="h-5 w-5" /></button>
-                                        <button onClick={() => actions.openModal({ type: 'shipForm', ship })} className="p-1 text-gray-300 hover:text-cyan-400" title="Edit ship"><EditIcon className="h-5 w-5" /></button>
+                                        <button onClick={() => handleActionClick('reassignBerth', ship)} className="p-1 text-gray-300 hover:text-green-400" title="Reassign Berth"><ReassignIcon className="h-5 w-5" /></button>
+                                        <button onClick={() => handleActionClick('shipForm', ship)} className="p-1 text-gray-300 hover:text-cyan-400" title="Edit ship"><EditIcon className="h-5 w-5" /></button>
                                         <button onClick={() => actions.deleteShip(ship.portId, ship.id)} className="p-1 text-gray-300 hover:text-red-500" title="Delete ship"><DeleteIcon className="h-5 w-5" /></button>
                                     </>
                                 )}

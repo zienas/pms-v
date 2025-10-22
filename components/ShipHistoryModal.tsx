@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import type { Ship, ShipMovement } from '../types';
-import { MovementEventType, UserRole } from '../types';
+import { MovementEventType, UserRole, InteractionEventType } from '../types';
 import * as api from '../services/api';
 import { downloadCSV } from '../utils/export';
 import DownloadIcon from '../components/icons/DownloadIcon';
@@ -10,6 +10,7 @@ import { useAuth } from '../context/AuthContext';
 import { formatDuration } from '../utils/formatters';
 import ExternalLinkIcon from './icons/ExternalLinkIcon';
 import CloseIcon from './icons/CloseIcon';
+import { useLogger } from '../context/InteractionLoggerContext';
 
 interface ShipHistoryModalProps {
   ship: Ship;
@@ -19,6 +20,7 @@ interface ShipHistoryModalProps {
 
 const ShipHistoryModal: React.FC<ShipHistoryModalProps> = ({ ship, portId, onClose }) => {
   const { currentUser, users } = useAuth();
+  const { log } = useLogger();
   const [history, setHistory] = useState<ShipMovement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [now, setNow] = useState(new Date());
@@ -162,6 +164,11 @@ const ShipHistoryModal: React.FC<ShipHistoryModalProps> = ({ ship, portId, onClo
   };
 
   const handleExport = () => {
+    log(InteractionEventType.DATA_EXPORT, {
+        action: 'Export Ship History CSV',
+        targetId: ship.id,
+        value: ship.name,
+    });
     const dataToExport = history.map(item => {
         let durationText = '';
         const itemIndex = history.indexOf(item);

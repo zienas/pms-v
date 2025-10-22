@@ -1,7 +1,8 @@
 import React, { useMemo } from 'react';
 import type { View } from '../types';
-import { UserRole } from '../types';
+import { UserRole, InteractionEventType } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { useLogger } from '../context/InteractionLoggerContext';
 import DashboardIcon from './icons/DashboardIcon';
 import ShipIcon from './icons/ShipIcon';
 import BerthIcon from './icons/BerthIcon';
@@ -53,6 +54,7 @@ const NavItem: React.FC<{
 
 const SidebarNav: React.FC<SidebarNavProps> = ({ activeView, setActiveView, alertCount, isOpen, setIsOpen }) => {
     const { currentUser } = useAuth();
+    const { log } = useLogger();
 
     const navItems: NavItemConfig[] = useMemo(() => [
         { view: 'dashboard', label: 'Dashboard', icon: DashboardIcon },
@@ -71,6 +73,7 @@ const SidebarNav: React.FC<SidebarNavProps> = ({ activeView, setActiveView, aler
     ], []);
 
     const handleViewChange = (view: View) => {
+        log(InteractionEventType.VIEW_CHANGE, { view, message: `Navigated to ${view}` });
         setActiveView(view);
         if (window.innerWidth < 768) { // md breakpoint
             setIsOpen(false);

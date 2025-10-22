@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import type { Berth, Ship } from '../types';
-import { ShipStatus, UserRole, BerthType, MovementEventType } from '../types';
+import { ShipStatus, UserRole, BerthType, MovementEventType, InteractionEventType } from '../types';
 import { useSortableData } from '../hooks/useSortableData';
 import SortIcon from '../components/icons/SortIcon';
 import { useAuth } from '../context/AuthContext';
@@ -10,6 +10,7 @@ import { usePort } from '../context/PortContext';
 import BerthIcon from '../components/icons/BerthIcon';
 import ChartBarIcon from '../components/icons/ChartBarIcon';
 import FireIcon from '../components/icons/FlameIcon';
+import { useLogger } from '../context/InteractionLoggerContext';
 
 const berthTypeColors: { [key in BerthType]: string } = {
   [BerthType.QUAY]: 'bg-blue-500/20 text-blue-300',
@@ -44,6 +45,7 @@ const BerthDirectory: React.FC = () => {
   const { currentUser } = useAuth();
   const { state, actions } = usePort();
   const { berths, ships, selectedPort, movements } = state;
+  const { log } = useLogger();
   const [filter, setFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState<BerthType | 'all'>('all');
 
@@ -122,6 +124,21 @@ const BerthDirectory: React.FC = () => {
   const canManageShips = useMemo(() => !!currentUser && [UserRole.ADMIN, UserRole.SUPERVISOR, UserRole.OPERATOR].includes(currentUser.role), [currentUser]);
 
   const getSortDirectionFor = (key: keyof Berth) => sortConfig?.key === key ? sortConfig.direction : undefined;
+  
+  const handleRequestSort = (key: keyof Berth) => {
+    log(InteractionEventType.SORT_APPLIED, { action: 'Sort berths', value: key });
+    requestSort(key);
+  };
+
+  const handleFilterChange = (value: string) => {
+    log(InteractionEventType.FILTER_APPLIED, { action: 'Filter berths by name', value });
+    setFilter(value);
+  };
+
+  const handleTypeFilterChange = (value: BerthType | 'all') => {
+    log(InteractionEventType.FILTER_APPLIED, { action: 'Filter berths by type', value });
+    setTypeFilter(value);
+  };
 
   return (
     <div className="bg-gray-900/50 rounded-lg p-3 sm:p-4 h-full flex flex-col">
@@ -149,8 +166,8 @@ const BerthDirectory: React.FC = () => {
       </div>
 
       <div className="flex flex-col md:flex-row gap-4 mb-4">
-        <input type="text" placeholder="Filter by berth name..." value={filter} onChange={(e) => setFilter(e.target.value)} className="w-full md:w-1/2 px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500" />
-        <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value as BerthType | 'all')} className="w-full md:w-auto px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500">
+        <input type="text" placeholder="Filter by berth name..." value={filter} onChange={(e) => handleFilterChange(e.target.value)} className="w-full md:w-1/2 px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+        <select value={typeFilter} onChange={(e) => handleTypeFilterChange(e.target.value as BerthType | 'all')} className="w-full md:w-auto px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500">
             <option value="all">All Types</option>
             {Object.values(BerthType).map(type => <option key={type} value={type}>{type}</option>)}
         </select>
@@ -161,7 +178,7 @@ const BerthDirectory: React.FC = () => {
           <thead className="bg-gray-700/50 text-xs text-gray-400 uppercase sticky top-0">
             <tr>
               {['name', 'type', 'maxLength', 'maxDraft'].map(key => (
-                <th className="px-4 py-3" key={key}><button onClick={() => requestSort(key as keyof Berth)} className="flex items-center gap-1 hover:text-white capitalize">{key.replace('Length', ' Length (m)').replace('Draft', ' Draft (m)')} <SortIcon direction={getSortDirectionFor(key as keyof Berth)} /></button></th>
+                <th className="px-4 py-3" key={key}><button onClick={() => handleRequestSort(key as keyof Berth)} className="flex items-center gap-1 hover:text-white capitalize">{key.replace('Length', ' Length (m)').replace('Draft', ' Draft (m)')} <SortIcon direction={getSortDirectionFor(key as keyof Berth)} /></button></th>
               ))}
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3">Occupying Vessel</th>

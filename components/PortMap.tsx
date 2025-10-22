@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { MapContainer, TileLayer, Polygon, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Polygon, useMap, useMapEvents } from 'react-leaflet';
 import type { Ship, Berth, Port } from '../types';
-import { ShipStatus } from '../types';
+import { ShipStatus, InteractionEventType } from '../types';
 import { usePort } from '../context/PortContext';
 import FlameIcon from './icons/FlameIcon';
 import LeafletVesselMarker from './LeafletVesselMarker';
@@ -10,6 +10,7 @@ import SunIcon from './icons/SunIcon';
 import SunsetIcon from './icons/SunsetIcon';
 import MoonIcon from './icons/MoonIcon';
 import Squares2x2Icon from './icons/Squares2x2Icon';
+import { useLogger } from '../context/InteractionLoggerContext';
 
 const FILTERABLE_STATUSES: ShipStatus[] = [ShipStatus.APPROACHING, ShipStatus.DOCKED, ShipStatus.ANCHORED, ShipStatus.DEPARTING];
 
@@ -25,6 +26,7 @@ interface MapControllerProps {
 // Helper component to control map view and add custom controls
 const MapController: React.FC<MapControllerProps> = ({ center, zoom, theme, setTheme }) => {
   const map = useMap();
+  const { log } = useLogger();
 
   // This effect handles view changes when the port changes, and fixes tile rendering issues.
   useEffect(() => {
@@ -39,6 +41,16 @@ const MapController: React.FC<MapControllerProps> = ({ center, zoom, theme, setT
     return () => clearTimeout(timer);
     // FIX: Depend on primitive lat/lon values, not the array reference.
   }, [center[0], center[1], zoom, map]);
+
+  useMapEvents({
+      zoomend: (e) => {
+          log(InteractionEventType.MAP_INTERACTION, { action: 'Zoom', value: e.target.getZoom() });
+      },
+      dragend: () => {
+          log(InteractionEventType.MAP_INTERACTION, { action: 'Pan' });
+      }
+  });
+
 
   const resetView = () => {
     map.flyTo(center, zoom);

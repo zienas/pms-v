@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import type { Ship, Port, ShipMovement, Berth } from '../types';
-import { ShipStatus, BerthType } from '../types';
+import { ShipStatus, BerthType, InteractionEventType } from '../types';
 import * as api from '../services/api';
 import { useSortableData } from '../hooks/useSortableData';
 import { formatDuration } from '../utils/formatters';
@@ -12,6 +12,7 @@ import DownloadIcon from '../components/icons/DownloadIcon';
 import { usePort } from '../context/PortContext';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { toast } from 'react-hot-toast';
+import { useLogger } from '../context/InteractionLoggerContext';
 
 interface VesselStat {
     shipId: string; shipName: string; shipImo: string; attendanceCount: number;
@@ -33,6 +34,7 @@ const KPICard: React.FC<{ icon: React.ElementType; title: string; value: string 
 const VesselAnalytics: React.FC = () => {
     const { state } = usePort();
     const { ships, berths, selectedPort, isLoading: isPortLoading } = state;
+    const { log } = useLogger();
     const [stats, setStats] = useState<VesselStat[]>([]);
     const [portStats, setPortStats] = useState({ uniqueVessels: 0, totalVisits: 0, portWideAvgStay: 0, portWideAvgDockStay: 0, portWideAvgAnchorageStay: 0 });
     const [isCalculating, setIsCalculating] = useState(true);
@@ -178,6 +180,7 @@ const VesselAnalytics: React.FC = () => {
 
     const handleExport = () => {
         if (!selectedPort) return;
+        log(InteractionEventType.DATA_EXPORT, { action: 'Export Vessel Analytics to CSV' });
         const dataToExport = sortedStats.map(stat => ({
             'Vessel Name': stat.shipName, 'IMO': stat.shipImo, 'Visits': stat.attendanceCount,
             'Total Stay': formatDuration(stat.totalStay), 

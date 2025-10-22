@@ -31,8 +31,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
         const fetchedUsers = await api.getUsers();
         setUsers(fetchedUsers);
-    } catch (error) {
-        toast.error("Failed to fetch user list.");
+    } catch (error: any) {
+        toast.error(`Failed to fetch users:\n${error.message}`);
         console.error("Failed to fetch users:", error);
     }
   }, []);

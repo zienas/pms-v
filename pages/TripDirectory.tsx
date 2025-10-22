@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import type { Trip } from '../types';
-import { TripStatus, UserRole } from '../types';
+import { TripStatus, UserRole, InteractionEventType } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { useSortableData } from '../hooks/useSortableData';
 import SortIcon from '../components/icons/SortIcon';
@@ -12,6 +12,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { usePort } from '../context/PortContext';
 import { DEFAULT_APP_LOGO_PNG } from '../utils/logo';
+import { useLogger } from '../context/InteractionLoggerContext';
 
 const statusColors: { [key in TripStatus]: string } = {
   [TripStatus.ACTIVE]: 'bg-green-500/20 text-green-300 border-green-500',
@@ -22,6 +23,7 @@ const TripDirectory: React.FC = () => {
   const { state, actions } = usePort();
   const { trips, selectedPort } = state;
   const { currentUser, users } = useAuth();
+  const { log } = useLogger();
   
   const [filter, setFilter] = useState('');
   const [showCompleted, setShowCompleted] = useState(true);
@@ -43,8 +45,14 @@ const TripDirectory: React.FC = () => {
   const { items: sortedTrips, requestSort, sortConfig } = useSortableData<Trip>(filteredTrips, { key: 'arrivalTimestamp', direction: 'descending' });
   const getSortDirectionFor = (key: keyof Trip) => sortConfig?.key === key ? sortConfig.direction : undefined;
   
+  const handleFilterChange = (value: string) => {
+      log(InteractionEventType.FILTER_APPLIED, { action: 'Filter trips', value });
+      setFilter(value);
+  };
+  
   const handleExportCSV = () => {
     if (!selectedPort) return;
+    log(InteractionEventType.DATA_EXPORT, { action: 'Export Trip Directory to CSV' });
     const dataToExport = sortedTrips.map(trip => ({
       'Trip ID': trip.id, 'Vessel Name': trip.vesselName, 'IMO': trip.vesselImo, 'Status': trip.status,
       'Arrival': new Date(trip.arrivalTimestamp).toLocaleString(),
@@ -58,6 +66,7 @@ const TripDirectory: React.FC = () => {
 
   const handleExportPDF = () => {
     if (!selectedPort) return;
+    log(InteractionEventType.DATA_EXPORT, { action: 'Export Trip Directory to PDF' });
     const doc = new jsPDF({ orientation: 'landscape' });
     const tableColumns = ["Trip ID", "Vessel Name (IMO)", "Status", "Arrival", "Departure", "Duration", "Agent", "Pilot"];
     const tableRows = sortedTrips.map(trip => [
@@ -123,6 +132,15 @@ const TripDirectory: React.FC = () => {
     doc.save(`trip_directory_${selectedPort.name.replace(/\s+/g, '_')}.pdf`);
   };
 
+  const openTripModal = (trip: Trip) => {
+    log(InteractionEventType.MODAL_OPEN, {
+        action: 'View Trip Details',
+        targetId: trip.id,
+        value: trip.vesselName,
+    });
+    actions.openModal({ type: 'tripDetail', trip });
+  };
+
   return (
     <div className="bg-gray-900/50 rounded-lg p-3 sm:p-4 h-full flex flex-col">
       <div className="flex flex-col md:flex-row justify-between md:items-center mb-4 gap-4">
@@ -135,7 +153,7 @@ const TripDirectory: React.FC = () => {
         )}
       </div>
       <div className="flex flex-col md:flex-row gap-4 mb-4">
-        <input type="text" placeholder="Filter by vessel, IMO, or Trip ID..." value={filter} onChange={(e) => setFilter(e.target.value)} className="w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+        <input type="text" placeholder="Filter by vessel, IMO, or Trip ID..." value={filter} onChange={(e) => handleFilterChange(e.target.value)} className="w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500" />
         <label className="flex items-center text-sm text-gray-300 whitespace-nowrap"><input type="checkbox" checked={showCompleted} onChange={(e) => setShowCompleted(e.target.checked)} className="w-4 h-4 text-cyan-600 bg-gray-700 border-gray-600 rounded" /><span className="ml-2">Show completed trips</span></label>
       </div>
       <div className="flex-1 overflow-x-auto">
@@ -153,7 +171,7 @@ const TripDirectory: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-gray-700">
                 {sortedTrips.map(trip => (
-                    <tr key={trip.id} onClick={() => actions.openModal({ type: 'tripDetail', trip })} className="group transition-colors duration-200 cursor-pointer hover:bg-gray-800/50">
+                    <tr key={trip.id} onClick={() => openTripModal(trip)} className="group transition-colors duration-200 cursor-pointer hover:bg-gray-800/50">
                         <td className="px-4 py-3 font-mono text-xs text-gray-400">{trip.id.split('-')[1]}</td>
                         <td className="px-4 py-3 font-medium text-white">{trip.vesselName} <span className="text-gray-500">({trip.vesselImo})</span></td>
                         <td className="px-4 py-3"><span className={`px-2 py-1 text-xs font-medium rounded-full border ${statusColors[trip.status]}`}>{trip.status}</span></td>

@@ -10,7 +10,7 @@ import autoTable from 'jspdf-autotable';
 import PDFIcon from '../components/icons/PDFIcon';
 import { DEFAULT_APP_LOGO_PNG } from '../utils/logo';
 import { formatDuration } from '../utils/formatters';
-import { MovementEventType, ShipMovement, LoginHistoryEntry } from '../types';
+import { MovementEventType, ShipMovement, LoginHistoryEntry, InteractionLogEntry } from '../types';
 
 interface UnifiedLog {
     id: string;
@@ -20,13 +20,15 @@ interface UnifiedLog {
     details: string;
     tripId?: string;
     imo?: string;
+    action?: string;
+    value?: any;
 }
 
-type LogTab = 'all' | 'vessel' | 'action' | 'user';
+type LogTab = 'all' | 'vessel' | 'action' | 'user' | 'interaction';
 
 const SystemLogs: React.FC = () => {
     const { state } = usePort();
-    const { movements, ships, selectedPort, loginHistory } = state;
+    const { movements, ships, selectedPort, loginHistory, interactionLogs } = state;
     
     const [filter, setFilter] = useState('');
     const [activeTab, setActiveTab] = useState<LogTab>('all');
@@ -64,6 +66,17 @@ const SystemLogs: React.FC = () => {
             return entries;
         });
 
+        const processInteractions = (interactions: InteractionLogEntry[]): UnifiedLog[] => interactions.map(log => ({
+            id: log.id,
+            timestamp: log.timestamp,
+            eventType: log.eventType,
+            subjectName: log.details.view || 'Global',
+            details: log.details.message,
+            action: log.details.action,
+            value: log.details.value,
+        }));
+
+
         switch (activeTab) {
             case 'vessel':
                 return processMovements(movements);
@@ -77,11 +90,17 @@ const SystemLogs: React.FC = () => {
                 return processMovements(movements.filter(log => actionTypes.includes(log.eventType)));
             case 'user':
                 return processLogins(loginHistory);
+            case 'interaction':
+                return processInteractions(interactionLogs);
             case 'all':
             default:
-                return [...processMovements(movements), ...processLogins(loginHistory)];
+                return [
+                    ...processMovements(movements), 
+                    ...processLogins(loginHistory),
+                    ...processInteractions(interactionLogs),
+                ];
         }
-    }, [activeTab, movements, loginHistory, shipMap]);
+    }, [activeTab, movements, loginHistory, interactionLogs, shipMap]);
 
     const filteredLogs = useMemo(() => {
         return displayedLogs.filter(log => {
@@ -103,6 +122,7 @@ const SystemLogs: React.FC = () => {
         { id: 'vessel', label: 'Vessel Movements' },
         { id: 'action', label: 'Port Actions' },
         { id: 'user', label: 'User Sessions' },
+        { id: 'interaction', label: 'UI Interactions' },
     ];
     const currentTabLabel = tabs.find(t => t.id === activeTab)?.label || 'System';
 
@@ -202,7 +222,7 @@ const SystemLogs: React.FC = () => {
             </div>
             
             <div className="border-b border-gray-700 mb-4">
-                <nav className="-mb-px flex space-x-6" aria-label="Tabs">
+                <nav className="-mb-px flex space-x-6 overflow-x-auto" aria-label="Tabs">
                     {tabs.map(tab => (
                         <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`${tab.id === activeTab ? 'border-cyan-500 text-cyan-400' : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-500'} whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm`}>
                             {tab.label}
@@ -222,8 +242,9 @@ const SystemLogs: React.FC = () => {
                             <th className="px-4 py-3"><button onClick={() => requestSort('timestamp')} className="flex items-center gap-1 hover:text-white">Timestamp <SortIcon direction={getSortDirectionFor('timestamp')} /></button></th>
                             <th className="px-4 py-3"><button onClick={() => requestSort('subjectName')} className="flex items-center gap-1 hover:text-white">Subject <SortIcon direction={getSortDirectionFor('subjectName')} /></button></th>
                             <th className="px-4 py-3"><button onClick={() => requestSort('eventType')} className="flex items-center gap-1 hover:text-white">Event Type <SortIcon direction={getSortDirectionFor('eventType')} /></button></th>
-                            {activeTab !== 'user' && <th className="px-4 py-3"><button onClick={() => requestSort('tripId')} className="flex items-center gap-1 hover:text-white">Trip ID <SortIcon direction={getSortDirectionFor('tripId')} /></button></th>}
+                            {activeTab !== 'user' && activeTab !== 'interaction' && <th className="px-4 py-3"><button onClick={() => requestSort('tripId')} className="flex items-center gap-1 hover:text-white">Trip ID <SortIcon direction={getSortDirectionFor('tripId')} /></button></th>}
                             <th className="px-4 py-3">Details</th>
+                            {activeTab === 'interaction' && <th className="px-4 py-3">Value</th>}
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-700">
@@ -232,12 +253,13 @@ const SystemLogs: React.FC = () => {
                                 <td className="px-4 py-3 whitespace-nowrap">{new Date(log.timestamp).toLocaleString()}</td>
                                 <td className="px-4 py-3 font-medium text-white">{log.subjectName}</td>
                                 <td className="px-4 py-3"><span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-700 text-gray-300">{log.eventType}</span></td>
-                                {activeTab !== 'user' && <td className="px-4 py-3 font-mono text-xs text-gray-400">{log.tripId ? log.tripId.split('-')[1] : '—'}</td>}
+                                {activeTab !== 'user' && activeTab !== 'interaction' && <td className="px-4 py-3 font-mono text-xs text-gray-400">{log.tripId ? log.tripId.split('-')[1] : '—'}</td>}
                                 <td className="px-4 py-3">{log.details}</td>
+                                {activeTab === 'interaction' && <td className="px-4 py-3 text-cyan-300">{log.value !== undefined ? String(log.value) : ''}</td>}
                             </tr>
                         ))}
                         {sortedLogs.length === 0 && (
-                            <tr><td colSpan={activeTab !== 'user' ? 5 : 4} className="text-center py-8 text-gray-500">{displayedLogs.length === 0 ? "No log entries available." : "No logs match your filter."}</td></tr>
+                            <tr><td colSpan={activeTab === 'all' ? 5 : 4} className="text-center py-8 text-gray-500">{displayedLogs.length === 0 ? "No log entries available." : "No logs match your filter."}</td></tr>
                         )}
                     </tbody>
                 </table>

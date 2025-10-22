@@ -41,6 +41,17 @@ export enum AlertType {
   ERROR = 'Error',
 }
 
+export enum InteractionEventType {
+    VIEW_CHANGE = 'View Change',
+    MAP_INTERACTION = 'Map Interaction',
+    DATA_EXPORT = 'Data Export',
+    FILTER_APPLIED = 'Filter Applied',
+    SORT_APPLIED = 'Sort Applied',
+    MODAL_OPEN = 'Modal Open',
+    BUTTON_CLICK = 'Button Click',
+}
+
+
 // --- INTERFACES ---
 
 export interface Port {
@@ -145,6 +156,22 @@ export interface LoginHistoryEntry {
   timestamp: string; // ISO string
   logoutTimestamp?: string; // ISO string
 }
+
+export interface InteractionLogEntry {
+    id: string;
+    userId: string;
+    portId: string;
+    timestamp: string; // ISO string
+    eventType: InteractionEventType;
+    details: {
+        message: string;
+        view?: View;
+        action?: string;
+        value?: any;
+        targetId?: string;
+    };
+}
+
 
 export interface AisData {
   imo: string;
