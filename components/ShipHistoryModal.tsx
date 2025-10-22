@@ -11,6 +11,12 @@ import { formatDuration } from '../utils/formatters';
 import ExternalLinkIcon from './icons/ExternalLinkIcon';
 import CloseIcon from './icons/CloseIcon';
 import { useLogger } from '../context/InteractionLoggerContext';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { usePort } from '../context/PortContext';
+import { DEFAULT_APP_LOGO_PNG } from '../utils/logo';
+import PDFIcon from './icons/PDFIcon';
+import { toast } from 'react-hot-toast';
 
 interface ShipHistoryModalProps {
   ship: Ship;
@@ -20,6 +26,8 @@ interface ShipHistoryModalProps {
 
 const ShipHistoryModal: React.FC<ShipHistoryModalProps> = ({ ship, portId, onClose }) => {
   const { currentUser, users } = useAuth();
+  const { state: portState } = usePort();
+  const { selectedPort } = portState;
   const { log } = useLogger();
   const [history, setHistory] = useState<ShipMovement[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -163,7 +171,7 @@ const ShipHistoryModal: React.FC<ShipHistoryModalProps> = ({ ship, portId, onClo
     }
   };
 
-  const handleExport = () => {
+  const handleExportCSV = () => {
     log(InteractionEventType.DATA_EXPORT, {
         action: 'Export Ship History CSV',
         targetId: ship.id,
@@ -194,6 +202,151 @@ const ShipHistoryModal: React.FC<ShipHistoryModalProps> = ({ ship, portId, onClo
      downloadCSV(dataToExport, `ship-history-${ship.name.replace(/\s+/g, '_')}.csv`);
   };
 
+  const handleExportPDF = () => {
+    if (!selectedPort) {
+      toast.error("Port information is not available for PDF export.");
+      return;
+    }
+    log(InteractionEventType.DATA_EXPORT, {
+        action: 'Export Ship History PDF',
+        targetId: ship.id,
+        value: ship.name,
+    });
+
+    const doc = new jsPDF();
+    const marginLeft = 14;
+    let finalY = 0;
+
+    // --- PDF Header ---
+    doc.setFontSize(18);
+    let titleX = marginLeft;
+
+    // --- Add Logo ---
+    const getMimeType = (dataUrl: string): string | null => {
+        const match = dataUrl.match(/^data:image\/([a-zA-Z+]+);base64,/);
+        return match ? match[1].toUpperCase() : null;
+    };
+
+    const customLogo = selectedPort.logoImage;
+    const customLogoFormat = customLogo ? getMimeType(customLogo) : null;
+    const isCustomLogoValid = customLogo && customLogoFormat && ['PNG', 'JPEG', 'JPG', 'WEBP'].includes(customLogoFormat);
+    let logoAdded = false;
+
+    if (isCustomLogoValid) {
+        try {
+            doc.addImage(customLogo!, customLogoFormat!, marginLeft, 15, 20, 20);
+            logoAdded = true;
+        } catch (e) {
+            console.warn('Failed to add custom port logo. It might be corrupt. Falling back.', e);
+        }
+    }
+
+    if (!logoAdded) {
+        try {
+            doc.addImage(DEFAULT_APP_LOGO_PNG, 'PNG', marginLeft, 15, 20, 20);
+            logoAdded = true;
+        } catch (e) {
+            console.error('CRITICAL: Failed to add default logo. Proceeding without logo.', e);
+        }
+    }
+
+    if (logoAdded) {
+        titleX += 25; // 20px logo width + 5px padding
+    }
+
+    doc.text(`Movement History: ${ship.name}`, titleX, 22);
+    doc.setFontSize(11);
+    doc.setTextColor(100);
+    doc.text(`Port: ${selectedPort.name} | IMO: ${ship.imo}`, titleX, 30);
+    doc.setFontSize(9);
+    doc.text(`Generated: ${new Date().toLocaleString()}`, doc.internal.pageSize.getWidth() - marginLeft, 30, { align: 'right' });
+    finalY = 35;
+
+    // --- Location Summary Table ---
+    if (locationHistory.length > 0) {
+        autoTable(doc, {
+            startY: finalY + 5,
+            head: [['Location Summary']],
+            body: [],
+            theme: 'plain',
+            styles: { fontStyle: 'bold', fontSize: 12 }
+        });
+        const locationColumns = ["Location", "Arrival", "Departure", "Duration", "Pilot (Arr)", "Pilot (Dep)"];
+        const locationRows = locationHistory.map(stay => [
+            stay.location,
+            stay.arrival ? new Date(stay.arrival).toLocaleString() : 'N/A',
+            stay.departure ? new Date(stay.departure).toLocaleString() : 'Present',
+            stay.durationMs !== null ? formatDuration(stay.durationMs) : '',
+            stay.pilotOnArrival || 'N/A',
+            stay.pilotOnDeparture || (stay.departure ? 'N/A' : '')
+        ]);
+        autoTable(doc, {
+            head: [locationColumns],
+            body: locationRows,
+            theme: 'striped',
+            headStyles: { fillColor: [41, 128, 185] },
+            styles: { fontSize: 8 },
+        });
+        finalY = (doc as any).lastAutoTable.finalY;
+    }
+
+    // --- Detailed Movement Log by Trip ---
+    if (historyByTrip.length > 0) {
+        autoTable(doc, {
+            startY: finalY + 10,
+            head: [['Detailed Movement Log']],
+            body: [],
+            theme: 'plain',
+            styles: { fontStyle: 'bold', fontSize: 12 }
+        });
+        finalY = (doc as any).lastAutoTable.finalY;
+
+        const movementColumns = ["Timestamp", "Event", "Details", "Pilot", "Duration in State"];
+        historyByTrip.forEach(({ tripId, movements }) => {
+            // Add a header for the trip
+            autoTable(doc, {
+                startY: finalY + 2,
+                head: [[{ content: `Stopover ID: ${tripId}`, styles: { fillColor: [75, 85, 99], fontStyle: 'bold', fontSize: 10 } }]],
+                body: [],
+                theme: 'plain'
+            });
+
+            const chronologicalMovements = [...movements].reverse(); // Oldest to newest for this trip
+
+            const movementRows = chronologicalMovements.map((item, index) => {
+                let durationText = '—';
+                if (index < chronologicalMovements.length - 1) {
+                    const nextEvent = chronologicalMovements[index + 1];
+                    const durationMs = new Date(nextEvent.timestamp).getTime() - new Date(item.timestamp).getTime();
+                    durationText = formatDuration(durationMs);
+                } else if (ship.currentTripId === tripId) {
+                    const durationMs = now.getTime() - new Date(item.timestamp).getTime();
+                    durationText = `(Current) ${formatDuration(durationMs)}`;
+                }
+                const pilotName = item.details.pilotId ? userMap.get(item.details.pilotId) || 'Unknown' : 'N/A';
+                return [
+                    new Date(item.timestamp).toLocaleString(),
+                    item.eventType,
+                    item.details.message,
+                    pilotName,
+                    durationText
+                ];
+            });
+
+            autoTable(doc, {
+                head: [movementColumns],
+                body: movementRows,
+                theme: 'striped',
+                headStyles: { fillColor: [96, 108, 129] },
+                styles: { fontSize: 8 },
+                columnStyles: { 0: { cellWidth: 35 }, 1: { cellWidth: 35 } }
+            });
+            finalY = (doc as any).lastAutoTable.finalY;
+        });
+    }
+
+    doc.save(`ship-history-${ship.name.replace(/\s+/g, '_')}-${ship.imo}.pdf`);
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
@@ -341,13 +494,22 @@ const ShipHistoryModal: React.FC<ShipHistoryModalProps> = ({ ship, portId, onClo
         </div>
         <div className="flex justify-between items-center pt-4 mt-4 border-t border-gray-700 flex-shrink-0">
           {canExport ? (
-            <button
-                onClick={handleExport}
-                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm flex items-center gap-2"
-            >
-                <DownloadIcon className="w-4 h-4" />
-                Export as CSV
-            </button>
+            <div className="flex items-center gap-2">
+                <button
+                    onClick={handleExportPDF}
+                    className="px-4 py-2 bg-red-700 text-white rounded-md hover:bg-red-800 transition-colors text-sm flex items-center gap-2"
+                >
+                    <PDFIcon className="w-4 h-4" />
+                    Export as PDF
+                </button>
+                <button
+                    onClick={handleExportCSV}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm flex items-center gap-2"
+                >
+                    <DownloadIcon className="w-4 h-4" />
+                    Export as CSV
+                </button>
+            </div>
           ) : (
             <div></div> // Placeholder to keep the close button on the right
           )}

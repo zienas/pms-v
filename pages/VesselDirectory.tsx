@@ -149,42 +149,40 @@ const VesselDirectory: React.FC = () => {
         columnStyles: { 0: { fontStyle: 'bold' } },
         didDrawPage: (data: any) => {
             doc.setFontSize(20); doc.setFont('helvetica', 'bold'); doc.setTextColor(40);
-            let titleX = data.settings.margin.left;
             const marginLeft = data.settings.margin.left;
+            let titleX = marginLeft;
             
-            const getMimeType = (dataUrl: string) => {
+            // --- Add Logo ---
+            const getMimeType = (dataUrl: string): string | null => {
                 const match = dataUrl.match(/^data:image\/([a-zA-Z+]+);base64,/);
                 return match ? match[1].toUpperCase() : null;
             };
 
             const customLogo = selectedPort.logoImage;
             const customLogoFormat = customLogo ? getMimeType(customLogo) : null;
-            const isCustomLogoValid = customLogo && customLogoFormat && ['PNG', 'JPEG', 'WEBP'].includes(customLogoFormat);
-
+            const isCustomLogoValid = customLogo && customLogoFormat && ['PNG', 'JPEG', 'JPG', 'WEBP'].includes(customLogoFormat);
             let logoAdded = false;
 
-            // Attempt 1: Add custom logo if valid
             if (isCustomLogoValid) {
                 try {
                     doc.addImage(customLogo!, customLogoFormat!, marginLeft, 15, 20, 20);
                     logoAdded = true;
                 } catch (e) {
-                    console.warn('Failed to add custom port logo, it might be corrupt. Falling back.', e);
+                    console.warn('Failed to add custom port logo. It might be corrupt. Falling back.', e);
                 }
             }
 
-            // Attempt 2: Add default logo if custom one wasn't added
             if (!logoAdded) {
                 try {
                     doc.addImage(DEFAULT_APP_LOGO_PNG, 'PNG', marginLeft, 15, 20, 20);
                     logoAdded = true;
                 } catch (e) {
-                    console.error('CRITICAL: Failed to add default logo. Proceeding without one.', e);
+                    console.error('CRITICAL: Failed to add default logo. Proceeding without logo.', e);
                 }
             }
             
             if (logoAdded) {
-                titleX += 22;
+                titleX += 25; // 20px logo width + 5px padding
             }
 
             doc.text("Vessel Directory", titleX, 22);

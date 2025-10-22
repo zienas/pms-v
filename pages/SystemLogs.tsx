@@ -176,29 +176,41 @@ const SystemLogs: React.FC = () => {
             headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
             didDrawPage: (data: any) => {
                 doc.setFontSize(20); doc.setFont('helvetica', 'bold'); doc.setTextColor(40);
-                let titleX = data.settings.margin.left;
                 const marginLeft = data.settings.margin.left;
-        
-                const getMimeType = (dataUrl: string) => {
+                let titleX = marginLeft;
+
+                // --- Add Logo ---
+                const getMimeType = (dataUrl: string): string | null => {
                     const match = dataUrl.match(/^data:image\/([a-zA-Z+]+);base64,/);
                     return match ? match[1].toUpperCase() : null;
                 };
         
                 const customLogo = selectedPort.logoImage;
                 const customLogoFormat = customLogo ? getMimeType(customLogo) : null;
-                const isCustomLogoValid = customLogo && customLogoFormat && ['PNG', 'JPEG', 'WEBP'].includes(customLogoFormat);
+                const isCustomLogoValid = customLogo && customLogoFormat && ['PNG', 'JPEG', 'JPG', 'WEBP'].includes(customLogoFormat);
                 let logoAdded = false;
 
                 if (isCustomLogoValid) {
-                    try { doc.addImage(customLogo!, customLogoFormat!, marginLeft, 15, 20, 20); logoAdded = true; } 
-                    catch (e) { console.warn('Failed to add custom port logo.', e); }
+                    try {
+                        doc.addImage(customLogo!, customLogoFormat!, marginLeft, 15, 20, 20);
+                        logoAdded = true;
+                    } catch (e) {
+                        console.warn('Failed to add custom port logo. It might be corrupt. Falling back.', e);
+                    }
                 }
+
                 if (!logoAdded) {
-                    try { doc.addImage(DEFAULT_APP_LOGO_PNG, 'PNG', marginLeft, 15, 20, 20); logoAdded = true; } 
-                    catch (e) { console.error('Failed to add default logo.', e); }
+                    try {
+                        doc.addImage(DEFAULT_APP_LOGO_PNG, 'PNG', marginLeft, 15, 20, 20);
+                        logoAdded = true;
+                    } catch (e) {
+                        console.error('CRITICAL: Failed to add default logo. Proceeding without logo.', e);
+                    }
                 }
         
-                if (logoAdded) titleX += 22;
+                if (logoAdded) {
+                    titleX += 25; // 20px logo width + 5px padding
+                }
         
                 doc.text(`${currentTabLabel} Logs`, titleX, 22);
                 doc.setFontSize(12); doc.setFont('helvetica', 'normal'); doc.setTextColor(100); doc.text(selectedPort.name, titleX, 29);

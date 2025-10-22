@@ -5,6 +5,7 @@ import SortIcon from '../components/icons/SortIcon';
 import EditIcon from '../components/icons/EditIcon';
 import DeleteIcon from '../components/icons/DeleteIcon';
 import { usePort } from '../context/PortContext';
+import { DEFAULT_APP_LOGO_PNG } from '../utils/logo';
 
 const PortManagement: React.FC = () => {
     const { state, actions } = usePort();
@@ -31,8 +32,15 @@ const PortManagement: React.FC = () => {
                     <ul className="space-y-2 overflow-y-auto">
                         {ports.map(port => (
                             <li key={port.id} className={`p-2 rounded-md cursor-pointer flex justify-between items-center group ${managingPort?.id === port.id ? 'bg-cyan-500/20' : 'hover:bg-gray-700'}`} onClick={() => setManagingPort(port)}>
-                                <span className="font-medium">{port.name}</span>
-                                <div className="opacity-0 group-hover:opacity-100 flex gap-2">
+                                <div className="flex items-center gap-3 overflow-hidden">
+                                    <img 
+                                        src={port.logoImage || DEFAULT_APP_LOGO_PNG} 
+                                        alt={`${port.name} logo`}
+                                        className="w-8 h-8 object-contain rounded-md bg-gray-900/50 flex-shrink-0"
+                                    />
+                                    <span className="font-medium truncate">{port.name}</span>
+                                </div>
+                                <div className="opacity-0 group-hover:opacity-100 flex gap-2 flex-shrink-0">
                                      <button onClick={(e) => { e.stopPropagation(); actions.openModal({ type: 'portForm', port }); }} className="p-1 text-gray-300 hover:text-cyan-400" title="Edit Port"><EditIcon className="h-4 w-4" /></button>
                                      <button onClick={(e) => { e.stopPropagation(); actions.deletePort(port.id); }} className="p-1 text-gray-300 hover:text-red-500" title="Delete Port"><DeleteIcon className="h-4 w-4" /></button>
                                 </div>

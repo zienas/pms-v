@@ -1,9 +1,9 @@
 import React from 'react';
-import ShipIcon from './icons/ShipIcon';
 import MenuIcon from './icons/MenuIcon';
 import { useAuth } from '../context/AuthContext';
 import { usePort } from '../context/PortContext';
 import { UserRole } from '../types';
+import { DEFAULT_APP_LOGO_PNG } from '../utils/logo';
 
 interface HeaderProps {
     onMenuClick: () => void;
@@ -19,11 +19,15 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
 
   return (
     <header className="flex items-center justify-between p-3 sm:p-4 bg-gray-900 border-b border-gray-700 shadow-md flex-shrink-0">
-      <div className="flex items-center">
+      <div className="flex items-center overflow-hidden">
         <button onClick={onMenuClick} className="p-2 mr-2 text-gray-300 hover:text-white md:hidden" aria-label="Open menu">
           <MenuIcon className="w-6 h-6" />
         </button>
-        <ShipIcon className="w-7 h-7 sm:w-8 sm:h-8 text-cyan-400 mr-2 sm:mr-3" />
+        <img
+            src={selectedPort?.logoImage || DEFAULT_APP_LOGO_PNG}
+            alt={selectedPort ? `${selectedPort.name} logo` : 'Port logo'}
+            className="w-8 h-8 object-contain mr-3 rounded-md bg-gray-700/50 p-1 flex-shrink-0"
+        />
         <h1 className="text-xl sm:text-2xl font-bold text-white tracking-wider truncate">
             {selectedPort?.name || (accessiblePorts.length > 0 ? "Select a Port" : "No Ports Available")}
         </h1>
