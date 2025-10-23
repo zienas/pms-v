@@ -1,7 +1,7 @@
 import L from 'leaflet';
 
 // Function to convert degrees to radians
-const toRad = (value: number): number => (value * Math.PI) / 180;
+export const toRad = (value: number): number => (value * Math.PI) / 180;
 // Function to convert radians to degrees
 export const toDeg = (radians: number): number => (radians * 180) / Math.PI;
 

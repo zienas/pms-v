@@ -107,6 +107,8 @@ export const initialSeedData = {
       lat: 1.2665,
       lon: 103.8215,
       currentTripId: 'trip-1',
+      speed: 12, // knots
+      rateOfTurn: 5, // degrees per minute
     },
     {
       id: 'ship-maersk',
@@ -126,6 +128,8 @@ export const initialSeedData = {
       lon: 103.9,
       heading: 315,
       currentTripId: 'trip-2',
+      speed: 15,
+      rateOfTurn: 3,
     },
   ] as Ship[],
   trips: [

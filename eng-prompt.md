@@ -13,91 +13,34 @@ A key requirement is to leverage the native capabilities of the Windows platform
 The Windows application must implement the full feature set of its web counterpart. This includes:
 
 -   **Dynamic Geospatial Dashboard**: A live, coordinate-based map that visualizes vessel traffic.
-    -   Must render custom vessel icons based on status, size, and orientation (for docked vessels).
-    -   Must display port and berth boundary geometries (polygons) from the database.
-    -   Must support interactive zoom/pan, custom map tile layers or backgrounds, and a 2 NM proximity circle.
-    -   Vessels on the map must be selectable, showing detailed tooltips on hover and opening an edit/details view on click.
-
--   **Proactive & Automated Alerts**: An advanced alert system to enhance situational awareness.
-    -   **Proximity Alerts**: Automatically generate alerts and native Windows notifications when a vessel enters a 2 NM radius of the port center.
-    -   **Safety & Conflict Alerts**: Generate alerts for double-booked berths, vessels exceeding berth length/draft limits, and vessels carrying dangerous goods.
-
+-   **Proactive & Automated Alerts**: An advanced alert system for proximity warnings, safety, and conflict alerts.
 -   **Vessel Trip & Stopover Tracking**: The application must manage the entire lifecycle of a vessel's visit (a "trip" or "stopover").
-    -   A unique Trip ID should be generated for each visit, from arrival to departure.
-    -   A dedicated **Trip Directory** must provide a sortable, filterable data grid of all trips.
-    -   An interactive **Trip Details** view must allow editing of trip-specific data (e.g., assigned agent/pilot) and display a detailed **Stopover Timeline** breaking down time spent at each berth or anchorage.
-
--   **Comprehensive Vessel & Berth Management**: Full CRUD (Create, Read, Update, Delete) functionality.
-    -   **Vessel Directory**: A filterable, sortable data grid of all vessels.
-    -   **Berth Directory**: A detailed view of all berths, their status (occupied/available), and specifications.
-    -   **Ship Movement History**: A detailed, auditable log for each vessel, tracking all status changes, berth assignments, and agent/pilot assignments. **This history must be logically grouped by Trip ID** to provide a clear, chronological breakdown of every action that occurred during each distinct visit.
-
--   **Vessel Attendance Analytics**: A dedicated analytics view showing historical attendance data for each vessel, including:
-    -   Total visit count.
-    -   Total, average, minimum, and maximum stay durations.
-    -   A breakdown of time spent at dock vs. time at anchorage.
-
--   **Multi-Port & User Management (Admin)**:
-    -   Full CRUD functionality for Ports, Berths, and Users.
-    -   Ability to draw and edit port/berth geometry directly on a map interface. The implementation must replicate the web app's streamlined workflow:
-        -   **Berths/Quays**: Defined by a start point, end point, and width, with the system calculating the length and generating the rectangular polygon.
-        -   **Anchorages**: Defined by a center point and a radius, with the system calculating the diameter.
-        -   All points must be interactive (drag-and-drop).
-    -   A detailed, sortable audit trail of all user login/logout events.
-
--   **Unified & Auditable System Logs**: A dedicated, tab-based interface for viewing all system events.
-    -   Must provide a unified view of all events as well as filtered views for Vessel Movements, Port Actions (e.g., pilot/berth assignments), and User Login/Logout sessions.
-    -   All log views must be sortable, filterable, and exportable to both CSV and PDF formats.
-
--   **Authentication & Role-Based Access Control (RBAC)**:
-    -   Secure login screen.
-    -   **Forced Password Reset**: The system must enforce a password change for new users or upon an administrative password reset to enhance security.
-    -   Application features and data access must be restricted based on user roles (Admin, Operator, Captain, etc.) as defined in the existing system.
-
--   **Data Export**:
-    -   Functionality to export all data grids (Vessel Directory, Login History, Vessel Analytics) to CSV files.
-    -   Functionality to generate and export professional, print-ready **PDF reports** for the main Trip Directory and for individual, detailed trip summaries (including the Stopover Timeline).
+-   **Comprehensive Vessel & Berth Management**: Full CRUD (Create, Read, Update, Delete) functionality for all port assets.
+-   **Vessel Attendance Analytics**: A dedicated analytics view showing historical attendance data for each vessel.
+-   **Multi-Port & User Management (Admin)**: Full CRUD functionality for Ports, Berths, and Users, including a map-based geometry editor.
+-   **Unified & Auditable System Logs**: A dedicated, tab-based interface for viewing all system events, including vessel movements, port actions, user sessions, and UI interactions.
+-   **Authentication & Role-Based Access Control (RBAC)**: Secure login with forced password resets and role-based feature restrictions.
+-   **Data Export**: Functionality to export all data grids to CSV and to generate professional PDF reports for trips.
 
 ---
 
 ## 3. Proposed Technical Stack & Architecture
 
-### 3.1. Application Framework
--   **Primary Recommendation**: **.NET MAUI**. This provides a modern, XAML-based UI framework that is performant, and while this project targets Windows, it offers a path to future cross-platform support (macOS).
--   **Alternative**: **WPF (Windows Presentation Foundation)**. A mature and powerful framework for building Windows-only applications.
-
-### 3.2. Architecture
--   **Pattern**: **MVVM (Model-View-ViewModel)** is required. This ensures a clean separation of concerns between the UI (View), the application logic (ViewModel), and the data (Model).
--   **Service Layer**: A dedicated layer should be implemented to handle all business logic.
--   **Repository Pattern**: For abstracting data access, whether from a local database or a remote API.
-
-### 3.3. Database
-The application must support two operational modes:
-1.  **Standalone/Local Mode**: Utilizes a local **SQLite** database. The application will be fully functional on a single machine.
-2.  **Networked/Client-Server Mode**: Connects to a central **PostgreSQL (with PostGIS)** or **SQL Server** database. This allows multiple clients to share the same live data.
-The application should allow the user to configure the database connection at startup or through a settings panel.
-
-### 3.4. Key Components & Libraries
--   **Mapping**: A robust mapping control is critical.
-    -   For .NET MAUI: Investigate `Microsoft.Maui.Controls.Maps` or third-party libraries like `Mapsui`.
-    -   The chosen library must support custom markers, polygon overlays, and preferably custom map tile sources.
--   **UI Controls**: Utilize modern UI controls that align with the Windows Fluent Design System. Consider libraries like the Windows Community Toolkit or commercial suites (Telerik, Syncfusion) for advanced data grids and charts.
--   **NMEA Parsing**: A reliable .NET library for parsing NMEA-0183 sentences is required for the AIS ingestion service.
+-   **Application Framework**: **.NET MAUI** (recommended) or **WPF**.
+-   **Architecture**: **MVVM (Model-View-ViewModel)** is required.
+-   **Database**: Support for both a local **SQLite** database (standalone mode) and a central **PostgreSQL (with PostGIS)** database (networked mode).
+-   **Mapping**: A robust mapping control like `Microsoft.Maui.Controls.Maps` or `Mapsui`.
+-   **NMEA Parsing**: A reliable .NET library for parsing NMEA-0183 sentences.
 
 ---
 
 ## 4. Live AIS Data Ingestion (Critical Requirement)
 
-This is a primary advantage of the native application. The app must **natively and directly** handle AIS data streams without a separate intermediary service.
+The native application must **directly** handle AIS data streams from hardware without a separate service.
 
--   **Implementation**: Create a singleton background service within the application that runs on its own thread.
--   **UDP Listener**: This service must be able to open a UDP socket on a configurable port and listen for incoming AIS data packets.
--   **Serial Port Listener**: The service must also be able to connect to a configurable COM port (e.g., from a USB-to-Serial adapter) and read the data stream.
--   **Data Processing**:
-    1.  Receive raw NMEA sentences.
-    2.  Use the chosen NMEA library to parse them into structured AIS messages.
-    3.  Persist the relevant data (position, IMO, name, status) to the application's database via the repository layer.
-    4.  Broadcast events within the application (e.g., using a weak event manager) to notify ViewModels of new data so the UI can update in real-time.
+-   **Implementation**: A singleton background service running on its own thread.
+-   **Listeners**: The service must be able to open a UDP socket on a configurable port and connect to a configurable COM port to listen for data.
+-   **Data Processing**: The service will receive raw NMEA sentences, parse them into structured AIS messages, persist the data to the database, and broadcast events within the application to update the UI in real-time.
 
 ---
 
@@ -106,15 +49,14 @@ This is a primary advantage of the native application. The app must **natively a
 The database schema must be identical to the one defined for the existing web application's backend. This ensures data compatibility and a clear data model.
 
 ```sql
--- Enable PostGIS for geospatial features (for PostgreSQL)
--- For SQLite, spatial functionality can be handled by libraries like SpatiaLite.
+-- For PostgreSQL, enable PostGIS. For SQLite, use a library like SpatiaLite.
 CREATE EXTENSION IF NOT EXISTS postgis;
 
--- Create custom ENUM types to ensure data consistency, matching the application's TypeScript types.
-CREATE TYPE user_role AS ENUM ('Admin', 'Port Operator', 'Captain', 'Maritime Agent', 'Pilot');
+-- Create custom ENUM types to ensure data consistency.
+CREATE TYPE user_role AS ENUM ('Administrator', 'Supervisor', 'Port Operator', 'Maritime Agent', 'Pilot');
 CREATE TYPE berth_type AS ENUM ('Quay', 'Berth', 'Anchorage');
-CREATE TYPE ship_status AS ENUM ('Approaching', 'Docked', 'Departing', 'At Anchorage', 'Left Port');
-CREATE TYPE movement_event_type AS ENUM ('Vessel Registered', 'Status Updated', 'Berth Assignment', 'Pilot Assignment', 'AIS Update', 'Agent Assignment');
+CREATE TYPE ship_status AS ENUM ('Approaching', 'Anchored', 'Docked', 'Departing', 'Left Port');
+CREATE TYPE movement_event_type AS ENUM ('Vessel Registered', 'AIS Update', 'Status Change', 'Berth Assignment', 'Pilot Assignment', 'Agent Assignment', 'Pilot Onboard', 'Pilot Offboard');
 CREATE TYPE trip_status AS ENUM ('Active', 'Completed');
 
 -- Table for Ports
@@ -123,19 +65,23 @@ CREATE TABLE ports (
     name VARCHAR(255) NOT NULL,
     lat NUMERIC(9, 6) NOT NULL,
     lon NUMERIC(9, 6) NOT NULL,
-    map_image TEXT, -- Base64 Data URL for a custom map background
-    logo_image TEXT, -- Base64 Data URL for the port logo
-    geometry GEOMETRY(POLYGON, 4326) -- Store port boundary as a polygon
+    logo_image TEXT,
+    geometry GEOMETRY(POLYGON, 4326)
 );
 
 -- Table for Users
 CREATE TABLE users (
     id TEXT PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
+    email VARCHAR(255),
+    phone VARCHAR(50),
+    gsm VARCHAR(50),
+    company VARCHAR(255),
     role user_role NOT NULL,
-    password TEXT NOT NULL, -- In a real app, this would store a hash
+    password TEXT NOT NULL, -- Must be hashed in a real implementation
     port_id TEXT,
-    force_password_change BOOLEAN NOT NULL DEFAULT TRUE, -- Enforces password change on first login. Set to FALSE for admins.
+    force_password_change BOOLEAN NOT NULL DEFAULT TRUE,
+    notes TEXT,
     FOREIGN KEY (port_id) REFERENCES ports(id) ON DELETE SET NULL
 );
 
@@ -147,11 +93,11 @@ CREATE TABLE berths (
     type berth_type NOT NULL,
     max_length NUMERIC(10, 2) NOT NULL,
     max_draft NUMERIC(10, 2) NOT NULL,
-    equipment TEXT[], -- Array of strings for equipment
+    equipment TEXT[],
     quay_id TEXT,
     position_on_quay INTEGER,
-    geometry GEOMETRY(POLYGON, 4326), -- Store berth shape as a polygon
-    radius NUMERIC(10, 2), -- The radius in meters, used for anchorages
+    geometry GEOMETRY(POLYGON, 4326),
+    radius NUMERIC(10, 2),
     FOREIGN KEY (port_id) REFERENCES ports(id) ON DELETE CASCADE
 );
 
@@ -186,7 +132,7 @@ CREATE TABLE ships (
     departure_date TIMESTAMP WITH TIME ZONE,
     pilot_id TEXT,
     agent_id TEXT,
-    current_trip_id TEXT, -- The active trip for this vessel
+    current_trip_id TEXT,
     has_dangerous_goods BOOLEAN NOT NULL DEFAULT FALSE,
     lat NUMERIC(9, 6),
     lon NUMERIC(9, 6),
@@ -210,7 +156,7 @@ CREATE TABLE ship_movements (
     id TEXT PRIMARY KEY,
     ship_id TEXT NOT NULL,
     port_id TEXT NOT NULL,
-    trip_id TEXT NOT NULL, -- Associate every movement with a specific trip
+    trip_id TEXT NOT NULL,
     event_type movement_event_type NOT NULL,
     "timestamp" TIMESTAMP WITH TIME ZONE NOT NULL,
     details JSONB,
@@ -228,6 +174,19 @@ CREATE TABLE login_history (
     port_name VARCHAR(255) NOT NULL,
     "timestamp" TIMESTAMP WITH TIME ZONE NOT NULL,
     logout_timestamp TIMESTAMP WITH TIME ZONE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (port_id) REFERENCES ports(id) ON DELETE CASCADE
+);
+
+-- Table for UI Interaction Logs
+CREATE TABLE interaction_log (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    user_name VARCHAR(255) NOT NULL,
+    port_id TEXT NOT NULL,
+    "timestamp" TIMESTAMP WITH TIME ZONE NOT NULL,
+    event_type VARCHAR(50) NOT NULL,
+    details JSONB,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (port_id) REFERENCES ports(id) ON DELETE CASCADE
 );

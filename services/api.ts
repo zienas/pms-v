@@ -11,11 +11,17 @@ import { UserRole, ShipStatus, TripStatus, MovementEventType } from '../types';
 const DB_KEY = 'pms_database';
 
 // --- Database Simulation ---
+let dbCache: typeof initialSeedData | null = null;
 
 const getDatabase = (): typeof initialSeedData => {
+  if (dbCache) {
+    return dbCache;
+  }
   try {
     const data = localStorage.getItem(DB_KEY);
-    return data ? JSON.parse(data) : initializeDatabase();
+    const db = data ? JSON.parse(data) : initializeDatabase();
+    dbCache = db;
+    return db;
   } catch (error) {
     console.error("Error reading from localStorage, re-initializing database.", error);
     return initializeDatabase();
@@ -25,6 +31,7 @@ const getDatabase = (): typeof initialSeedData => {
 const saveDatabase = (db: typeof initialSeedData): void => {
   try {
     localStorage.setItem(DB_KEY, JSON.stringify(db));
+    dbCache = db;
   } catch (error) {
     console.error("Error writing to localStorage.", error);
   }
@@ -93,6 +100,7 @@ export const logoutUser = async (userId: string): Promise<void> => {
         lastLogin.logoutTimestamp = new Date().toISOString();
         saveDatabase(db);
     }
+    dbCache = null; // Clear cache on logout
 };
 
 export const addUser = async (userData: Omit<User, 'id'>): Promise<User> => {

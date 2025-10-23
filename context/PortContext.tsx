@@ -3,7 +3,7 @@ import { toast } from 'react-hot-toast';
 import type { Ship, Berth, Alert, Port, Trip, User, AisSource, ModalState, AisData, ShipMovement, LoginHistoryEntry, InteractionLogEntry } from '../types';
 import { AlertType, ShipStatus, UserRole, MovementEventType } from '../types';
 import * as api from '../services/api';
-import { runAisUpdateStep } from '../services/aisSimulator';
+import { runAisSimulationStep } from '../services/aisSimulator';
 import { calculateDistanceNM } from '../utils/geolocation';
 import { webSocketService } from '../services/webSocketService';
 import { useAuth } from './AuthContext';
@@ -352,16 +352,14 @@ export const PortProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const runAisSimulation = (aisSource: AisSource, pilotThreshold: number) => {
             if (aisSource !== 'simulator') return () => {};
             const interval = setInterval(async () => {
-                const { ports, selectedPortId } = stateRef.current;
-                if (ports.length > 0 && selectedPortId) {
-                    const allShips = await api.getAllShips();
-                    const updates = runAisUpdateStep(ports, allShips, pilotThreshold);
+                const { allBerths, selectedPortId } = stateRef.current;
+                if (selectedPortId) {
+                    const allShips = await api.getAllShips(); // Fetch all ships for a global simulation
+                    const aisUpdates = runAisSimulationStep(allShips, allBerths);
                     
-                    const shipData = updates.newShip || updates.updatedShip;
-                    
-                    if (shipData) {
-                        const aisData: AisData = { imo: shipData.imo, portId: shipData.portId, name: shipData.name, type: shipData.type, status: shipData.status, lat: shipData.lat, lon: shipData.lon };
-                        const updatedShip = await api.updateShipFromAIS(aisData);
+                    for (const update of aisUpdates) {
+                        const updatedShip = await api.updateShipFromAIS(update);
+                        // Only dispatch updates for the currently viewed port to avoid unnecessary re-renders
                         if (updatedShip && updatedShip.portId === selectedPortId) {
                             dispatch({ type: 'UPDATE_SHIP_AIS', payload: updatedShip });
                         }

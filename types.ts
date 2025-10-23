@@ -106,6 +106,11 @@ export interface Ship {
   lon?: number;
   heading?: number; // Vessel's true heading in degrees (0-359)
   currentTripId?: string;
+  // Additions for simulation
+  speed?: number; // knots
+  rateOfTurn?: number; // degrees per minute
+  targetLat?: number;
+  targetLon?: number;
 }
 
 export interface User {

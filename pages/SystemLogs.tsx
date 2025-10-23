@@ -32,6 +32,8 @@ const SystemLogs: React.FC = () => {
     
     const [filter, setFilter] = useState('');
     const [activeTab, setActiveTab] = useState<LogTab>('all');
+    const [currentPage, setCurrentPage] = useState(1);
+    const LOGS_PER_PAGE = 50;
 
     const shipMap = useMemo(() => new Map(ships.map(s => [s.id, s])), [ships]);
 
@@ -103,6 +105,7 @@ const SystemLogs: React.FC = () => {
     }, [activeTab, movements, loginHistory, interactionLogs, shipMap]);
 
     const filteredLogs = useMemo(() => {
+        setCurrentPage(1); // Reset to first page on filter change
         return displayedLogs.filter(log => {
             const lowerCaseFilter = filter.toLowerCase();
             return (
@@ -117,6 +120,20 @@ const SystemLogs: React.FC = () => {
     const { items: sortedLogs, requestSort, sortConfig } = useSortableData<UnifiedLog>(filteredLogs, { key: 'timestamp', direction: 'descending' });
     const getSortDirectionFor = (key: keyof UnifiedLog) => sortConfig?.key === key ? sortConfig.direction : undefined;
     
+    const totalPages = Math.ceil(sortedLogs.length / LOGS_PER_PAGE);
+    const paginatedLogs = useMemo(() => {
+        return sortedLogs.slice(
+            (currentPage - 1) * LOGS_PER_PAGE,
+            currentPage * LOGS_PER_PAGE
+        );
+    }, [sortedLogs, currentPage]);
+
+    const handlePageChange = (newPage: number) => {
+        if (newPage >= 1 && newPage <= totalPages) {
+            setCurrentPage(newPage);
+        }
+    };
+
     const tabs: { id: LogTab; label: string }[] = [
         { id: 'all', label: 'All Events' },
         { id: 'vessel', label: 'Vessel Movements' },
@@ -184,6 +201,29 @@ const SystemLogs: React.FC = () => {
 
         doc.save(`${currentTabLabel.replace(' ', '_').toLowerCase()}_logs_${selectedPort.name.replace(/\s+/g, '_')}.pdf`);
     };
+    
+    const PaginationControls: React.FC = () => {
+        if (totalPages <= 1) return null;
+        return (
+            <div className="flex justify-between items-center mt-4 text-sm text-gray-300">
+                <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="px-4 py-2 bg-gray-700 rounded-md hover:bg-gray-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    &larr; Previous
+                </button>
+                <span>Page {currentPage} of {totalPages} ({sortedLogs.length} total entries)</span>
+                <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="px-4 py-2 bg-gray-700 rounded-md hover:bg-gray-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    Next &rarr;
+                </button>
+            </div>
+        );
+    };
 
     return (
         <div className="bg-gray-900/50 rounded-lg p-3 sm:p-4 h-full flex flex-col">
@@ -222,7 +262,7 @@ const SystemLogs: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-700">
-                        {sortedLogs.map(log => (
+                        {paginatedLogs.map(log => (
                             <tr key={log.id} className="hover:bg-gray-800/50">
                                 <td className="px-4 py-3 whitespace-nowrap">{new Date(log.timestamp).toLocaleString()}</td>
                                 <td className="px-4 py-3 font-medium text-white">{log.subjectName}</td>
@@ -238,6 +278,7 @@ const SystemLogs: React.FC = () => {
                     </tbody>
                 </table>
             </div>
+             <PaginationControls />
         </div>
     );
 };

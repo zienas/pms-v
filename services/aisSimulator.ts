@@ -1,107 +1,133 @@
-import { Ship, Port, ShipStatus, AisData } from '../types';
-import { calculateDistanceNM, calculateBearing, toDeg } from '../utils/geolocation';
+import L from 'leaflet';
+import type { Ship, Berth, AisData } from '../types';
+import { ShipStatus, BerthType } from '../types';
+import { calculateDistanceNM, calculateBearing, toRad, toDeg, destinationPoint } from '../utils/geolocation';
 
-const MOVEMENT_SPEED_DEGREES = 0.005; // Approx speed in lat/lon degrees
+const SIMULATION_INTERVAL_S = 7;
+const PORT_EXIT_DISTANCE_NM = 20;
 
-// This function returns an object that can be passed to the updateShipFromAIS API
-export const runAisUpdateStep = (ports: Port[], allShips: Ship[], pilotThreshold: number): { newShip?: Omit<Ship, 'id'>, updatedShip?: Ship } => {
+const knotsToDegreesPerSecond = (knots: number): number => {
+    const metersPerSecond = knots * 0.514444;
+    const metersPerDegree = 111320; // Approximate meters per degree of latitude
+    return metersPerSecond / metersPerDegree;
+};
+
+export const runAisSimulationStep = (allShips: Ship[], allBerths: Berth[]): AisData[] => {
     const activeShips = allShips.filter(s => s.status !== ShipStatus.LEFT_PORT && s.lat && s.lon);
+    const updatedShipData: AisData[] = [];
 
-    // Decision: Create a new ship or update an existing one?
-    // Create if there are no active ships, or with a 10% chance if there are.
-    const shouldCreateNewShip = (activeShips.length === 0 || Math.random() < 0.1) && ports.length > 0;
-
-    if (shouldCreateNewShip) {
-        const port = ports[Math.floor(Math.random() * ports.length)];
-        const newShipLat = port.lat + (Math.random() > 0.5 ? 1 : -1) * (0.1 + Math.random() * 0.1);
-        const newShipLon = port.lon + (Math.random() > 0.5 ? 1 : -1) * (0.1 + Math.random() * 0.1);
-        const bearingToPort = calculateBearing(newShipLat, newShipLon, port.lat, port.lon);
-
-        const newShip: Omit<Ship, 'id'> = {
-            portId: port.id,
-            name: `Newcomer ${Math.floor(Math.random() * 1000)}`,
-            imo: `${Math.floor(1000000 + Math.random() * 9000000)}`,
-            type: 'Cargo',
-            length: 150,
-            draft: 8,
-            flag: 'LR',
-            eta: new Date().toISOString(),
-            etd: new Date(Date.now() + 3 * 24 * 3600 * 1000).toISOString(),
-            status: ShipStatus.APPROACHING,
-            berthIds: [],
-            hasDangerousGoods: Math.random() < 0.1,
-            lat: newShipLat,
-            lon: newShipLon,
-            heading: (toDeg(bearingToPort) + 360) % 360,
-        };
-        // The context will call api.updateShipFromAIS which handles creation
-        return { updatedShip: { ...newShip, id: 'temp-id' } as Ship };
-    }
-
-    // If we didn't create a new ship, update an existing one.
-    if (activeShips.length > 0) {
-        const shipToUpdate = { ...activeShips[Math.floor(Math.random() * activeShips.length)] };
-        const port = ports.find(p => p.id === shipToUpdate.portId);
-        if (!port || shipToUpdate.lat === undefined || shipToUpdate.lon === undefined) return {};
-
-        const distanceToPort = calculateDistanceNM(shipToUpdate.lat, shipToUpdate.lon, port.lat, port.lon);
+    activeShips.forEach(ship => {
+        let updatedShip = { ...ship };
         
-        switch (shipToUpdate.status) {
+        const portBerths = allBerths.filter(b => b.portId === ship.portId);
+        const portAnchorages = portBerths.filter(b => b.type === BerthType.ANCHORAGE);
+        const portCenter = { lat: portAnchorages[0]?.geometry?.[0]?.[0] || 1.26, lon: portAnchorages[0]?.geometry?.[0]?.[1] || 103.82 }; // Fallback
+
+        // --- Status-based Logic ---
+        switch (updatedShip.status) {
             case ShipStatus.APPROACHING:
-                // Move towards port
-                if (distanceToPort > 0.1) {
-                    const angle = Math.atan2(port.lat - shipToUpdate.lat, port.lon - shipToUpdate.lon);
-                    shipToUpdate.lat += MOVEMENT_SPEED_DEGREES * Math.sin(angle);
-                    shipToUpdate.lon += MOVEMENT_SPEED_DEGREES * Math.cos(angle);
-                    
-                    const bearingRad = calculateBearing(shipToUpdate.lat, shipToUpdate.lon, port.lat, port.lon);
-                    shipToUpdate.heading = (toDeg(bearingRad) + 360) % 360;
+                if (!updatedShip.targetLat || !updatedShip.targetLon) {
+                    // Assign a target anchorage if none exists
+                    if (portAnchorages.length > 0) {
+                        const targetAnchorage = portAnchorages[Math.floor(Math.random() * portAnchorages.length)];
+                        const center = L.polygon(targetAnchorage.geometry!).getBounds().getCenter();
+                        updatedShip.targetLat = center.lat;
+                        updatedShip.targetLon = center.lng;
+                    }
                 }
-                // When within pilot threshold, it has a chance to move to anchorage. It doesn't auto-dock.
-                if (distanceToPort < pilotThreshold) {
-                    if (Math.random() > 0.7) { // 30% chance to move to anchorage
-                        shipToUpdate.status = ShipStatus.ANCHORED;
+
+                if (updatedShip.targetLat && updatedShip.targetLon) {
+                    const distanceToTarget = calculateDistanceNM(updatedShip.lat!, updatedShip.lon!, updatedShip.targetLat, updatedShip.targetLon);
+                    if (distanceToTarget < 0.5) {
+                        updatedShip.status = ShipStatus.ANCHORED;
+                        updatedShip.targetLat = undefined;
+                        updatedShip.targetLon = undefined;
                     }
                 }
                 break;
-            case ShipStatus.ANCHORED:
-                // Small random drift at anchorage, more than when docked
-                shipToUpdate.lat += (Math.random() - 0.5) * 0.001;
-                shipToUpdate.lon += (Math.random() - 0.5) * 0.001;
-                if (Math.random() < 0.05) { // 5% chance to start departing
-                    shipToUpdate.status = ShipStatus.DEPARTING;
-                }
-                break;
-            case ShipStatus.DOCKED:
-                 // Very small random drift while at berth
-                shipToUpdate.lat += (Math.random() - 0.5) * 0.0001;
-                shipToUpdate.lon += (Math.random() - 0.5) * 0.0001;
-
-                const randomActionDocked = Math.random();
-                if (randomActionDocked < 0.02) { // 2% chance to start departing
-                    shipToUpdate.status = ShipStatus.DEPARTING;
-                    shipToUpdate.berthIds = []; // Clear berths on departure
-                } else if (randomActionDocked < 0.03) { // Additional 1% chance to move to anchorage
-                    shipToUpdate.status = ShipStatus.ANCHORED;
-                    shipToUpdate.berthIds = []; // Clear berths when moving to anchorage
-                }
-                break;
+            
             case ShipStatus.DEPARTING:
-                // Move away from port
-                const angle = Math.atan2(port.lat - shipToUpdate.lat, port.lon - shipToUpdate.lon);
-                shipToUpdate.lat -= MOVEMENT_SPEED_DEGREES * Math.sin(angle);
-                shipToUpdate.lon -= MOVEMENT_SPEED_DEGREES * Math.cos(angle);
+                if (!updatedShip.targetLat || !updatedShip.targetLon) {
+                    const bearingFromPort = calculateBearing(portCenter.lat, portCenter.lon, updatedShip.lat!, updatedShip.lon!);
+                    const exitPoint = destinationPoint(portCenter.lat, portCenter.lon, PORT_EXIT_DISTANCE_NM * 1852, bearingFromPort);
+                    updatedShip.targetLat = exitPoint[0];
+                    updatedShip.targetLon = exitPoint[1];
+                }
 
-                const bearingRad = calculateBearing(port.lat, port.lon, shipToUpdate.lat, shipToUpdate.lon);
-                shipToUpdate.heading = (toDeg(bearingRad) + 360) % 360;
+                const distanceToPort = calculateDistanceNM(updatedShip.lat!, updatedShip.lon!, portCenter.lat, portCenter.lon);
+                if (distanceToPort > PORT_EXIT_DISTANCE_NM) {
+                    updatedShip.status = ShipStatus.LEFT_PORT;
+                }
+                break;
 
-                if (distanceToPort > 10) {
-                    shipToUpdate.status = ShipStatus.LEFT_PORT;
+            case ShipStatus.ANCHORED:
+                // Small drift
+                updatedShip.lat! += (Math.random() - 0.5) * 0.0001;
+                updatedShip.lon! += (Math.random() - 0.5) * 0.0001;
+                if (Math.random() < 0.01) {
+                    updatedShip.status = ShipStatus.DEPARTING;
+                }
+                break;
+            
+            case ShipStatus.DOCKED:
+                 // Minimal drift
+                updatedShip.lat! += (Math.random() - 0.5) * 0.00001;
+                updatedShip.lon! += (Math.random() - 0.5) * 0.00001;
+                 if (Math.random() < 0.005) {
+                    updatedShip.status = ShipStatus.DEPARTING;
+                    updatedShip.berthIds = [];
                 }
                 break;
         }
-        return { updatedShip: shipToUpdate };
-    }
-    
-    return {};
+
+        // --- Movement Logic ---
+        let currentSpeed = updatedShip.speed || 10;
+        
+        // Simple Collision Avoidance
+        for (const otherShip of activeShips) {
+            if (otherShip.id === updatedShip.id || !otherShip.lat || !otherShip.lon) continue;
+            
+            const distanceToOther = calculateDistanceNM(updatedShip.lat!, updatedShip.lon!, otherShip.lat, otherShip.lon);
+            if (distanceToOther < 0.5) { // Check within 0.5 NM
+                const bearingToOther = (toDeg(calculateBearing(updatedShip.lat!, updatedShip.lon!, otherShip.lat, otherShip.lon)) + 360) % 360;
+                const headingDiff = Math.abs(bearingToOther - (updatedShip.heading || 0));
+                if (headingDiff < 30 || headingDiff > 330) { // If other ship is in front
+                    currentSpeed *= 0.5; // Slow down
+                    break;
+                }
+            }
+        }
+
+        if (updatedShip.targetLat && updatedShip.targetLon) {
+            const heading = updatedShip.heading ?? 0;
+            const rateOfTurn = updatedShip.rateOfTurn ?? 5; // degrees per minute
+            const maxTurnPerStep = (rateOfTurn / 60) * SIMULATION_INTERVAL_S;
+            
+            const targetBearing = (toDeg(calculateBearing(updatedShip.lat!, updatedShip.lon!, updatedShip.targetLat, updatedShip.targetLon)) + 360) % 360;
+            let bearingDiff = targetBearing - heading;
+
+            // Normalize difference to -180 to 180
+            if (bearingDiff > 180) bearingDiff -= 360;
+            if (bearingDiff < -180) bearingDiff += 360;
+
+            const turn = Math.max(-maxTurnPerStep, Math.min(maxTurnPerStep, bearingDiff));
+            updatedShip.heading = (heading + turn + 360) % 360;
+
+            const distancePerStep = knotsToDegreesPerSecond(currentSpeed) * SIMULATION_INTERVAL_S;
+            const headingRad = toRad(updatedShip.heading);
+            updatedShip.lat! += distancePerStep * Math.cos(headingRad);
+            updatedShip.lon! += distancePerStep * Math.sin(headingRad);
+        }
+
+        updatedShipData.push({
+            imo: updatedShip.imo,
+            portId: updatedShip.portId,
+            lat: updatedShip.lat,
+            lon: updatedShip.lon,
+            heading: updatedShip.heading,
+            status: updatedShip.status !== ship.status ? updatedShip.status : undefined,
+        });
+    });
+
+    return updatedShipData;
 };
