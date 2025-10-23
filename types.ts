@@ -171,6 +171,7 @@ export interface LoginHistoryEntry {
 export interface InteractionLogEntry {
     id: string;
     userId: string;
+    userName: string;
     portId: string;
     timestamp: string; // ISO string
     eventType: InteractionEventType;
@@ -217,7 +218,8 @@ export type View =
   | 'logs'
   | 'management'
   | 'users'
-  | 'settings';
+  | 'settings'
+  | 'pilot-log';
 
 export type AisSource = 'simulator' | 'udp' | 'serial';
 

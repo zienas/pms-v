@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import Header from './components/Header';
 import ShipFormModal from './components/ShipFormModal';
 import type { View } from './types';
@@ -85,9 +85,19 @@ const MainApp: React.FC = () => {
     selectedPort,
   } = state;
   
-  const [activeView, setActiveView] = useState<View>('dashboard');
+  const [activeView, setActiveView] = useState<View>(currentUser?.role === UserRole.PILOT ? 'pilot-log' : 'dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const warningShownForShiftEnd = useRef<number | null>(null);
+
+  const unacknowledgedAlerts = useMemo(() => {
+    const baseAlerts = alerts.filter(a => !a.acknowledged);
+    if (currentUser?.role === UserRole.PILOT) {
+      const assignedShipIds = new Set(ships.filter(s => s.pilotId === currentUser.id).map(s => s.id));
+      return baseAlerts.filter(a => a.shipId && assignedShipIds.has(a.shipId));
+    }
+    return baseAlerts;
+  }, [alerts, currentUser, ships]);
+
 
   useEffect(() => { actions.loadInitialPorts(); }, [actions]);
 
@@ -250,6 +260,7 @@ const MainApp: React.FC = () => {
         case 'management': return <PortManagement />;
         case 'users': return <UserManagement />;
         case 'settings': return <SettingsPage />;
+        case 'pilot-log': return <PilotPage />;
         default: return <Dashboard />;
     }
   };
@@ -269,7 +280,7 @@ const MainApp: React.FC = () => {
   return (
     <div className="flex h-screen font-sans bg-gray-900 text-gray-200 relative">
       {isSidebarOpen && <div className="fixed inset-0 bg-black/60 z-20 md:hidden" onClick={() => setIsSidebarOpen(false)}></div>}
-      <SidebarNav activeView={activeView} setActiveView={setActiveView} alertCount={alerts.filter(a => !a.acknowledged).length} isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
+      <SidebarNav activeView={activeView} setActiveView={setActiveView} alertCount={unacknowledgedAlerts.length} isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
       <div className="flex flex-col flex-1 overflow-hidden">
         <Header onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} />
         <main className="flex-1 p-2 sm:p-4 overflow-y-auto bg-gray-800">
@@ -300,10 +311,6 @@ export default function App() {
                 <LoadingSpinner message="Initializing..." />
             </div>
         );
-    }
-    
-    if (currentUser && currentUser.role === UserRole.PILOT) {
-        return <PilotPage />;
     }
     
     if (currentUser && isPasswordChangeRequired) {

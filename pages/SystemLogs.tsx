@@ -70,8 +70,8 @@ const SystemLogs: React.FC = () => {
             id: log.id,
             timestamp: log.timestamp,
             eventType: log.eventType,
-            subjectName: log.details.view || 'Global',
-            details: log.details.message,
+            subjectName: log.userName,
+            details: `[${log.details.view || 'Global'}] ${log.details.message}`,
             action: log.details.action,
             value: log.details.value,
         }));

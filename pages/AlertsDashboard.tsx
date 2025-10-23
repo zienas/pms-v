@@ -1,8 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import type { Alert } from '../types';
-import { AlertType } from '../types';
+import { AlertType, UserRole } from '../types';
 import WarningIcon from '../components/icons/WarningIcon';
 import { usePort } from '../context/PortContext';
+import { useAuth } from '../context/AuthContext';
 
 const alertStyles: Record<AlertType, { iconColor: string; borderColor: string; bgColor: string }> = {
   [AlertType.ERROR]: {
@@ -22,19 +23,27 @@ type FilterStatus = 'all' | 'acknowledged' | 'unacknowledged';
 
 const AlertsDashboard: React.FC = () => {
    const { state, actions } = usePort();
+   const { currentUser } = useAuth();
    const { alerts, ships } = state;
    const [filterType, setFilterType] = useState<FilterType>('all');
    const [filterStatus, setFilterStatus] = useState<FilterStatus>('unacknowledged');
 
    const filteredAlerts = useMemo(() => {
-     return alerts.filter(alert => {
+     let alertsToFilter = alerts;
+
+     if (currentUser?.role === UserRole.PILOT) {
+        const assignedShipIds = new Set(ships.filter(s => s.pilotId === currentUser.id).map(s => s.id));
+        alertsToFilter = alerts.filter(alert => alert.shipId && assignedShipIds.has(alert.shipId));
+     }
+
+     return alertsToFilter.filter(alert => {
        const typeMatch = filterType === 'all' || alert.type === filterType;
        const statusMatch = filterStatus === 'all' ||
          (filterStatus === 'acknowledged' && alert.acknowledged) ||
          (filterStatus === 'unacknowledged' && !alert.acknowledged);
        return typeMatch && statusMatch;
      });
-   }, [alerts, filterType, filterStatus]);
+   }, [alerts, filterType, filterStatus, currentUser, ships]);
 
    const handleTakeAction = (alert: Alert) => {
      const ship = ships.find(s => s.id === alert.shipId);

@@ -73,14 +73,20 @@ const VesselDirectory: React.FC = () => {
   const canExport = useMemo(() => !!currentUser && [UserRole.ADMIN, UserRole.SUPERVISOR].includes(currentUser.role), [currentUser]);
 
   const filteredShips = useMemo(() => {
-    return ships
+    let shipsToFilter = ships;
+
+    if (currentUser?.role === UserRole.PILOT) {
+      shipsToFilter = ships.filter(ship => ship.pilotId === currentUser.id);
+    }
+
+    return shipsToFilter
       .filter(ship => showDeparted || ship.status !== ShipStatus.LEFT_PORT)
       .filter(ship => 
         ship.name.toLowerCase().includes(filter.toLowerCase()) || 
         ship.imo.includes(filter) ||
         ship.type.toLowerCase().includes(filter.toLowerCase())
       );
-  }, [ships, filter, showDeparted]);
+  }, [ships, filter, showDeparted, currentUser]);
 
   const { items: sortedShips, requestSort, sortConfig, setSortConfig } = useSortableData<Ship>(filteredShips, initialSortConfig);
   

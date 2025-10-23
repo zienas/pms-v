@@ -32,6 +32,7 @@ export const InteractionLoggerProvider: React.FC<{ children: React.ReactNode }> 
 
         api.logInteraction({
             userId: currentUser.id,
+            userName: currentUser.name,
             portId: selectedPortId,
             eventType,
             details: {
