@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import type { Ship, Berth } from '../types';
-import { ShipStatus } from '../types';
+import { ShipStatus, InteractionEventType } from '../types';
 import { usePort } from '../context/PortContext';
+import { useLogger } from '../context/InteractionLoggerContext';
 
 type AssignmentStatus = {
     isValid: boolean;
@@ -11,6 +12,7 @@ type AssignmentStatus = {
 
 const ReassignBerthModal: React.FC<{ ship: Ship }> = ({ ship }) => {
   const { state, actions } = usePort();
+  const { log } = useLogger();
   const { berths, ships } = state;
   const { updateShip, closeModal } = actions;
 
@@ -49,6 +51,12 @@ const ReassignBerthModal: React.FC<{ ship: Ship }> = ({ ship }) => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (assignmentStatus.isValid) {
+      log(InteractionEventType.FORM_SUBMIT, {
+        action: 'Reassign Berth',
+        targetId: ship.id,
+        value: `To berths: ${assignmentStatus.berthIds.join(',') || 'Unassigned'}`
+      });
+
       let newStatus = ship.status;
       const isAssigning = assignmentStatus.berthIds.length > 0;
       const wasAssigned = ship.berthIds.length > 0;
@@ -69,6 +77,14 @@ const ReassignBerthModal: React.FC<{ ship: Ship }> = ({ ship }) => {
     }
   };
   
+  const handleCancel = () => {
+    log(InteractionEventType.MODAL_CLOSE, {
+        action: 'Cancel ReassignBerth',
+        targetId: ship.id,
+    });
+    closeModal();
+  };
+
   const getBerthSelectClasses = () => {
     const base = "mt-1 block w-full px-3 py-2 bg-gray-700 text-white border rounded-md focus:outline-none focus:ring-2";
     if (!primaryBerthId) return `${base} border-gray-600 focus:ring-cyan-500`;
@@ -111,8 +127,8 @@ const ReassignBerthModal: React.FC<{ ship: Ship }> = ({ ship }) => {
             </div>
             
             <div className="flex justify-end gap-4 pt-4">
-                <button type="button" onClick={closeModal} className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors">Cancel</button>
-                <button type="submit" className="px-4 py-2 bg-cyan-600 text-white rounded-md hover:bg-cyan-700 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed" disabled={!assignmentStatus.isValid}>Reassign</button>
+                <button type="button" onClick={handleCancel} data-logging-handler="true" className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors">Cancel</button>
+                <button type="submit" data-logging-handler="true" className="px-4 py-2 bg-cyan-600 text-white rounded-md hover:bg-cyan-700 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed" disabled={!assignmentStatus.isValid}>Reassign</button>
             </div>
         </form>
       </div>

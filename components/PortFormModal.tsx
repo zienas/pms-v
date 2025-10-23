@@ -3,9 +3,13 @@ import type { Port } from '../types';
 import GeometryEditor from './GeometryEditor';
 import { usePort } from '../context/PortContext';
 import { createCircle } from '../utils/geolocation';
+import { toast } from 'react-hot-toast';
+import { useLogger } from '../context/InteractionLoggerContext';
+import { InteractionEventType } from '../types';
 
 const PortFormModal: React.FC = () => {
     const { state, actions } = usePort();
+    const { log } = useLogger();
     const portToEdit = useMemo(() => (state.modal?.type === 'portForm' ? state.modal.port : null), [state.modal]);
     const [formData, setFormData] = useState({
         name: '',
@@ -93,6 +97,13 @@ const PortFormModal: React.FC = () => {
     const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
+            const supportedTypes = ['image/png', 'image/jpeg', 'image/webp'];
+            if (!supportedTypes.includes(file.type)) {
+                toast.error('Unsupported file type. Please upload a PNG, JPEG, or WEBP file.');
+                e.target.value = ''; // Reset file input
+                return;
+            }
+
             const reader = new FileReader();
             reader.onloadend = () => {
                 setFormData(prev => ({ ...prev, logoImage: reader.result as string }));
@@ -118,6 +129,11 @@ const PortFormModal: React.FC = () => {
         setErrors(newErrors);
 
         if (Object.keys(newErrors).length === 0) {
+            log(InteractionEventType.FORM_SUBMIT, {
+                action: portToEdit ? 'Update Port' : 'Add Port',
+                targetId: portToEdit?.id,
+                value: formData.name.trim(),
+            });
             const portData: Partial<Port> = {
                 name: formData.name.trim(), lat: latNum, lon: lonNum,
                 geometry: formData.geometry, logoImage: formData.logoImage,
@@ -131,6 +147,14 @@ const PortFormModal: React.FC = () => {
                 await actions.addPort(portData as Omit<Port, 'id'>);
             }
         }
+    };
+
+    const handleCancel = () => {
+        log(InteractionEventType.MODAL_CLOSE, {
+            action: 'Cancel PortForm',
+            targetId: portToEdit?.id,
+        });
+        actions.closeModal();
     };
 
     const currentPortForEditor: Port = {
@@ -169,7 +193,7 @@ const PortFormModal: React.FC = () => {
                                 <input 
                                     id="logo-upload"
                                     type="file" 
-                                    accept="image/png, image/jpeg, image/svg+xml"
+                                    accept="image/png, image/jpeg, image/webp"
                                     onChange={handleLogoUpload}
                                     className="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-cyan-600/20 file:text-cyan-300 hover:file:bg-cyan-600/30"
                                 />
@@ -223,7 +247,7 @@ const PortFormModal: React.FC = () => {
                         </div>
                     </div>
                     <div className="flex justify-end gap-4 pt-4">
-                        <button type="button" onClick={actions.closeModal} className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors">Cancel</button>
+                        <button type="button" onClick={handleCancel} className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors">Cancel</button>
                         <button type="submit" className="px-4 py-2 bg-cyan-600 text-white rounded-md hover:bg-cyan-700 transition-colors">Save Port</button>
                     </div>
                 </form>

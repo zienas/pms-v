@@ -1,12 +1,14 @@
 import React, { useState, useMemo } from 'react';
 import type { Ship } from '../types';
-import { UserRole } from '../types';
+import { UserRole, InteractionEventType } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { usePort } from '../context/PortContext';
+import { useLogger } from '../context/InteractionLoggerContext';
 
 const AssignPilotModal: React.FC<{ ship: Ship }> = ({ ship }) => {
   const { users } = useAuth();
   const { actions } = usePort();
+  const { log } = useLogger();
   const { updateShip, closeModal } = actions;
 
   const pilots = useMemo(() => users.filter(user => user.role === UserRole.PILOT), [users]);
@@ -17,8 +19,21 @@ const AssignPilotModal: React.FC<{ ship: Ship }> = ({ ship }) => {
     if (!selectedPilotId) {
       return;
     }
+    log(InteractionEventType.FORM_SUBMIT, {
+        action: 'Assign Pilot',
+        targetId: ship.id,
+        value: `Pilot ID: ${selectedPilotId}`,
+    });
     const shipToUpdate = { ...ship, pilotId: selectedPilotId };
     updateShip(ship.id, shipToUpdate).then(closeModal);
+  };
+
+  const handleCancel = () => {
+    log(InteractionEventType.MODAL_CLOSE, {
+        action: 'Cancel AssignPilot',
+        targetId: ship.id,
+    });
+    closeModal();
   };
 
   return (
@@ -46,8 +61,8 @@ const AssignPilotModal: React.FC<{ ship: Ship }> = ({ ship }) => {
           </div>
           
           <div className="flex justify-end gap-4 pt-4">
-            <button type="button" onClick={closeModal} className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors">Cancel</button>
-            <button type="submit" className="px-4 py-2 bg-cyan-600 text-white rounded-md hover:bg-cyan-700 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed" disabled={!selectedPilotId || pilots.length === 0}>
+            <button type="button" onClick={handleCancel} data-logging-handler="true" className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors">Cancel</button>
+            <button type="submit" data-logging-handler="true" className="px-4 py-2 bg-cyan-600 text-white rounded-md hover:bg-cyan-700 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed" disabled={!selectedPilotId || pilots.length === 0}>
               Assign Pilot
             </button>
           </div>

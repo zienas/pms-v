@@ -2,9 +2,12 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import ShipIcon from './icons/ShipIcon';
 import { toast } from 'react-hot-toast';
+import { useLogger } from '../context/InteractionLoggerContext';
+import { InteractionEventType } from '../types';
 
 const ForcePasswordChangeModal: React.FC = () => {
     const { currentUser, updateOwnPassword, logout } = useAuth();
+    const { log } = useLogger();
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -32,6 +35,11 @@ const ForcePasswordChangeModal: React.FC = () => {
             setIsLoading(false);
         }
     };
+    
+    const handleLogout = () => {
+        log(InteractionEventType.BUTTON_CLICK, { action: 'Logout', message: 'User logged out from password change screen.' });
+        logout();
+    }
 
     return (
         <div className="fixed inset-0 bg-gray-900 flex items-center justify-center z-[100] p-4">
@@ -74,14 +82,13 @@ const ForcePasswordChangeModal: React.FC = () => {
                     {error && <p className="text-red-400 text-sm text-center">{error}</p>}
 
                     <div>
-                        <button type="submit" disabled={isLoading} className="group relative w-full flex justify-center py-2 px-4 mt-4 border border-transparent text-sm font-medium rounded-md text-white bg-cyan-600 hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-cyan-500 disabled:bg-gray-500">
+                        <button type="submit" disabled={isLoading} data-logging-handler="true" className="group relative w-full flex justify-center py-2 px-4 mt-4 border border-transparent text-sm font-medium rounded-md text-white bg-cyan-600 hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-cyan-500 disabled:bg-gray-500">
                             {isLoading ? 'Saving...' : 'Set New Password'}
                         </button>
                     </div>
                 </form>
                 <div className="text-center mt-4">
-                    {/* FIX: The `logout` function requires an optional string, not a MouseEvent. It must be wrapped in an arrow function. */}
-                    <button onClick={() => logout()} className="text-sm text-gray-500 hover:text-gray-300">
+                    <button onClick={handleLogout} data-logging-handler="true" className="text-sm text-gray-500 hover:text-gray-300">
                         Logout
                     </button>
                 </div>

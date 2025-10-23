@@ -12,6 +12,8 @@ interface SettingsContextType {
   setFirstShiftStartHour: (hour: number) => void;
   shiftDurationHours: number;
   setShiftDurationHours: (hours: number) => void;
+  isAisSimulationEnabled: boolean;
+  setIsAisSimulationEnabled: (enabled: boolean) => void;
 }
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined);
@@ -24,6 +26,7 @@ const loadSettings = (): {
     pilotThreshold: number;
     firstShiftStartHour: number;
     shiftDurationHours: number;
+    isAisSimulationEnabled: boolean;
 } => {
     try {
       const item = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
@@ -39,6 +42,7 @@ const loadSettings = (): {
               ...settings,
               firstShiftStartHour: settings.firstShiftStartHour ?? 6, // Default to 6 if not present
               shiftDurationHours: settings.shiftDurationHours ?? 8,   // Default to 8 if not present
+              isAisSimulationEnabled: settings.isAisSimulationEnabled ?? true,
           };
         }
       }
@@ -52,6 +56,7 @@ const loadSettings = (): {
         pilotThreshold: 2,
         firstShiftStartHour: 6,
         shiftDurationHours: 8,
+        isAisSimulationEnabled: true,
     };
 };
 
@@ -61,22 +66,24 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [pilotThreshold, setPilotThresholdState] = useState<number>(() => loadSettings().pilotThreshold);
   const [firstShiftStartHour, setFirstShiftStartHourState] = useState<number>(() => loadSettings().firstShiftStartHour);
   const [shiftDurationHours, setShiftDurationHoursState] = useState<number>(() => loadSettings().shiftDurationHours);
+  const [isAisSimulationEnabled, setIsAisSimulationEnabledState] = useState<boolean>(() => loadSettings().isAisSimulationEnabled);
 
 
   useEffect(() => {
     try {
-        const settings = { aisSource, approachingThreshold, pilotThreshold, firstShiftStartHour, shiftDurationHours };
+        const settings = { aisSource, approachingThreshold, pilotThreshold, firstShiftStartHour, shiftDurationHours, isAisSimulationEnabled };
         window.localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
     } catch (error) {
         console.error("Error saving settings to localStorage", error);
     }
-  }, [aisSource, approachingThreshold, pilotThreshold, firstShiftStartHour, shiftDurationHours]);
+  }, [aisSource, approachingThreshold, pilotThreshold, firstShiftStartHour, shiftDurationHours, isAisSimulationEnabled]);
 
   const setAisSource = (source: AisSource) => setAisSourceState(source);
   const setApproachingThreshold = (distance: number) => setApproachingThresholdState(distance);
   const setPilotThreshold = (distance: number) => setPilotThresholdState(distance);
   const setFirstShiftStartHour = (hour: number) => setFirstShiftStartHourState(hour);
   const setShiftDurationHours = (hours: number) => setShiftDurationHoursState(hours);
+  const setIsAisSimulationEnabled = (enabled: boolean) => setIsAisSimulationEnabledState(enabled);
 
   const value = useMemo(() => ({ 
       aisSource, setAisSource,
@@ -84,7 +91,8 @@ export const SettingsProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       pilotThreshold, setPilotThreshold,
       firstShiftStartHour, setFirstShiftStartHour,
       shiftDurationHours, setShiftDurationHours,
-  }), [aisSource, approachingThreshold, pilotThreshold, firstShiftStartHour, shiftDurationHours]);
+      isAisSimulationEnabled, setIsAisSimulationEnabled,
+  }), [aisSource, approachingThreshold, pilotThreshold, firstShiftStartHour, shiftDurationHours, isAisSimulationEnabled]);
 
   return <SettingsContext.Provider value={value}>{children}</SettingsContext.Provider>;
 };

@@ -2,8 +2,9 @@ import React from 'react';
 import MenuIcon from './icons/MenuIcon';
 import { useAuth } from '../context/AuthContext';
 import { usePort } from '../context/PortContext';
-import { UserRole } from '../types';
+import { UserRole, InteractionEventType } from '../types';
 import { DEFAULT_APP_LOGO_PNG } from '../utils/pdfUtils';
+import { useLogger } from '../context/InteractionLoggerContext';
 
 interface HeaderProps {
     onMenuClick: () => void;
@@ -12,10 +13,16 @@ interface HeaderProps {
 const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const { currentUser, logout } = useAuth();
   const { state, actions } = usePort();
+  const { log } = useLogger();
   const { selectedPort, accessiblePorts, selectedPortId } = state;
   const showPortSelector = currentUser?.role === UserRole.ADMIN && accessiblePorts.length > 1;
 
   if (!currentUser) return null;
+  
+  const handleLogout = () => {
+      log(InteractionEventType.BUTTON_CLICK, { action: 'Logout', message: 'User clicked the logout button.' });
+      logout();
+  };
 
   return (
     <header className="flex items-center justify-between p-3 sm:p-4 bg-gray-900 border-b border-gray-700 shadow-md flex-shrink-0">
@@ -39,7 +46,14 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
                 <select
                     id="port-select"
                     value={selectedPortId || ''}
-                    onChange={(e) => actions.setSelectedPortId(e.target.value)}
+                    onChange={(e) => {
+                        log(InteractionEventType.FILTER_APPLIED, { 
+                            action: 'Change Port', 
+                            value: e.target.options[e.target.selectedIndex].text,
+                            message: `User changed active port to ${e.target.options[e.target.selectedIndex].text}`
+                        });
+                        actions.setSelectedPortId(e.target.value);
+                    }}
                     className="bg-gray-700 text-white border border-gray-600 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm"
                 >
                     {accessiblePorts.map(port => (
@@ -52,8 +66,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
             <p className="text-sm font-semibold text-white truncate">{currentUser.name}</p>
             <p className="text-xs text-cyan-400 hidden sm:block">{currentUser.role}</p>
          </div>
-         {/* FIX: The `logout` function requires an optional string, not a MouseEvent. It must be wrapped in an arrow function. */}
-         <button onClick={() => logout()} className="px-3 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 transition-colors" aria-label="Logout">Logout</button>
+         <button onClick={handleLogout} data-logging-handler="true" className="px-3 py-2 bg-red-600 text-white text-sm font-medium rounded-md hover:bg-red-700 transition-colors" aria-label="Logout">Logout</button>
       </div>
     </header>
   );

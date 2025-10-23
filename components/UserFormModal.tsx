@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import type { User } from '../types';
-import { UserRole } from '../types';
+import { UserRole, InteractionEventType } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { usePort } from '../context/PortContext';
+import { useLogger } from '../context/InteractionLoggerContext';
 
 const UserFormModal: React.FC = () => {
     const { currentUser, addUser, updateUser } = useAuth();
     const { state, actions } = usePort();
+    const { log } = useLogger();
     const { ports, modal } = state;
     const { closeModal } = actions;
     const userToEdit = useMemo(() => (modal?.type === 'userForm' ? modal.user : null), [modal]);
@@ -79,6 +81,11 @@ const UserFormModal: React.FC = () => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (validate()) {
+            log(InteractionEventType.FORM_SUBMIT, {
+                action: userToEdit ? 'Update User' : 'Add User',
+                targetId: userToEdit?.id,
+                value: formData.name,
+            });
             if (userToEdit) {
                 // For update, we need to pass the ID back
                 const userToUpdate: User = { ...formData, id: userToEdit.id };
@@ -92,6 +99,14 @@ const UserFormModal: React.FC = () => {
             }
             closeModal();
         }
+    };
+
+    const handleCancel = () => {
+        log(InteractionEventType.MODAL_CLOSE, {
+            action: 'Cancel UserForm',
+            targetId: userToEdit?.id,
+        });
+        closeModal();
     };
 
     return (
@@ -126,7 +141,7 @@ const UserFormModal: React.FC = () => {
                         </div>
                     )}
                     <div className="flex justify-end gap-4 pt-4">
-                        <button type="button" onClick={closeModal} className="px-4 py-2 bg-gray-600 rounded-md hover:bg-gray-700">Cancel</button>
+                        <button type="button" onClick={handleCancel} className="px-4 py-2 bg-gray-600 rounded-md hover:bg-gray-700">Cancel</button>
                         <button type="submit" className="px-4 py-2 bg-cyan-600 rounded-md hover:bg-cyan-700">Save User</button>
                     </div>
                 </form>

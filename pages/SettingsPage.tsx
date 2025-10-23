@@ -11,6 +11,7 @@ const SettingsPage: React.FC = () => {
         pilotThreshold, setPilotThreshold,
         firstShiftStartHour, setFirstShiftStartHour,
         shiftDurationHours, setShiftDurationHours,
+        isAisSimulationEnabled, setIsAisSimulationEnabled,
     } = useSettings();
     const { currentUser } = useAuth();
     
@@ -39,6 +40,26 @@ const SettingsPage: React.FC = () => {
                                     <h3 className="font-semibold text-orange-300">Action Required: Start Ingestion Service</h3>
                                     <p className="mt-2 text-orange-200">The internal simulator is now disabled. You must run the backend ingestion service to receive live data.</p>
                                     <a href="./HOWTO-GOLIVE.md" target="_blank" rel="noopener noreferrer" className="mt-3 inline-block font-bold text-orange-400 hover:text-orange-300 underline">View Go-Live Instructions &rarr;</a>
+                                </div>
+                            )}
+                        </div>
+                        
+                        <div className="bg-gray-800 p-6 rounded-lg border border-gray-700">
+                            <h2 className="text-xl font-semibold mb-4">AIS Simulation Control</h2>
+                            <p className="text-sm text-gray-400 mb-4">Enable or disable the internal AIS data simulator. This is useful for development and demonstration.</p>
+                            <label htmlFor="ais-simulation-toggle" className="flex items-center cursor-pointer">
+                                <div className="relative">
+                                    <input type="checkbox" id="ais-simulation-toggle" className="sr-only" checked={isAisSimulationEnabled} onChange={(e) => setIsAisSimulationEnabled(e.target.checked)} />
+                                    <div className={`block w-14 h-8 rounded-full transition-colors ${isAisSimulationEnabled ? 'bg-cyan-600' : 'bg-gray-600'}`}></div>
+                                    <div className={`absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition-transform transform ${isAisSimulationEnabled ? 'translate-x-6' : 'translate-x-0'}`}></div>
+                                </div>
+                                <div className="ml-4 text-gray-200 font-medium">
+                                    {isAisSimulationEnabled ? 'Simulation Enabled' : 'Simulation Disabled'}
+                                </div>
+                            </label>
+                             {!isAisSimulationEnabled && aisSource === 'simulator' && (
+                                <div className="mt-4 p-3 bg-yellow-900/40 border border-yellow-600/70 rounded-md text-sm text-yellow-200">
+                                    Warning: The data source is set to 'Internal Simulator', but the simulation is disabled. No new vessel data will be generated.
                                 </div>
                             )}
                         </div>

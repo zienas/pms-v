@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import type { Berth, Port } from '../types';
-import { BerthType } from '../types';
+import { BerthType, InteractionEventType } from '../types';
 import GeometryEditor from './GeometryEditor';
 import { usePort } from '../context/PortContext';
 import { calculateDistanceMeters, createRectangleFromLine, createCircle } from '../utils/geolocation';
+import { useLogger } from '../context/InteractionLoggerContext';
 
 interface BerthFormModalProps {
     port: Port;
@@ -22,6 +23,7 @@ const InputField: React.FC<{ label: string; name: string; type: string; value: a
 
 const BerthFormModal: React.FC<BerthFormModalProps> = ({ port }) => {
     const { state, actions } = usePort();
+    const { log } = useLogger();
     const { addBerth, updateBerth, closeModal } = actions;
     const berthToEdit = useMemo(() => (state.modal?.type === 'berthForm' ? state.modal.berth : null), [state.modal]);
     
@@ -128,6 +130,11 @@ const BerthFormModal: React.FC<BerthFormModalProps> = ({ port }) => {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (validate()) {
+            log(InteractionEventType.FORM_SUBMIT, {
+                action: berthToEdit ? 'Update Berth' : 'Add Berth',
+                targetId: berthToEdit?.id,
+                value: formData.name,
+            });
             const finalBerthData: Omit<Berth, 'id'> = {
                 portId: port.id,
                 ...formData,
@@ -142,6 +149,14 @@ const BerthFormModal: React.FC<BerthFormModalProps> = ({ port }) => {
                 await addBerth(port.id, finalBerthData);
             }
         }
+    };
+
+    const handleCancel = () => {
+        log(InteractionEventType.MODAL_CLOSE, {
+            action: 'Cancel BerthForm',
+            targetId: berthToEdit?.id,
+        });
+        closeModal();
     };
     
     const renderBerthInputs = () => (
@@ -217,7 +232,7 @@ const BerthFormModal: React.FC<BerthFormModalProps> = ({ port }) => {
                 </form>
 
                 <div className="flex-shrink-0 flex justify-end gap-4 pt-4 mt-4 border-t border-gray-700">
-                    <button type="button" onClick={closeModal} className="px-4 py-2 bg-gray-600 rounded-md hover:bg-gray-700">Cancel</button>
+                    <button type="button" onClick={handleCancel} className="px-4 py-2 bg-gray-600 rounded-md hover:bg-gray-700">Cancel</button>
                     <button type="submit" form="berth-form" className="px-4 py-2 bg-cyan-600 rounded-md hover:bg-cyan-700">Save Berth</button>
                 </div>
             </div>

@@ -1,17 +1,15 @@
 import React, { useEffect } from 'react';
 import { useMap } from 'react-leaflet';
-// FIX: Removed `import * as L from 'leaflet'` to resolve a conflict with the global `L` namespace augmentation below.
-// The component relies on the global `L` object extended by the 'leaflet.heat' plugin.
+import * as L from 'leaflet';
 import 'leaflet.heat';
-// Import types from 'leaflet' to make them available for module augmentation.
 import type { LatLngExpression, Layer } from 'leaflet';
 
-// Module augmentation to add type definitions for the 'leaflet.heat' plugin,
-// which extends the 'L' object with a 'heatLayer' function.
-// FIX: The `declare module` syntax was causing a resolution error.
-// Switched to augmenting the `L` namespace directly, which Leaflet's types export globally.
-declare namespace L {
-    function heatLayer(latlngs: (LatLngExpression | [number, number, number])[], options?: any): Layer;
+// Module augmentation to add type definitions for the 'leaflet.heat' plugin.
+// Using `declare global` is the consistent pattern in this project for augmenting leaflet types.
+declare global {
+    namespace L {
+        function heatLayer(latlngs: (LatLngExpression | [number, number, number])[], options?: any): Layer;
+    }
 }
 
 interface HeatmapLayerProps {

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import Header from './components/Header';
 import ShipFormModal from './components/ShipFormModal';
 import type { View } from './types';
-import { UserRole } from './types';
+import { UserRole, InteractionEventType } from './types';
 import SidebarNav from './components/SidebarNav';
 import Dashboard from './pages/Dashboard';
 import VesselDirectory from './pages/VesselDirectory';
@@ -29,6 +29,7 @@ import { usePort } from './context/PortContext';
 import SystemLogs from './pages/SystemLogs';
 import ForcePasswordChangeModal from './components/ForcePasswordChangeModal';
 import { toast } from 'react-hot-toast';
+import { useLogger } from './context/InteractionLoggerContext';
 
 const LoadingSpinner: React.FC<{ message: string }> = ({ message }) => (
     <div className="flex items-center justify-center h-full">
@@ -70,8 +71,9 @@ const NoPortsView: React.FC = () => {
 
 const MainApp: React.FC = () => {
   const { currentUser, logout } = useAuth();
-  const { aisSource, approachingThreshold, pilotThreshold, firstShiftStartHour, shiftDurationHours } = useSettings();
+  const { aisSource, approachingThreshold, pilotThreshold, firstShiftStartHour, shiftDurationHours, isAisSimulationEnabled } = useSettings();
   const { state, actions } = usePort();
+  const { log } = useLogger();
   const {
     accessiblePorts,
     selectedPortId,
@@ -104,9 +106,11 @@ const MainApp: React.FC = () => {
   }, [selectedPortId, actions]);
 
   useEffect(() => {
-    const cleanup = actions.runAisSimulation(aisSource, pilotThreshold);
-    return cleanup;
-  }, [aisSource, actions, selectedPortId, pilotThreshold]); // Re-run if port or threshold changes
+    if (aisSource === 'simulator' && isAisSimulationEnabled) {
+        const cleanup = actions.runAisSimulation(aisSource, pilotThreshold);
+        return cleanup;
+    }
+  }, [aisSource, actions, selectedPortId, pilotThreshold, isAisSimulationEnabled]);
 
   useEffect(() => {
     const cleanup = actions.generateAlerts(approachingThreshold, pilotThreshold);
@@ -163,6 +167,68 @@ const MainApp: React.FC = () => {
     return () => clearInterval(timer);
 
   }, [currentUser, firstShiftStartHour, shiftDurationHours, logout]);
+
+  // Effect for global interaction logging
+  useEffect(() => {
+    const handleGlobalClick = (event: MouseEvent) => {
+        const target = event.target as HTMLElement;
+
+        // If the click is on an element that already has a specific logger, ignore it.
+        if (target.closest('[data-logging-handler="true"]')) {
+            return;
+        }
+
+        // Find the most relevant interactive element, traversing up from the click target.
+        const interactiveElement = target.closest('button, a, [role="button"], [role="link"], [role="menuitem"], label, [onclick]');
+        
+        if (interactiveElement) {
+            const element = interactiveElement as HTMLElement;
+
+            // Don't log clicks inside form inputs or on the map canvas
+            if (['INPUT', 'TEXTAREA', 'SELECT'].includes(element.tagName) || element.closest('.leaflet-container')) {
+                return;
+            }
+
+            let description = 
+                element.ariaLabel ||
+                element.title ||
+                element.textContent?.trim() ||
+                (element as HTMLInputElement).value ||
+                element.id ||
+                element.tagName;
+
+            if (description) {
+                description = description.replace(/\s+/g, ' ').substring(0, 80);
+                log(InteractionEventType.GENERIC_CLICK, {
+                    action: `Click on ${element.tagName}`,
+                    value: description,
+                    message: `User clicked on a ${element.tagName} element: "${description}"`,
+                    targetId: element.id
+                });
+            }
+        }
+    };
+    
+    let lastPixelRatio = window.devicePixelRatio;
+    const handleResize = () => {
+        if (window.devicePixelRatio !== lastPixelRatio) {
+            lastPixelRatio = window.devicePixelRatio;
+            log(InteractionEventType.BROWSER_ZOOM, {
+                action: 'Browser Zoom Changed',
+                value: `Zoom level: ${Math.round(lastPixelRatio * 100)}%`,
+                message: `User changed browser zoom level to ${Math.round(lastPixelRatio * 100)}%`,
+            });
+        }
+    };
+
+    document.addEventListener('click', handleGlobalClick);
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+        document.removeEventListener('click', handleGlobalClick);
+        window.removeEventListener('resize', handleResize);
+    };
+}, [log]);
 
   const renderView = () => {
     if (isLoading) {

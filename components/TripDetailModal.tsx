@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import type { Trip, User, ShipMovement } from '../types';
-import { UserRole } from '../types';
+import { UserRole, InteractionEventType } from '../types';
 import * as api from '../services/api';
 import CloseIcon from './icons/CloseIcon';
 import ShipIcon from './icons/ShipIcon';
@@ -15,6 +15,7 @@ import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-hot-toast';
 import { MovementEventType } from '../types';
 import addHeaderWithLogo from '../utils/pdfUtils';
+import { useLogger } from '../context/InteractionLoggerContext';
 
 const DetailItem: React.FC<{ label: string; value: string | number; fullWidth?: boolean }> = ({ label, value, fullWidth }) => (
     <div className={fullWidth ? 'col-span-2' : ''}>
@@ -26,6 +27,7 @@ const DetailItem: React.FC<{ label: string; value: string | number; fullWidth?: 
 const TripDetailModal: React.FC = () => {
     const { currentUser, users } = useAuth();
     const { state, actions } = usePort();
+    const { log } = useLogger();
     const { modal, ships, selectedPort } = state;
     const { updateTrip, closeModal, openModal } = actions;
     const trip = useMemo(() => (modal?.type === 'tripDetail' ? modal.trip : null), [modal]);
@@ -124,10 +126,23 @@ const TripDetailModal: React.FC = () => {
 
     const handleSave = () => {
         if (formData) {
+            log(InteractionEventType.FORM_SUBMIT, {
+                action: 'Update Trip Personnel',
+                targetId: formData.id,
+                value: `Pilot: ${formData.pilotId || 'none'}, Agent: ${formData.agentId || 'none'}`,
+            });
             updateTrip(formData.id, formData);
         }
     };
     
+    const handleClose = () => {
+        log(InteractionEventType.MODAL_CLOSE, {
+            action: 'Close TripDetail',
+            targetId: trip?.id,
+        });
+        closeModal();
+    };
+
     const onViewHistory = (tripToView: Trip) => {
         const ship = ships.find(s => s.id === tripToView.shipId);
         if (ship) {
@@ -145,6 +160,7 @@ const TripDetailModal: React.FC = () => {
 
     const handleExportPDF = () => {
         if (!selectedPort) return;
+        log(InteractionEventType.DATA_EXPORT, { action: 'Export Trip Detail to PDF', targetId: trip.id });
         const doc = new jsPDF();
         
         const agentName = agents.find(a => a.id === trip.agentId)?.name || 'N/A';
@@ -211,7 +227,7 @@ const TripDetailModal: React.FC = () => {
                         <h2 className="text-2xl font-bold text-white">Trip Details</h2>
                         <p className="text-cyan-400 font-mono text-sm">ID: {trip.id}</p>
                     </div>
-                    <button onClick={closeModal} className="p-2 -mt-2 -mr-2 rounded-full text-gray-400 hover:bg-gray-700 hover:text-white" aria-label="Close">
+                    <button onClick={handleClose} data-logging-handler="true" className="p-2 -mt-2 -mr-2 rounded-full text-gray-400 hover:bg-gray-700 hover:text-white" aria-label="Close">
                         <CloseIcon className="w-6 h-6" />
                     </button>
                 </div>
@@ -295,20 +311,22 @@ const TripDetailModal: React.FC = () => {
                     <div className="flex gap-2">
                         <button
                             onClick={() => onViewHistory(trip)}
+                            data-logging-handler="true"
                             className="px-4 py-2 bg-gray-600 text-white text-sm rounded-md hover:bg-gray-700 transition-colors flex items-center gap-2"
                         >
                             <ClockIcon className="w-4 h-4" /> View Full History
                         </button>
                         <button
                             onClick={handleExportPDF}
+                            data-logging-handler="true"
                             className="px-4 py-2 bg-red-700 text-white text-sm rounded-md hover:bg-red-800 transition-colors flex items-center gap-2"
                         >
                            <PDFIcon className="w-4 h-4" /> Export as PDF
                         </button>
                     </div>
                     <div className="flex gap-4">
-                        <button type="button" onClick={closeModal} className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors">Cancel</button>
-                        <button type="button" onClick={handleSave} disabled={!canEdit} className="px-4 py-2 bg-cyan-600 text-white rounded-md hover:bg-cyan-700 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed">Save Changes</button>
+                        <button type="button" onClick={handleClose} data-logging-handler="true" className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors">Cancel</button>
+                        <button type="button" onClick={handleSave} data-logging-handler="true" disabled={!canEdit} className="px-4 py-2 bg-cyan-600 text-white rounded-md hover:bg-cyan-700 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed">Save Changes</button>
                     </div>
                 </div>
             </div>

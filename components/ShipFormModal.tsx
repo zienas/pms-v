@@ -1,8 +1,9 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import type { Ship, Berth, User } from '../types';
-import { ShipStatus, UserRole } from '../types';
+import { ShipStatus, UserRole, InteractionEventType } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { usePort } from '../context/PortContext';
+import { useLogger } from '../context/InteractionLoggerContext';
 
 type AssignmentStatus = {
     isValid: boolean;
@@ -40,6 +41,7 @@ const InputField: React.FC<{
 const ShipFormModal: React.FC = () => {
   const { currentUser, users } = useAuth();
   const { state, actions } = usePort();
+  const { log } = useLogger();
   const { modal, berths, ships, selectedPortId } = state;
   const { addShip, updateShip, closeModal } = actions;
   const shipToEdit = useMemo(() => (modal?.type === 'shipForm' ? modal.ship : null), [modal]);
@@ -193,6 +195,12 @@ const ShipFormModal: React.FC = () => {
         pilotId: formData.pilotId || undefined,
         agentId: formData.agentId || undefined,
       };
+
+      log(InteractionEventType.FORM_SUBMIT, {
+        action: 'id' in shipToSave ? 'Update Ship' : 'Add Ship',
+        targetId: 'id' in shipToSave ? shipToSave.id : undefined,
+        value: shipToSave.name,
+      });
       
       const saveAction = 'id' in shipToSave
         ? updateShip(shipToSave.id, shipToSave as Ship)
@@ -200,6 +208,14 @@ const ShipFormModal: React.FC = () => {
       
       saveAction.then(closeModal);
     }
+  };
+
+  const handleCancel = () => {
+    log(InteractionEventType.MODAL_CLOSE, {
+      action: 'Cancel ShipForm',
+      targetId: shipToEdit?.id,
+    });
+    closeModal();
   };
   
   const getBerthSelectClasses = () => {
@@ -317,8 +333,8 @@ const ShipFormModal: React.FC = () => {
            )}
 
           <div className="flex justify-end gap-4 pt-4">
-            <button type="button" onClick={closeModal} className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors">Cancel</button>
-            <button type="submit" className="px-4 py-2 bg-cyan-600 text-white rounded-md hover:bg-cyan-700 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed" disabled={!assignmentStatus.isValid}>Save Ship</button>
+            <button type="button" onClick={handleCancel} data-logging-handler="true" className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors">Cancel</button>
+            <button type="submit" data-logging-handler="true" className="px-4 py-2 bg-cyan-600 text-white rounded-md hover:bg-cyan-700 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed" disabled={!assignmentStatus.isValid}>Save Ship</button>
           </div>
         </form>
       </div>

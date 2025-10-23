@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import type { User, LoginHistoryEntry } from '../types';
-import { UserRole } from '../types';
+import { UserRole, InteractionEventType } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { useSortableData } from '../hooks/useSortableData';
 import SortIcon from '../components/icons/SortIcon';
@@ -11,10 +11,12 @@ import EditIcon from '../components/icons/EditIcon';
 import DeleteIcon from '../components/icons/DeleteIcon';
 import { formatDuration } from '../utils/formatters';
 import { usePort } from '../context/PortContext';
+import { useLogger } from '../context/InteractionLoggerContext';
 
 const UserManagement: React.FC = () => {
     const { currentUser, users, deleteUser } = useAuth();
     const { state, actions } = usePort();
+    const { log } = useLogger();
     const { ports } = state;
     const [loginHistory, setLoginHistory] = useState<LoginHistoryEntry[]>([]);
     
@@ -49,6 +51,15 @@ const UserManagement: React.FC = () => {
         }));
         if (dataToExport.length === 0) { alert(`No login history found.`); return; }
         downloadCSV(dataToExport, `user_login_history.csv`);
+    };
+
+    const handleDeleteUser = (user: User) => {
+        log(InteractionEventType.BUTTON_CLICK, {
+            action: 'Delete User',
+            targetId: user.id,
+            value: user.name,
+        });
+        deleteUser(user.id);
     };
 
     return (
@@ -89,7 +100,7 @@ const UserManagement: React.FC = () => {
                                     <td className="px-4 py-3 text-right">
                                         <div className="opacity-0 group-hover:opacity-100 flex justify-end gap-2">
                                             <button onClick={() => actions.openModal({ type: 'userForm', user })} className="p-1 text-gray-300 hover:text-cyan-400" title="Edit"><EditIcon className="h-4 w-4" /></button>
-                                            <button onClick={() => deleteUser(user.id)} className="p-1 text-gray-300 hover:text-red-500" title="Delete"><DeleteIcon className="h-4 w-4" /></button>
+                                            <button onClick={() => handleDeleteUser(user)} className="p-1 text-gray-300 hover:text-red-500" title="Delete"><DeleteIcon className="h-4 w-4" /></button>
                                         </div>
                                     </td>
                                 </tr>

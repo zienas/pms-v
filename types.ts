@@ -48,7 +48,11 @@ export enum InteractionEventType {
     FILTER_APPLIED = 'Filter Applied',
     SORT_APPLIED = 'Sort Applied',
     MODAL_OPEN = 'Modal Open',
+    MODAL_CLOSE = 'Modal Close',
+    FORM_SUBMIT = 'Form Submit',
     BUTTON_CLICK = 'Button Click',
+    GENERIC_CLICK = 'Generic Click',
+    BROWSER_ZOOM = 'Browser Zoom',
 }
 
 

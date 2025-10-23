@@ -1,10 +1,11 @@
 import React, { useMemo } from 'react';
 import type { Berth, Ship } from '../types';
-import { ShipStatus } from '../types';
+import { ShipStatus, InteractionEventType } from '../types';
 import BerthIcon from './icons/BerthIcon';
 import CloseIcon from './icons/CloseIcon';
 import ShipIcon from './icons/ShipIcon';
 import { usePort } from '../context/PortContext';
+import { useLogger } from '../context/InteractionLoggerContext';
 
 interface BerthDetailModalProps {
     berth: Berth;
@@ -20,6 +21,7 @@ const DetailItem: React.FC<{ label: string; value: string | number }> = ({ label
 
 const BerthDetailModal: React.FC<BerthDetailModalProps> = ({ berth }) => {
     const { state, actions } = usePort();
+    const { log } = useLogger();
     const { ships } = state;
     const { closeModal, openModal } = actions;
     
@@ -27,6 +29,14 @@ const BerthDetailModal: React.FC<BerthDetailModalProps> = ({ berth }) => {
         const ship = ships.find(s => s.berthIds.includes(berth.id) && s.status !== ShipStatus.LEFT_PORT) || null;
         return { occupyingShip: ship, isOccupied: !!ship };
     }, [ships, berth.id]);
+
+    const handleClose = () => {
+        log(InteractionEventType.MODAL_CLOSE, {
+            action: 'Close BerthDetail',
+            targetId: berth.id,
+        });
+        closeModal();
+    };
 
     const onManageShip = (ship: Ship) => {
         openModal({ type: 'shipForm', ship });
@@ -40,7 +50,7 @@ const BerthDetailModal: React.FC<BerthDetailModalProps> = ({ berth }) => {
                         <h2 className="text-2xl font-bold text-white">Berth Details</h2>
                         <p className="text-cyan-400 font-semibold">{berth.name}</p>
                     </div>
-                    <button onClick={closeModal} className="p-2 -mt-2 -mr-2 rounded-full text-gray-400 hover:bg-gray-700 hover:text-white" aria-label="Close">
+                    <button onClick={handleClose} data-logging-handler="true" className="p-2 -mt-2 -mr-2 rounded-full text-gray-400 hover:bg-gray-700 hover:text-white" aria-label="Close">
                         <CloseIcon className="w-6 h-6" />
                     </button>
                 </div>
@@ -90,7 +100,7 @@ const BerthDetailModal: React.FC<BerthDetailModalProps> = ({ berth }) => {
                 </div>
 
                 <div className="flex justify-end mt-6">
-                    <button type="button" onClick={closeModal} className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors">Close</button>
+                    <button type="button" onClick={handleClose} data-logging-handler="true" className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors">Close</button>
                 </div>
             </div>
         </div>

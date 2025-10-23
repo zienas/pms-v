@@ -41,7 +41,7 @@ const NavItem: React.FC<{
     const IconComponent = config.icon;
     return (
         <li>
-            <button onClick={() => onViewChange(config.view)} className={`flex items-center w-full p-3 my-1 rounded-lg transition-colors duration-200 ${isActive ? 'bg-cyan-500/20 text-cyan-300' : 'text-gray-400 hover:bg-gray-700 hover:text-white'}`} aria-current={isActive}>
+            <button onClick={() => onViewChange(config.view)} data-logging-handler="true" className={`flex items-center w-full p-3 my-1 rounded-lg transition-colors duration-200 ${isActive ? 'bg-cyan-500/20 text-cyan-300' : 'text-gray-400 hover:bg-gray-700 hover:text-white'}`} aria-current={isActive}>
                 <IconComponent className="w-6 h-6" />
                 <span className="ml-3 font-medium">{config.label}</span>
                 {config.count !== undefined && (

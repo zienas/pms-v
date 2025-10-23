@@ -61,6 +61,14 @@ const ShipHistoryModal: React.FC<ShipHistoryModalProps> = ({ ship, portId, onClo
     }, 1000);
     return () => clearInterval(timer);
   }, []);
+
+  const handleClose = () => {
+    log(InteractionEventType.MODAL_CLOSE, {
+        action: 'Close ShipHistory',
+        targetId: ship.id,
+    });
+    onClose();
+  };
   
   const locationHistory = useMemo(() => {
     if (!history || history.length === 0) return [];
@@ -314,10 +322,10 @@ const ShipHistoryModal: React.FC<ShipHistoryModalProps> = ({ ship, portId, onClo
         <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-700 flex-shrink-0">
             <h2 className="text-2xl font-bold">Movement History: {ship.name}</h2>
             <div className="flex items-center gap-2">
-                <button onClick={handlePopOut} className="p-2 rounded-full text-gray-400 hover:bg-gray-700 hover:text-white" title="Open in new window">
+                <button data-logging-handler="true" onClick={handlePopOut} className="p-2 rounded-full text-gray-400 hover:bg-gray-700 hover:text-white" title="Open in new window">
                     <ExternalLinkIcon className="w-5 h-5" />
                 </button>
-                <button onClick={onClose} className="p-2 rounded-full text-gray-400 hover:bg-gray-700 hover:text-white" aria-label="Close">
+                <button data-logging-handler="true" onClick={handleClose} className="p-2 rounded-full text-gray-400 hover:bg-gray-700 hover:text-white" aria-label="Close">
                     <CloseIcon className="w-6 h-6" />
                 </button>
             </div>
@@ -457,6 +465,7 @@ const ShipHistoryModal: React.FC<ShipHistoryModalProps> = ({ ship, portId, onClo
             <div className="flex items-center gap-2">
                 <button
                     onClick={handleExportPDF}
+                    data-logging-handler="true"
                     className="px-4 py-2 bg-red-700 text-white rounded-md hover:bg-red-800 transition-colors text-sm flex items-center gap-2"
                 >
                     <PDFIcon className="w-4 h-4" />
@@ -464,6 +473,7 @@ const ShipHistoryModal: React.FC<ShipHistoryModalProps> = ({ ship, portId, onClo
                 </button>
                 <button
                     onClick={handleExportCSV}
+                    data-logging-handler="true"
                     className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors text-sm flex items-center gap-2"
                 >
                     <DownloadIcon className="w-4 h-4" />
@@ -473,7 +483,7 @@ const ShipHistoryModal: React.FC<ShipHistoryModalProps> = ({ ship, portId, onClo
           ) : (
             <div></div> // Placeholder to keep the close button on the right
           )}
-          <button type="button" onClick={onClose} className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors">Close</button>
+          <button type="button" onClick={handleClose} data-logging-handler="true" className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors">Close</button>
         </div>
       </div>
     </div>

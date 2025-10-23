@@ -158,12 +158,21 @@ const VesselDirectory: React.FC = () => {
   };
 
   const handleActionClick = (type: 'history' | 'reassignBerth' | 'shipForm', ship: Ship) => {
-    log(InteractionEventType.BUTTON_CLICK, {
+    log(InteractionEventType.MODAL_OPEN, {
         action: `Open modal: ${type}`,
         targetId: ship.id,
         value: ship.name,
     });
     actions.openModal({ type, ship } as any);
+  };
+
+  const handleDeleteShip = (ship: Ship) => {
+    log(InteractionEventType.BUTTON_CLICK, {
+        action: 'Delete Ship',
+        targetId: ship.id,
+        value: ship.name,
+    });
+    actions.deleteShip(ship.portId, ship.id);
   };
 
   return (
@@ -229,7 +238,7 @@ const VesselDirectory: React.FC = () => {
                                     <>
                                         <button onClick={() => handleActionClick('reassignBerth', ship)} className="p-1 text-gray-300 hover:text-green-400" title="Reassign Berth"><ReassignIcon className="h-5 w-5" /></button>
                                         <button onClick={() => handleActionClick('shipForm', ship)} className="p-1 text-gray-300 hover:text-cyan-400" title="Edit ship"><EditIcon className="h-5 w-5" /></button>
-                                        <button onClick={() => actions.deleteShip(ship.portId, ship.id)} className="p-1 text-gray-300 hover:text-red-500" title="Delete ship"><DeleteIcon className="h-5 w-5" /></button>
+                                        <button onClick={() => handleDeleteShip(ship)} className="p-1 text-gray-300 hover:text-red-500" title="Delete ship"><DeleteIcon className="h-5 w-5" /></button>
                                     </>
                                 )}
                             </div>
