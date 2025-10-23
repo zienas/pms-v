@@ -67,10 +67,10 @@ const UserManagement: React.FC = () => {
             <div>
                 <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-4">
                     <h1 className="text-2xl font-bold">User Management</h1>
-                    <button onClick={() => actions.openModal({type: 'userForm', user: null})} className="px-4 py-2 bg-cyan-600 text-white rounded-md hover:bg-cyan-700">Add User</button>
+                    <button onClick={() => actions.openModal({type: 'userForm', user: null})} data-logging-handler="true" className="px-4 py-2 bg-cyan-600 text-white rounded-md hover:bg-cyan-700">Add User</button>
                 </div>
                 <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left text-gray-300 min-w-[500px]">
+                    <table className="w-full text-sm text-left text-gray-300 min-w-[800px]">
                         <thead className="text-xs text-gray-400 uppercase bg-gray-700">
                             <tr>
                                 <th className="px-4 py-3">
@@ -78,6 +78,12 @@ const UserManagement: React.FC = () => {
                                         Name <SortIcon direction={getUserSortDirectionFor('name')} />
                                     </button>
                                 </th>
+                                <th className="px-4 py-3">
+                                    <button onClick={() => requestUserSort('email')} className="flex items-center gap-1 hover:text-white">
+                                        Email <SortIcon direction={getUserSortDirectionFor('email')} />
+                                    </button>
+                                </th>
+                                <th className="px-4 py-3">Contact Info</th>
                                 <th className="px-4 py-3">
                                     <button onClick={() => requestUserSort('role')} className="flex items-center gap-1 hover:text-white">
                                         Role <SortIcon direction={getUserSortDirectionFor('role')} />
@@ -95,12 +101,14 @@ const UserManagement: React.FC = () => {
                             {usersToDisplay.map(user => (
                                 <tr key={user.id} className="hover:bg-gray-800/50 group">
                                     <td className="px-4 py-3 font-medium">{user.name}</td>
+                                    <td className="px-4 py-3">{user.email || '—'}</td>
+                                    <td className="px-4 py-3">{user.phone || user.gsm || '—'}</td>
                                     <td className="px-4 py-3">{user.role}</td>
                                     <td className="px-4 py-3">{user.portId ? (ports.find(p => p.id === user.portId)?.name || 'N/A') : 'Admin'}</td>
                                     <td className="px-4 py-3 text-right">
                                         <div className="opacity-0 group-hover:opacity-100 flex justify-end gap-2">
-                                            <button onClick={() => actions.openModal({ type: 'userForm', user })} className="p-1 text-gray-300 hover:text-cyan-400" title="Edit"><EditIcon className="h-4 w-4" /></button>
-                                            <button onClick={() => handleDeleteUser(user)} className="p-1 text-gray-300 hover:text-red-500" title="Delete"><DeleteIcon className="h-4 w-4" /></button>
+                                            <button onClick={() => { log(InteractionEventType.MODAL_OPEN, { action: 'Open UserForm (Edit)', targetId: user.id }); actions.openModal({ type: 'userForm', user });}} data-logging-handler="true" className="p-1 text-gray-300 hover:text-cyan-400" title="Edit"><EditIcon className="h-4 w-4" /></button>
+                                            <button onClick={() => handleDeleteUser(user)} data-logging-handler="true" className="p-1 text-gray-300 hover:text-red-500" title="Delete"><DeleteIcon className="h-4 w-4" /></button>
                                         </div>
                                     </td>
                                 </tr>

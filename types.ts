@@ -109,10 +109,15 @@ export interface Ship {
 export interface User {
   id: string;
   name: string;
+  email?: string;
+  phone?: string;
+  gsm?: string;
+  company?: string;
   role: UserRole;
   portId?: string;
   password?: string; // Should not be sent to client, but needed for simulation
   forcePasswordChange?: boolean;
+  notes?: string;
 }
 
 export interface Trip {

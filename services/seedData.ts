@@ -66,11 +66,26 @@ export const initialSeedData = {
     },
   ] as Berth[],
   users: [
-    { id: 'user-admin', name: 'Admin User', role: UserRole.ADMIN, password: 'password', forcePasswordChange: false },
-    { id: 'user-supervisor', name: 'Supervisor Sam', role: UserRole.SUPERVISOR, portId: 'port-sg', password: 'password', forcePasswordChange: true },
-    { id: 'user-op', name: 'Operator Olivia', role: UserRole.OPERATOR, portId: 'port-sg', password: 'password', forcePasswordChange: true },
-    { id: 'user-pilot', name: 'Pilot Pete', role: UserRole.PILOT, portId: 'port-sg', password: 'password', forcePasswordChange: true },
-    { id: 'user-agent', name: 'Agent Anna', role: UserRole.AGENT, portId: 'port-sg', password: 'password', forcePasswordChange: true },
+    { 
+        id: 'user-admin', name: 'Admin User', role: UserRole.ADMIN, password: 'password', forcePasswordChange: false,
+        email: 'admin@portauthority.gov', phone: '+65 6123 0001', gsm: '', company: 'Port Authority HQ' 
+    },
+    { 
+        id: 'user-supervisor', name: 'Supervisor Sam', role: UserRole.SUPERVISOR, portId: 'port-sg', password: 'password', forcePasswordChange: true,
+        email: 'sam.s@portauthority.gov', phone: '+65 6123 1001', gsm: '+65 9123 1001', company: 'Port Authority SG'
+    },
+    { 
+        id: 'user-op', name: 'Operator Olivia', role: UserRole.OPERATOR, portId: 'port-sg', password: 'password', forcePasswordChange: true,
+        email: 'olivia.o@portauthority.gov', phone: '+65 6123 1002', gsm: '', company: 'Port Authority SG'
+    },
+    { 
+        id: 'user-pilot', name: 'Pilot Pete', role: UserRole.PILOT, portId: 'port-sg', password: 'password', forcePasswordChange: true,
+        email: 'pete@harborpilots.com', phone: '', gsm: '+65 9234 2001', company: 'Harbor Pilots Inc.'
+    },
+    { 
+        id: 'user-agent', name: 'Agent Anna', role: UserRole.AGENT, portId: 'port-sg', password: 'password', forcePasswordChange: true,
+        email: 'anna.a@oceanic.com', phone: '+65 6345 3001', gsm: '+65 9345 3001', company: 'Oceanic Shipping Agency'
+    },
   ] as User[],
   ships: [
     {
