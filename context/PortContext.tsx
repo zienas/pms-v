@@ -1,7 +1,7 @@
 import React, { useReducer, useCallback, createContext, useContext, useMemo, useRef, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
 import type { Ship, Berth, Alert, Port, Trip, User, AisSource, ModalState, AisData, ShipMovement, LoginHistoryEntry, InteractionLogEntry } from '../types';
-import { AlertType, ShipStatus, UserRole } from '../types';
+import { AlertType, ShipStatus, UserRole, MovementEventType } from '../types';
 import * as api from '../services/api';
 import { runAisUpdateStep } from '../services/aisSimulator';
 import { calculateDistanceNM } from '../utils/geolocation';
@@ -127,6 +127,7 @@ interface PortContextType {
     updateTrip: (id: string, tripData: Trip) => Promise<void>;
     acknowledgeAlert: (alertId: string) => void;
     removeAlert: (alertId: string) => void;
+    addPilotLog: (ship: Ship, eventType: MovementEventType.PILOT_ONBOARD | MovementEventType.PILOT_OFFBOARD, comments: string) => Promise<void>;
   };
 }
 
@@ -401,6 +402,31 @@ export const PortProvider: React.FC<{ children: React.ReactNode }> = ({ children
             dispatch({ type: 'SET_ALERTS', payload: newAlerts });
             toast.dismiss(alertId);
         };
+        
+        const addPilotLog = async (ship: Ship, eventType: MovementEventType.PILOT_ONBOARD | MovementEventType.PILOT_OFFBOARD, comments: string) => {
+            if (!ship.currentTripId) {
+                toast.error('Cannot log pilot activity for a vessel without an active trip.');
+                return;
+            }
+            const message = eventType === MovementEventType.PILOT_ONBOARD
+                ? `Pilot boarded vessel. ${comments ? `Comments: ${comments}` : ''}`
+                : `Pilot left vessel. ${comments ? `Comments: ${comments}` : ''}`;
+
+            await toast.promise(api.addShipMovement({
+                shipId: ship.id,
+                portId: ship.portId,
+                tripId: ship.currentTripId,
+                eventType,
+                timestamp: new Date().toISOString(),
+                details: { message }
+            }), {
+                loading: 'Saving log entry...',
+                success: 'Log entry saved.',
+                error: 'Failed to save log entry.'
+            });
+            // Refetch data to update history
+            await fetchDataForPort(ship.portId, new AbortController().signal);
+        };
 
         return {
             loadInitialPorts,
@@ -414,6 +440,7 @@ export const PortProvider: React.FC<{ children: React.ReactNode }> = ({ children
             initWebSocket,
             acknowledgeAlert,
             removeAlert,
+            addPilotLog,
             ...crudActions
         };
     }, [currentUser, loggedInPortId]);

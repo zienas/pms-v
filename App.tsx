@@ -30,6 +30,7 @@ import SystemLogs from './pages/SystemLogs';
 import ForcePasswordChangeModal from './components/ForcePasswordChangeModal';
 import { toast } from 'react-hot-toast';
 import { useLogger } from './context/InteractionLoggerContext';
+import PilotPage from './pages/PilotPage';
 
 const LoadingSpinner: React.FC<{ message: string }> = ({ message }) => (
     <div className="flex items-center justify-center h-full">
@@ -299,6 +300,10 @@ export default function App() {
                 <LoadingSpinner message="Initializing..." />
             </div>
         );
+    }
+    
+    if (currentUser && currentUser.role === UserRole.PILOT) {
+        return <PilotPage />;
     }
     
     if (currentUser && isPasswordChangeRequired) {

@@ -403,6 +403,18 @@ export const getShipHistory = async (portId: string, shipId: string): Promise<Sh
     return getDatabase().movements.filter(m => m.shipId === shipId);
 };
 
+export const addShipMovement = async (movementData: Omit<ShipMovement, 'id'>): Promise<ShipMovement> => {
+    await simulateDelay();
+    const db = getDatabase();
+    const newMovement: ShipMovement = {
+        ...movementData,
+        id: `mov-${Date.now()}-${Math.random()}`,
+    };
+    db.movements.unshift(newMovement);
+    saveDatabase(db);
+    return newMovement;
+};
+
 // --- AIS ---
 export const updateShipFromAIS = async (aisData: AisData): Promise<Ship> => {
     await simulateDelay(50); // AIS updates should be fast

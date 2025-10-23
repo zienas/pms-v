@@ -7,6 +7,28 @@ import { toast } from 'react-hot-toast';
 import { useLogger } from '../context/InteractionLoggerContext';
 import { InteractionEventType } from '../types';
 
+// FIX: Added missing InputField component definition.
+const InputField: React.FC<{
+    label: string;
+    name: string;
+    type: string;
+    value: any;
+    onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+    error?: string;
+    step?: string;
+    readOnly?: boolean;
+    placeholder?: string;
+}> = ({ label, name, type, value, onChange, error, step, readOnly, placeholder }) => (
+    <div>
+        <label htmlFor={name} className="block text-sm font-medium text-gray-300">{label}</label>
+        <input
+            type={type} id={name} name={name} value={value} onChange={onChange} step={step} readOnly={readOnly} placeholder={placeholder}
+            className={`mt-1 block w-full px-3 py-2 bg-gray-700 text-white border rounded-md focus:outline-none focus:ring-2 read-only:bg-gray-600 read-only:text-gray-400 ${error ? 'border-red-500 focus:ring-red-500' : 'border-gray-600 focus:ring-cyan-500'}`} />
+        {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
+    </div>
+);
+
+
 const PortFormModal: React.FC = () => {
     const { state, actions } = usePort();
     const { log } = useLogger();
@@ -175,7 +197,8 @@ const PortFormModal: React.FC = () => {
             <div className="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-2xl border border-gray-700 max-h-full overflow-y-auto">
                 <h2 className="text-2xl font-bold mb-4 text-white">{portToEdit ? 'Edit Port' : 'Add New Port'}</h2>
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    <InputField label="Port Name" name="name" value={formData.name} onChange={handleChange} error={errors.name} />
+                    {/* FIX: Added type="text" to InputField usage */}
+                    <InputField label="Port Name" name="name" type="text" value={formData.name} onChange={handleChange} error={errors.name} />
                     
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <InputField label="Center Latitude" name="lat" type="number" step="any" value={formData.lat} onChange={handleChange} error={errors.lat} placeholder="e.g. 1.2647" readOnly={formData.boundaryType === 'circle'} />
@@ -246,6 +269,7 @@ const PortFormModal: React.FC = () => {
                             )}
                         </div>
                     </div>
+                    {/* FIX: Repaired truncated file end with buttons and closing tags */}
                     <div className="flex justify-end gap-4 pt-4">
                         <button type="button" onClick={handleCancel} className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors">Cancel</button>
                         <button type="submit" className="px-4 py-2 bg-cyan-600 text-white rounded-md hover:bg-cyan-700 transition-colors">Save Port</button>
@@ -255,16 +279,5 @@ const PortFormModal: React.FC = () => {
         </div>
     );
 };
-
-const InputField: React.FC<{ label: string; name: string; type?: string; value: any; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; error?: string; step?: string; readOnly?: boolean; placeholder?: string; }> = 
-    ({ label, name, type = 'text', value, onChange, error, step, readOnly, placeholder }) => (
-    <div>
-        <label htmlFor={name} className="block text-sm font-medium text-gray-300">{label}</label>
-        <input
-            type={type} id={name} name={name} value={value} onChange={onChange} step={step} readOnly={readOnly} placeholder={placeholder}
-            className={`mt-1 block w-full px-3 py-2 bg-gray-700 text-white border rounded-md focus:outline-none focus:ring-2 ${readOnly ? 'bg-gray-600 cursor-not-allowed' : ''} ${error ? 'border-red-500 focus:ring-red-500' : 'border-gray-600 focus:ring-cyan-500'}`} />
-        {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
-    </div>
-);
 
 export default PortFormModal;

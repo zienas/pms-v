@@ -29,6 +29,8 @@ export enum MovementEventType {
   BERTH_ASSIGNMENT = 'Berth Assignment',
   PILOT_ASSIGNMENT = 'Pilot Assignment',
   AGENT_ASSIGNMENT = 'Agent Assignment',
+  PILOT_ONBOARD = 'Pilot Onboard',
+  PILOT_OFFBOARD = 'Pilot Offboard',
 }
 
 export enum TripStatus {
