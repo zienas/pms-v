@@ -56,7 +56,7 @@ const SidebarNav: React.FC<SidebarNavProps> = ({ activeView, setActiveView, aler
     const { currentUser } = useAuth();
     const { log } = useLogger();
 
-    const navItems: NavItemConfig[] = useMemo(() => [
+    const allNavItems: NavItemConfig[] = useMemo(() => [
         { view: 'dashboard', label: 'Dashboard', icon: DashboardIcon },
         { view: 'vessels', label: 'Vessels', icon: ShipIcon },
         { view: 'berths', label: 'Berths', icon: BerthIcon },
@@ -67,7 +67,7 @@ const SidebarNav: React.FC<SidebarNavProps> = ({ activeView, setActiveView, aler
     ], [alertCount]);
     
     const settingsItems: NavItemConfig[] = useMemo(() => [
-        { view: 'settings', label: 'Settings', icon: SettingsIcon, requiresRoles: [UserRole.ADMIN, UserRole.SUPERVISOR, UserRole.OPERATOR, UserRole.PILOT] },
+        { view: 'settings', label: 'Settings', icon: SettingsIcon, requiresRoles: [UserRole.ADMIN, UserRole.SUPERVISOR, UserRole.OPERATOR, UserRole.PILOT, UserRole.AGENT] },
         { view: 'management', label: 'Manage Ports', icon: CogIcon, requiresAdmin: true },
         { view: 'users', label: 'Manage Users', icon: UsersIcon, requiresRoles: [UserRole.ADMIN, UserRole.SUPERVISOR] },
     ], []);
@@ -75,6 +75,19 @@ const SidebarNav: React.FC<SidebarNavProps> = ({ activeView, setActiveView, aler
     const pilotItems: NavItemConfig[] = useMemo(() => [
         { view: 'pilot-log', label: 'Pilot Log', icon: ShipIcon, requiresRoles: [UserRole.PILOT] },
     ], []);
+
+    const navItems = useMemo(() => {
+        if (!currentUser) return [];
+        if (currentUser.role === UserRole.PILOT) {
+            const pilotRestrictedViews: View[] = ['berths', 'trips', 'vessel-analytics', 'logs'];
+            return allNavItems.filter(item => !pilotRestrictedViews.includes(item.view));
+        }
+        if (currentUser.role === UserRole.AGENT) {
+            const agentAllowedViews: View[] = ['dashboard', 'vessels', 'trips', 'alerts'];
+            return allNavItems.filter(item => agentAllowedViews.includes(item.view));
+        }
+        return allNavItems;
+    }, [allNavItems, currentUser]);
 
     const handleViewChange = (view: View) => {
         log(InteractionEventType.VIEW_CHANGE, { view, message: `Navigated to ${view}` });
@@ -94,8 +107,6 @@ const SidebarNav: React.FC<SidebarNavProps> = ({ activeView, setActiveView, aler
         item.requiresRoles?.includes(currentUser.role)
     );
 
-    const pilotRestrictedViews: View[] = ['berths', 'trips', 'vessel-analytics', 'logs'];
-
     return (
         <nav className={`fixed top-0 left-0 h-full w-64 bg-gray-900 p-4 border-r border-gray-700 flex flex-col z-30 transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
             <div className="flex items-center justify-between pb-4 mb-4 border-b border-gray-700">
@@ -103,12 +114,7 @@ const SidebarNav: React.FC<SidebarNavProps> = ({ activeView, setActiveView, aler
                 <button onClick={() => setIsOpen(false)} className="p-1 text-gray-400 hover:text-white md:hidden" aria-label="Close menu"><CloseIcon className="w-6 h-6" /></button>
             </div>
             <ul className="flex-1">
-                {navItems.map(item => {
-                    if (currentUser.role === UserRole.PILOT && pilotRestrictedViews.includes(item.view)) {
-                        return null;
-                    }
-                    return <NavItem key={item.view} config={item} activeView={activeView} onViewChange={handleViewChange} />;
-                })}
+                {navItems.map(item => <NavItem key={item.view} config={item} activeView={activeView} onViewChange={handleViewChange} />)}
                 
                 {hasVisiblePilotItems && <div className="my-4 border-t border-gray-700"></div>}
                 {pilotItems.map(item => {

@@ -34,6 +34,9 @@ const AlertsDashboard: React.FC = () => {
      if (currentUser?.role === UserRole.PILOT) {
         const assignedShipIds = new Set(ships.filter(s => s.pilotId === currentUser.id).map(s => s.id));
         alertsToFilter = alerts.filter(alert => alert.shipId && assignedShipIds.has(alert.shipId));
+     } else if (currentUser?.role === UserRole.AGENT) {
+        const assignedShipIds = new Set(ships.filter(s => s.agentId === currentUser.id).map(s => s.id));
+        alertsToFilter = alerts.filter(alert => alert.shipId && assignedShipIds.has(alert.shipId));
      }
 
      return alertsToFilter.filter(alert => {

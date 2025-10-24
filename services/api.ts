@@ -300,6 +300,8 @@ export const addShip = async (shipData: Omit<Ship, 'id'>): Promise<Ship> => {
         status: TripStatus.ACTIVE,
         vesselName: shipData.name,
         vesselImo: shipData.imo,
+        agentId: shipData.agentId,
+        pilotId: shipData.pilotId,
     };
     
     const newShip: Ship = {
@@ -324,6 +326,7 @@ export const updateShip = async (id: string, shipData: Ship): Promise<Ship> => {
     const oldShip = { ...db.ships[index] };
     db.ships[index] = { ...oldShip, ...shipData };
     const updatedShip = db.ships[index];
+    const trip = db.trips.find(t => t.id === updatedShip.currentTripId);
 
     // Status Change
     if (oldShip.status !== updatedShip.status) {
@@ -334,7 +337,6 @@ export const updateShip = async (id: string, shipData: Ship): Promise<Ship> => {
         });
         if (updatedShip.status === ShipStatus.LEFT_PORT) {
             updatedShip.departureDate = new Date().toISOString();
-            const trip = db.trips.find(t => t.id === updatedShip.currentTripId);
             if (trip) {
                 trip.status = TripStatus.COMPLETED;
                 trip.departureTimestamp = updatedShip.departureDate;
@@ -365,6 +367,7 @@ export const updateShip = async (id: string, shipData: Ship): Promise<Ship> => {
             fromPilotId: oldShip.pilotId,
             pilotId: updatedShip.pilotId,
         });
+        if (trip) trip.pilotId = updatedShip.pilotId;
     }
 
     // Agent Assignment Change
@@ -374,6 +377,7 @@ export const updateShip = async (id: string, shipData: Ship): Promise<Ship> => {
             fromAgentId: oldShip.agentId,
             agentId: updatedShip.agentId,
         });
+        if (trip) trip.agentId = updatedShip.agentId;
     }
 
     saveDatabase(db);

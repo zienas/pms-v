@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import type { Trip } from '../types';
+import type { Trip, Ship } from '../types';
 import { TripStatus, UserRole, InteractionEventType } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { useSortableData } from '../hooks/useSortableData';
@@ -13,6 +13,7 @@ import autoTable from 'jspdf-autotable';
 import { usePort } from '../context/PortContext';
 import addHeaderWithLogo from '../utils/pdfUtils';
 import { useLogger } from '../context/InteractionLoggerContext';
+import { toast } from 'react-hot-toast';
 
 const statusColors: { [key in TripStatus]: string } = {
   [TripStatus.ACTIVE]: 'bg-green-500/20 text-green-300 border-green-500',
@@ -21,7 +22,7 @@ const statusColors: { [key in TripStatus]: string } = {
 
 const TripDirectory: React.FC = () => {
   const { state, actions } = usePort();
-  const { trips, selectedPort } = state;
+  const { trips, ships, selectedPort } = state;
   const { currentUser, users } = useAuth();
   const { log } = useLogger();
   
@@ -29,18 +30,23 @@ const TripDirectory: React.FC = () => {
   const [showCompleted, setShowCompleted] = useState(true);
   
   const userMap = useMemo(() => new Map(users.map(u => [u.id, u.name])), [users]);
-  // FIX: Changed UserRole.CAPTAIN to UserRole.SUPERVISOR as the CAPTAIN role does not exist.
   const canExport = useMemo(() => currentUser?.role === UserRole.ADMIN || currentUser?.role === UserRole.SUPERVISOR, [currentUser]);
 
   const filteredTrips = useMemo(() => {
-    return trips
+    let tripsToFilter = trips;
+
+    if (currentUser?.role === UserRole.AGENT) {
+        tripsToFilter = trips.filter(trip => trip.agentId === currentUser.id);
+    }
+    
+    return tripsToFilter
       .filter(trip => showCompleted || trip.status !== TripStatus.COMPLETED)
       .filter(trip => 
         trip.vesselName?.toLowerCase().includes(filter.toLowerCase()) || 
         trip.vesselImo?.includes(filter) ||
         trip.id.toLowerCase().includes(filter.toLowerCase())
       );
-  }, [trips, filter, showCompleted]);
+  }, [trips, filter, showCompleted, currentUser]);
 
   const { items: sortedTrips, requestSort, sortConfig } = useSortableData<Trip>(filteredTrips, { key: 'arrivalTimestamp', direction: 'descending' });
   const getSortDirectionFor = (key: keyof Trip) => sortConfig?.key === key ? sortConfig.direction : undefined;
@@ -92,13 +98,19 @@ const TripDirectory: React.FC = () => {
     doc.save(`trip_directory_${selectedPort.name.replace(/\s+/g, '_')}.pdf`);
   };
 
-  const openTripModal = (trip: Trip) => {
-    log(InteractionEventType.MODAL_OPEN, {
-        action: 'View Trip Details',
-        targetId: trip.id,
-        value: trip.vesselName,
-    });
-    actions.openModal({ type: 'tripDetail', trip });
+  const handleRowClick = (trip: Trip) => {
+    if (currentUser?.role === UserRole.AGENT) {
+        log(InteractionEventType.MODAL_OPEN, { action: 'Open ShipForm (Agent Edit)', targetId: trip.shipId, value: trip.vesselName });
+        const ship = ships.find(s => s.id === trip.shipId);
+        if (ship) {
+            actions.openModal({ type: 'shipForm', ship });
+        } else {
+            toast.error('Could not find the vessel for this trip.');
+        }
+    } else {
+        log(InteractionEventType.MODAL_OPEN, { action: 'View Trip Details', targetId: trip.id, value: trip.vesselName });
+        actions.openModal({ type: 'tripDetail', trip });
+    }
   };
 
   return (
@@ -131,7 +143,7 @@ const TripDirectory: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-gray-700">
                 {sortedTrips.map(trip => (
-                    <tr key={trip.id} onClick={() => openTripModal(trip)} className="group transition-colors duration-200 cursor-pointer hover:bg-gray-800/50">
+                    <tr key={trip.id} onClick={() => handleRowClick(trip)} className="group transition-colors duration-200 cursor-pointer hover:bg-gray-800/50">
                         <td className="px-4 py-3 font-mono text-xs text-gray-400">{trip.id.split('-')[1]}</td>
                         <td className="px-4 py-3 font-medium text-white">{trip.vesselName} <span className="text-gray-500">({trip.vesselImo})</span></td>
                         <td className="px-4 py-3"><span className={`px-2 py-1 text-xs font-medium rounded-full border ${statusColors[trip.status]}`}>{trip.status}</span></td>

@@ -95,6 +95,10 @@ const MainApp: React.FC = () => {
       const assignedShipIds = new Set(ships.filter(s => s.pilotId === currentUser.id).map(s => s.id));
       return baseAlerts.filter(a => a.shipId && assignedShipIds.has(a.shipId));
     }
+    if (currentUser?.role === UserRole.AGENT) {
+        const assignedShipIds = new Set(ships.filter(s => s.agentId === currentUser.id).map(s => s.id));
+        return baseAlerts.filter(a => a.shipId && assignedShipIds.has(a.shipId));
+    }
     return baseAlerts;
   }, [alerts, currentUser, ships]);
 
@@ -240,6 +244,18 @@ const MainApp: React.FC = () => {
         window.removeEventListener('resize', handleResize);
     };
 }, [log]);
+
+// Effect to enforce role-based view restrictions
+useEffect(() => {
+    if (currentUser?.role === UserRole.AGENT) {
+        const agentAllowedViews: View[] = ['dashboard', 'vessels', 'trips', 'alerts', 'settings'];
+        if (!agentAllowedViews.includes(activeView)) {
+            toast.error("You do not have permission to access this page.");
+            setActiveView('dashboard');
+        }
+    }
+}, [activeView, currentUser, setActiveView]);
+
 
   const renderView = () => {
     if (isLoading) {

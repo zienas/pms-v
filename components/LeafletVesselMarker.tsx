@@ -27,6 +27,7 @@ declare global {
 
 interface LeafletVesselMarkerProps {
     ship: Ship;
+    isInteractive: boolean;
 }
 
 const getShipTypeIcon = (shipType: string): React.ElementType => {
@@ -114,11 +115,9 @@ const DockedVesselIcon: React.FC<{ ship: Ship }> = ({ ship }) => {
 };
 
 
-const LeafletVesselMarker: React.FC<LeafletVesselMarkerProps> = ({ ship }) => {
-    const { currentUser } = useAuth();
-    const { state, actions } = usePort();
+const LeafletVesselMarker: React.FC<LeafletVesselMarkerProps> = ({ ship, isInteractive }) => {
+    const { actions, state } = usePort();
     const { berths } = state;
-    const canModify = useMemo(() => currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.OPERATOR, [currentUser.role]);
 
     const rotationAngle = useMemo(() => {
         // Prioritize live heading data for moving vessels
@@ -157,19 +156,17 @@ const LeafletVesselMarker: React.FC<LeafletVesselMarkerProps> = ({ ship }) => {
 
     if (!ship.lat || !ship.lon) return null;
 
+    const eventHandlers = isInteractive ? {
+        click: () => actions.openModal({ type: 'shipForm', ship }),
+    } : {};
+
     return (
         <Marker
             position={[ship.lat, ship.lon]}
             icon={vesselIcon}
             rotationAngle={rotationAngle}
             rotationOrigin="center center"
-            eventHandlers={{
-                click: () => {
-                    if (canModify) {
-                        actions.openModal({ type: 'shipForm', ship });
-                    }
-                },
-            }}
+            eventHandlers={eventHandlers}
         >
             <Tooltip>
                 <div className="text-sm">

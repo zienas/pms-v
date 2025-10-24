@@ -14,6 +14,9 @@ const Dashboard: React.FC = () => {
     if (currentUser?.role === UserRole.PILOT) {
       return ships.filter(ship => ship.pilotId === currentUser.id);
     }
+    if (currentUser?.role === UserRole.AGENT) {
+        return ships.filter(ship => ship.agentId === currentUser.id);
+    }
     return ships;
   }, [ships, currentUser]);
 

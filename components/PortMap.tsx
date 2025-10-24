@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { MapContainer, TileLayer, Polygon, useMap, useMapEvents } from 'react-leaflet';
 import type { Ship, Berth, Port } from '../types';
-import { ShipStatus, InteractionEventType } from '../types';
+import { ShipStatus, InteractionEventType, UserRole } from '../types';
 import { usePort } from '../context/PortContext';
 import FlameIcon from './icons/FlameIcon';
 import LeafletVesselMarker from './LeafletVesselMarker';
@@ -12,6 +12,7 @@ import MoonIcon from './icons/MoonIcon';
 import Squares2x2Icon from './icons/Squares2x2Icon';
 import { useLogger } from '../context/InteractionLoggerContext';
 import { toast } from 'react-hot-toast';
+import { useAuth } from '../context/AuthContext';
 
 const FILTERABLE_STATUSES: ShipStatus[] = [ShipStatus.APPROACHING, ShipStatus.DOCKED, ShipStatus.ANCHORED, ShipStatus.DEPARTING];
 
@@ -95,6 +96,7 @@ interface PortMapProps {
 
 const PortMap: React.FC<PortMapProps> = ({ ships, berths, selectedPort }) => {
   const { actions } = usePort();
+  const { currentUser } = useAuth();
   const [statusFilters, setStatusFilters] = useState<Set<ShipStatus>>(new Set(FILTERABLE_STATUSES));
   
   const theme = selectedPort.mapTheme || 'day';
@@ -117,6 +119,7 @@ const PortMap: React.FC<PortMapProps> = ({ ships, berths, selectedPort }) => {
 
   const allActiveShips = useMemo(() => ships.filter(s => s.status !== ShipStatus.LEFT_PORT), [ships]);
   const filteredShips = useMemo(() => allActiveShips.filter(s => statusFilters.has(s.status)), [allActiveShips, statusFilters]);
+  const isInteractive = currentUser?.role !== UserRole.AGENT;
 
   const handleFilterChange = (status: ShipStatus) => {
     setStatusFilters(prev => {
@@ -183,14 +186,14 @@ const PortMap: React.FC<PortMapProps> = ({ ships, berths, selectedPort }) => {
                 key={berth.id}
                 positions={berth.geometry}
                 pathOptions={pathOptions}
-                eventHandlers={{ click: () => actions.openModal({ type: 'berthDetail', berth }) }}
+                eventHandlers={isInteractive ? { click: () => actions.openModal({ type: 'berthDetail', berth }) } : {}}
               />
             );
           })}
 
           {/* Vessel Markers */}
           {filteredShips.filter(s => s.lat && s.lon).map(ship => (
-              <LeafletVesselMarker key={ship.id} ship={ship} />
+              <LeafletVesselMarker key={ship.id} ship={ship} isInteractive={isInteractive} />
           ))}
 
         </MapContainer>
@@ -204,7 +207,7 @@ const PortMap: React.FC<PortMapProps> = ({ ships, berths, selectedPort }) => {
                     const occupyingShip = allActiveShips.find(s => s.berthIds.includes(berth.id));
                     const hasDangerousGoods = occupyingShip?.hasDangerousGoods;
                     return (
-                        <li key={berth.id} className={`p-2 rounded cursor-pointer transition-colors ${hasDangerousGoods ? 'bg-red-900/40 hover:bg-red-900/60' : 'bg-gray-700/50 hover:bg-gray-700'}`} onClick={() => actions.openModal({ type: 'berthDetail', berth })}>
+                        <li key={berth.id} className={`p-2 rounded transition-colors ${isInteractive ? 'cursor-pointer' : ''} ${hasDangerousGoods ? 'bg-red-900/40 hover:bg-red-900/60' : 'bg-gray-700/50 hover:bg-gray-700'}`} onClick={() => isInteractive && actions.openModal({ type: 'berthDetail', berth })}>
                             <p className="font-semibold text-cyan-300">{berth.name}</p>
                             <div className="flex items-center gap-2 mt-1">
                                 {hasDangerousGoods && <FlameIcon className="w-3 h-3 text-red-400 flex-shrink-0" title="Carrying Dangerous Goods" />}

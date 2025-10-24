@@ -77,7 +77,10 @@ const VesselDirectory: React.FC = () => {
 
     if (currentUser?.role === UserRole.PILOT) {
       shipsToFilter = ships.filter(ship => ship.pilotId === currentUser.id);
+    } else if (currentUser?.role === UserRole.AGENT) {
+      shipsToFilter = ships.filter(ship => ship.agentId === currentUser.id);
     }
+
 
     return shipsToFilter
       .filter(ship => showDeparted || ship.status !== ShipStatus.LEFT_PORT)
@@ -181,6 +184,18 @@ const VesselDirectory: React.FC = () => {
     actions.deleteShip(ship.portId, ship.id);
   };
 
+  const canEditVessel = (ship: Ship) => {
+    if (!currentUser) return false;
+    const { role, id } = currentUser;
+    if ([UserRole.ADMIN, UserRole.SUPERVISOR, UserRole.OPERATOR].includes(role)) {
+        return true;
+    }
+    if (role === UserRole.AGENT && ship.agentId === id) {
+        return true;
+    }
+    return false;
+  }
+
   return (
     <div className="bg-gray-900/50 rounded-lg p-3 sm:p-4 h-full flex flex-col">
       <div className="flex flex-col md:flex-row justify-between md:items-center mb-4 gap-4">
@@ -240,13 +255,9 @@ const VesselDirectory: React.FC = () => {
                         <td className="px-4 py-3 text-right">
                            <div className="flex items-center justify-end gap-1">
                                 <button onClick={() => handleActionClick('history', ship)} className="p-1 text-gray-300 hover:text-blue-400" title="View Movement History"><ClockIcon className="h-5 w-5" /></button>
-                                {canModify && (
-                                    <>
-                                        <button onClick={() => handleActionClick('reassignBerth', ship)} className="p-1 text-gray-300 hover:text-green-400" title="Reassign Berth"><ReassignIcon className="h-5 w-5" /></button>
-                                        <button onClick={() => handleActionClick('shipForm', ship)} className="p-1 text-gray-300 hover:text-cyan-400" title="Edit ship"><EditIcon className="h-5 w-5" /></button>
-                                        <button onClick={() => handleDeleteShip(ship)} className="p-1 text-gray-300 hover:text-red-500" title="Delete ship"><DeleteIcon className="h-5 w-5" /></button>
-                                    </>
-                                )}
+                                {canModify && <button onClick={() => handleActionClick('reassignBerth', ship)} className="p-1 text-gray-300 hover:text-green-400" title="Reassign Berth"><ReassignIcon className="h-5 w-5" /></button>}
+                                {canEditVessel(ship) && <button onClick={() => handleActionClick('shipForm', ship)} className="p-1 text-gray-300 hover:text-cyan-400" title="Edit ship"><EditIcon className="h-5 w-5" /></button>}
+                                {canModify && <button onClick={() => handleDeleteShip(ship)} className="p-1 text-gray-300 hover:text-red-500" title="Delete ship"><DeleteIcon className="h-5 w-5" /></button>}
                             </div>
                         </td>
                     </tr>

@@ -18,7 +18,8 @@ const InputField: React.FC<{
   value: any;
   error?: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-}> = ({ label, name, type, value, error, onChange }) => {
+  readOnly?: boolean;
+}> = ({ label, name, type, value, error, onChange, readOnly = false }) => {
   return (
     <div>
       <label htmlFor={name} className="block text-sm font-medium text-gray-300">{label}</label>
@@ -28,9 +29,10 @@ const InputField: React.FC<{
         name={name}
         value={value}
         onChange={onChange}
+        readOnly={readOnly}
         className={`mt-1 block w-full px-3 py-2 bg-gray-700 text-white border rounded-md focus:outline-none focus:ring-2 ${
           error ? 'border-red-500 focus:ring-red-500' : 'border-gray-600 focus:ring-cyan-500'
-        }`}
+        } ${readOnly ? 'bg-gray-600 cursor-not-allowed' : ''}`}
       />
       {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
     </div>
@@ -48,6 +50,8 @@ const ShipFormModal: React.FC = () => {
 
   const pilots = useMemo(() => users.filter(user => user.role === UserRole.PILOT), [users]);
   const agents = useMemo(() => users.filter(user => user.role === UserRole.AGENT), [users]);
+  
+  const isAgentMode = currentUser.role === UserRole.AGENT;
 
   const [formData, setFormData] = useState<Omit<Ship, 'id' | 'portId'> | Ship>({
     name: '', imo: '', type: '', length: 0, draft: 0, flag: '',
@@ -232,37 +236,37 @@ const ShipFormModal: React.FC = () => {
         <h2 className="text-2xl font-bold mb-4">{shipToEdit ? 'Edit Ship' : 'Add New Ship'}</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <InputField label="Ship Name" name="name" type="text" value={formData.name} onChange={handleChange} error={errors.name} />
-            <InputField label="IMO Number" name="imo" type="text" value={formData.imo} onChange={handleChange} error={errors.imo} />
+            <InputField label="Ship Name" name="name" type="text" value={formData.name} onChange={handleChange} error={errors.name} readOnly={isAgentMode} />
+            <InputField label="IMO Number" name="imo" type="text" value={formData.imo} onChange={handleChange} error={errors.imo} readOnly={isAgentMode} />
             {shipToEdit?.currentTripId && (
                 <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-300">Current Stopover ID</label>
                     <input type="text" disabled value={shipToEdit.currentTripId} className="mt-1 block w-full px-3 py-2 bg-gray-900/50 text-gray-400 border border-gray-600 rounded-md font-mono" />
                 </div>
             )}
-            <InputField label="Ship Type" name="type" type="text" value={formData.type} onChange={handleChange} error={errors.type} />
-            <InputField label="Flag" name="flag" type="text" value={formData.flag} onChange={handleChange} error={errors.flag} />
-            <InputField label="Length (m)" name="length" type="number" value={formData.length} onChange={handleChange} error={errors.length} />
-            <InputField label="Draft (m)" name="draft" type="number" value={formData.draft} onChange={handleChange} error={errors.draft} />
+            <InputField label="Ship Type" name="type" type="text" value={formData.type} onChange={handleChange} error={errors.type} readOnly={isAgentMode} />
+            <InputField label="Flag" name="flag" type="text" value={formData.flag} onChange={handleChange} error={errors.flag} readOnly={isAgentMode} />
+            <InputField label="Length (m)" name="length" type="number" value={formData.length} onChange={handleChange} error={errors.length} readOnly={isAgentMode} />
+            <InputField label="Draft (m)" name="draft" type="number" value={formData.draft} onChange={handleChange} error={errors.draft} readOnly={isAgentMode} />
             <div>
               <label htmlFor="eta" className="block text-sm font-medium text-gray-300">ETA</label>
-              <input type="datetime-local" id="eta" name="eta" value={formData.eta} onChange={handleChange} className={`mt-1 block w-full px-3 py-2 bg-gray-700 text-white border rounded-md focus:outline-none focus:ring-2 ${errors.eta ? 'border-red-500 focus:ring-red-500' : 'border-gray-600 focus:ring-cyan-500'}`} />
+              <input type="datetime-local" id="eta" name="eta" value={formData.eta} onChange={handleChange} readOnly={isAgentMode && !shipToEdit} className={`mt-1 block w-full px-3 py-2 bg-gray-700 text-white border rounded-md focus:outline-none focus:ring-2 ${errors.eta ? 'border-red-500 focus:ring-red-500' : 'border-gray-600 focus:ring-cyan-500'} ${isAgentMode && !shipToEdit ? 'bg-gray-600 cursor-not-allowed' : ''}`} />
               {errors.eta && <p className="text-red-500 text-xs mt-1">{errors.eta}</p>}
             </div>
             <div>
               <label htmlFor="etd" className="block text-sm font-medium text-gray-300">ETD</label>
-              <input type="datetime-local" id="etd" name="etd" value={formData.etd} onChange={handleChange} className={`mt-1 block w-full px-3 py-2 bg-gray-700 text-white border rounded-md focus:outline-none focus:ring-2 ${errors.etd ? 'border-red-500 focus:ring-red-500' : 'border-gray-600 focus:ring-cyan-500'}`} />
+              <input type="datetime-local" id="etd" name="etd" value={formData.etd} onChange={handleChange} readOnly={isAgentMode && !shipToEdit} className={`mt-1 block w-full px-3 py-2 bg-gray-700 text-white border rounded-md focus:outline-none focus:ring-2 ${errors.etd ? 'border-red-500 focus:ring-red-500' : 'border-gray-600 focus:ring-cyan-500'} ${isAgentMode && !shipToEdit ? 'bg-gray-600 cursor-not-allowed' : ''}`} />
               {errors.etd && <p className="text-red-500 text-xs mt-1">{errors.etd}</p>}
             </div>
             <div>
                 <label htmlFor="status" className="block text-sm font-medium text-gray-300">Status</label>
-                <select id="status" name="status" value={formData.status} onChange={handleChange} className="mt-1 block w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                <select id="status" name="status" value={formData.status} onChange={handleChange} disabled={isAgentMode} className="mt-1 block w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:bg-gray-600 disabled:cursor-not-allowed">
                     {Object.values(ShipStatus).map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
             </div>
              <div>
                 <label htmlFor="berthId" className="block text-sm font-medium text-gray-300">Assigned Berth</label>
-                <select id="berthId" name="berthId" value={primaryBerthId} onChange={handleBerthChange} className={getBerthSelectClasses()} disabled={formData.status === ShipStatus.DEPARTING || formData.status === ShipStatus.LEFT_PORT}>
+                <select id="berthId" name="berthId" value={primaryBerthId} onChange={handleBerthChange} className={getBerthSelectClasses()} disabled={isAgentMode || formData.status === ShipStatus.DEPARTING || formData.status === ShipStatus.LEFT_PORT}>
                     <option value="">-- Unassigned --</option>
                     {berths.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                 </select>
@@ -289,9 +293,10 @@ const ShipFormModal: React.FC = () => {
                     placeholder="Search agents..."
                     value={agentSearch}
                     onChange={e => setAgentSearch(e.target.value)}
-                    className="mt-1 block w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    readOnly={isAgentMode}
+                    className="mt-1 block w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500 read-only:bg-gray-600 read-only:cursor-not-allowed"
                   />
-                  <select id="agentId" name="agentId" value={formData.agentId || ''} onChange={handleChange} className="mt-2 block w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500" aria-label="Filtered maritime agents">
+                  <select id="agentId" name="agentId" value={formData.agentId || ''} onChange={handleChange} disabled={isAgentMode} className="mt-2 block w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:bg-gray-600 disabled:cursor-not-allowed" aria-label="Filtered maritime agents">
                       <option value="">-- No Agent --</option>
                       {filteredAgents.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                   </select>
@@ -304,9 +309,10 @@ const ShipFormModal: React.FC = () => {
                     placeholder="Search pilots..."
                     value={pilotSearch}
                     onChange={e => setPilotSearch(e.target.value)}
-                    className="mt-1 block w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    readOnly={isAgentMode}
+                    className="mt-1 block w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500 read-only:bg-gray-600 read-only:cursor-not-allowed"
                   />
-                  <select id="pilotId" name="pilotId" value={formData.pilotId || ''} onChange={handleChange} className="mt-2 block w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500" aria-label="Filtered assigned pilots">
+                  <select id="pilotId" name="pilotId" value={formData.pilotId || ''} onChange={handleChange} disabled={isAgentMode} className="mt-2 block w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:bg-gray-600 disabled:cursor-not-allowed" aria-label="Filtered assigned pilots">
                       <option value="">-- No Pilot --</option>
                       {filteredPilots.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                   </select>
@@ -315,7 +321,7 @@ const ShipFormModal: React.FC = () => {
             )}
             <div className={`md:col-span-2 p-2 rounded-md transition-all duration-300 ${formData.hasDangerousGoods ? 'bg-red-900/40 ring-2 ring-red-600/70 animate-pulse' : ''}`}>
                 <div className="flex items-center">
-                    <input id="hasDangerousGoods" name="hasDangerousGoods" type="checkbox" checked={formData.hasDangerousGoods} onChange={handleChange} className="h-5 w-5 text-red-600 bg-gray-900 border-gray-600 rounded focus:ring-red-500" />
+                    <input id="hasDangerousGoods" name="hasDangerousGoods" type="checkbox" checked={formData.hasDangerousGoods} onChange={handleChange} disabled={isAgentMode && !shipToEdit} className="h-5 w-5 text-red-600 bg-gray-900 border-gray-600 rounded focus:ring-red-500 disabled:bg-gray-600 disabled:cursor-not-allowed" />
                     <label htmlFor="hasDangerousGoods" className="ml-3 block text-md font-medium text-red-400">Carrying Dangerous Goods</label>
                 </div>
                  {formData.hasDangerousGoods && ( <p className="text-red-400 text-xs mt-2 ml-8">WARNING: Special handling procedures may be required.</p> )}
