@@ -194,7 +194,12 @@ export const getPorts = async (): Promise<Port[]> => {
 export const addPort = async (portData: Omit<Port, 'id'>): Promise<Port> => {
     await simulateDelay();
     const db = getDatabase();
-    const newPort: Port = { ...portData, id: `port-${Date.now()}` };
+    const newPort: Port = {
+        id: `port-${Date.now()}`,
+        ...portData,
+        defaultZoom: portData.defaultZoom ?? 12,
+        mapTheme: portData.mapTheme ?? 'day',
+    };
     db.ports.push(newPort);
     saveDatabase(db);
     return newPort;

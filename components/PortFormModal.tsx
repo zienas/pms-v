@@ -41,6 +41,8 @@ const PortFormModal: React.FC = () => {
         logoImage: undefined as string | undefined,
         boundaryType: 'polygon' as 'polygon' | 'circle',
         boundaryRadius: 1000, // Default radius in meters
+        defaultZoom: 13,
+        mapTheme: 'day' as 'day' | 'dusk' | 'night',
     });
     const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
@@ -54,15 +56,17 @@ const PortFormModal: React.FC = () => {
                 logoImage: portToEdit.logoImage,
                 boundaryType: portToEdit.boundaryType || 'polygon',
                 boundaryRadius: portToEdit.boundaryRadius || 1000,
+                defaultZoom: portToEdit.defaultZoom || 13,
+                mapTheme: portToEdit.mapTheme || 'day',
             });
         } else {
-            setFormData({ name: '', lat: '0', lon: '0', geometry: [], logoImage: undefined, boundaryType: 'polygon', boundaryRadius: 1000 });
+            setFormData({ name: '', lat: '0', lon: '0', geometry: [], logoImage: undefined, boundaryType: 'polygon', boundaryRadius: 1000, defaultZoom: 13, mapTheme: 'day' });
         }
     }, [portToEdit]);
 
      const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        const { name, value, type } = e.target;
+        setFormData(prev => ({ ...prev, [name]: type === 'range' || type === 'number' ? parseFloat(value) : value }));
         if (errors[name]) {
             setErrors(prev => ({ ...prev, [name]: '' }));
         }
@@ -161,6 +165,8 @@ const PortFormModal: React.FC = () => {
                 geometry: formData.geometry, logoImage: formData.logoImage,
                 boundaryType: formData.boundaryType,
                 boundaryRadius: formData.boundaryType === 'circle' ? formData.boundaryRadius : undefined,
+                defaultZoom: formData.defaultZoom,
+                mapTheme: formData.mapTheme,
             };
             
             if (portToEdit) {
@@ -168,6 +174,7 @@ const PortFormModal: React.FC = () => {
             } else {
                 await actions.addPort(portData as Omit<Port, 'id'>);
             }
+            actions.closeModal();
         }
     };
 
@@ -232,6 +239,26 @@ const PortFormModal: React.FC = () => {
                             </div>
                         </div>
                     </div>
+
+                    <div className="p-4 bg-gray-900/50 rounded-lg border border-gray-700 space-y-4">
+                        <h3 className="text-lg font-semibold text-cyan-400">Map Settings</h3>
+                        <div>
+                            <label htmlFor="defaultZoom" className="block text-sm font-medium text-gray-300">Default Zoom Level ({formData.defaultZoom})</label>
+                            <input id="defaultZoom" name="defaultZoom" type="range" min="10" max="18" step="1" value={formData.defaultZoom} onChange={handleChange} className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer mt-1" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-300">Default Map Theme</label>
+                            <div className="mt-2 flex items-center space-x-6">
+                                {(['day', 'dusk', 'night'] as const).map(theme => (
+                                    <label key={theme} className="flex items-center text-sm text-gray-200 cursor-pointer">
+                                        <input type="radio" name="mapTheme" value={theme} checked={formData.mapTheme === theme} onChange={handleChange} className="w-4 h-4 text-cyan-600 bg-gray-700 border-gray-600 focus:ring-cyan-500" />
+                                        <span className="ml-2 capitalize">{theme}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
                      <div>
                         <div className="flex justify-between items-center">
                             <label className="block text-sm font-medium text-gray-300">Port Boundary</label>

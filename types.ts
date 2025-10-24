@@ -69,6 +69,8 @@ export interface Port {
   boundaryType?: 'polygon' | 'circle';
   boundaryRadius?: number;
   logoImage?: string;
+  defaultZoom?: number;
+  mapTheme?: 'day' | 'dusk' | 'night';
 }
 
 export interface Berth {

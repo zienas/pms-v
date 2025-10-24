@@ -24,6 +24,8 @@ export const initialSeedData = {
       geometry: createCircle(PORT_SG_CENTER, 5000, 64),
       boundaryType: 'circle',
       boundaryRadius: 5000,
+      defaultZoom: 13,
+      mapTheme: 'day',
     }
   ] as Port[],
   berths: [

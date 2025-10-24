@@ -11,6 +11,7 @@ import SunsetIcon from './icons/SunsetIcon';
 import MoonIcon from './icons/MoonIcon';
 import Squares2x2Icon from './icons/Squares2x2Icon';
 import { useLogger } from '../context/InteractionLoggerContext';
+import { toast } from 'react-hot-toast';
 
 const FILTERABLE_STATUSES: ShipStatus[] = [ShipStatus.APPROACHING, ShipStatus.DOCKED, ShipStatus.ANCHORED, ShipStatus.DEPARTING];
 
@@ -20,11 +21,11 @@ interface MapControllerProps {
   center: [number, number];
   zoom: number;
   theme: MapTheme;
-  setTheme: (theme: MapTheme) => void;
+  onThemeChange: (theme: MapTheme) => void;
 }
 
 // Helper component to control map view and add custom controls
-const MapController: React.FC<MapControllerProps> = ({ center, zoom, theme, setTheme }) => {
+const MapController: React.FC<MapControllerProps> = ({ center, zoom, theme, onThemeChange }) => {
   const map = useMap();
   const { log } = useLogger();
 
@@ -75,7 +76,7 @@ const MapController: React.FC<MapControllerProps> = ({ center, zoom, theme, setT
                 const Icon = option.icon;
                 const isActive = theme === option.name;
                 return (
-                    <a href="#" key={option.name} role="button" aria-label={option.title} title={option.title} onClick={(e) => { e.preventDefault(); setTheme(option.name); }} className={`flex items-center justify-center w-8 h-8 transition-colors border-t border-gray-700 ${isActive ? 'bg-cyan-600 text-white' : 'text-white hover:bg-gray-700/80'}`}>
+                    <a href="#" key={option.name} role="button" aria-label={option.title} title={option.title} onClick={(e) => { e.preventDefault(); onThemeChange(option.name); }} className={`flex items-center justify-center w-8 h-8 transition-colors border-t border-gray-700 ${isActive ? 'bg-cyan-600 text-white' : 'text-white hover:bg-gray-700/80'}`}>
                         <Icon className="w-5 h-5" />
                     </a>
                 );
@@ -95,7 +96,9 @@ interface PortMapProps {
 const PortMap: React.FC<PortMapProps> = ({ ships, berths, selectedPort }) => {
   const { actions } = usePort();
   const [statusFilters, setStatusFilters] = useState<Set<ShipStatus>>(new Set(FILTERABLE_STATUSES));
-  const [theme, setTheme] = useState<MapTheme>('day');
+  
+  const theme = selectedPort.mapTheme || 'day';
+  const mapZoom = selectedPort.defaultZoom || 13;
 
   const themes = {
     night: {
@@ -123,8 +126,14 @@ const PortMap: React.FC<PortMapProps> = ({ ships, berths, selectedPort }) => {
     });
   };
   
+  const handleThemeChange = (newTheme: MapTheme) => {
+    if (selectedPort) {
+        toast.success(`Map theme set to ${newTheme}`);
+        actions.updatePort(selectedPort.id, { ...selectedPort, mapTheme: newTheme });
+    }
+  };
+
   const mapCenter: [number, number] = [selectedPort.lat, selectedPort.lon];
-  const mapZoom = 13;
 
   const mapContainerStyle: React.CSSProperties = {
     height: '100%',
@@ -142,7 +151,7 @@ const PortMap: React.FC<PortMapProps> = ({ ships, berths, selectedPort }) => {
           scrollWheelZoom={true}
           style={mapContainerStyle}
         >
-          <MapController center={mapCenter} zoom={mapZoom} theme={theme} setTheme={setTheme} />
+          <MapController center={mapCenter} zoom={mapZoom} theme={theme} onThemeChange={handleThemeChange} />
           <TileLayer
             key={theme}
             attribution={themes[theme].attribution}

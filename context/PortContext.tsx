@@ -255,12 +255,16 @@ export const PortProvider: React.FC<{ children: React.ReactNode }> = ({ children
             addPort: async (portData: Omit<Port, 'id'>) => {
                 await toast.promise(api.addPort(portData), { loading: 'Adding port...', success: 'Port added.', error: 'Failed to add port.' });
                 await loadInitialPorts();
-                closeModal();
             },
             updatePort: async (id: string, portData: Port) => {
-                await toast.promise(api.updatePort(id, portData), { loading: 'Updating port...', success: 'Port updated.', error: 'Failed to update port.' });
+                const promise = api.updatePort(id, portData);
+                // For silent updates like theme changes, we don't show a toast.
+                if (!portData.mapTheme) {
+                    await toast.promise(promise, { loading: 'Updating port...', success: 'Port updated.', error: 'Failed to update port.' });
+                } else {
+                    await promise;
+                }
                 await loadInitialPorts();
-                closeModal();
             },
             deletePort: async (portId: string) => {
                  if (window.confirm("Are you sure you want to delete this port and all its data? This cannot be undone.")) {
