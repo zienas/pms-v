@@ -16,6 +16,14 @@ import { useAuth } from '../context/AuthContext';
 
 const FILTERABLE_STATUSES: ShipStatus[] = [ShipStatus.APPROACHING, ShipStatus.DOCKED, ShipStatus.ANCHORED, ShipStatus.DEPARTING];
 
+const statusColors: Record<ShipStatus, string> = {
+  [ShipStatus.APPROACHING]: 'bg-amber-500',
+  [ShipStatus.DOCKED]: 'bg-emerald-500',
+  [ShipStatus.DEPARTING]: 'bg-sky-500',
+  [ShipStatus.ANCHORED]: 'bg-violet-500',
+  [ShipStatus.LEFT_PORT]: 'bg-slate-500',
+};
+
 type MapTheme = 'day' | 'dusk' | 'night';
 
 interface MapControllerProps {
@@ -224,7 +232,16 @@ const PortMap: React.FC<PortMapProps> = ({ ships, berths, selectedPort }) => {
             <h3 className="text-lg font-bold text-white mb-2">Vessel Filter</h3>
             <div className="grid grid-cols-2 gap-2">
                  {FILTERABLE_STATUSES.map(status => (
-                    <label key={status} className="flex items-center text-sm text-gray-300 cursor-pointer"><input type="checkbox" checked={statusFilters.has(status)} onChange={() => handleFilterChange(status)} className="w-4 h-4 text-cyan-600 bg-gray-700 border-gray-600 rounded" /><span className="ml-2">{status}</span></label>
+                    <label key={status} className="flex items-center text-sm text-gray-300 cursor-pointer">
+                        <input 
+                            type="checkbox" 
+                            checked={statusFilters.has(status)} 
+                            onChange={() => handleFilterChange(status)} 
+                            className="w-4 h-4 text-cyan-600 bg-gray-700 border-gray-600 rounded focus:ring-offset-gray-900 focus:ring-cyan-500"
+                        />
+                        <span className={`w-3 h-3 rounded-full ml-2 ${statusColors[status]}`}></span>
+                        <span className="ml-1.5">{status}</span>
+                    </label>
                 ))}
             </div>
         </div>

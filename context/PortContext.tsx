@@ -8,6 +8,7 @@ import { calculateDistanceNM } from '../utils/geolocation';
 import { webSocketService } from '../services/webSocketService';
 import { useAuth } from './AuthContext';
 import AlertToast from '../components/AlertToast';
+import { playNotificationSound } from '../utils/audio';
 
 // --- STATE ---
 interface PortState {
@@ -314,6 +315,7 @@ export const PortProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
                             // Trigger audible/visual notification only once
                             if (!triggeredPilotAlertsRef.current.has(alertId)) {
+                                playNotificationSound();
                                 toast(
                                     (t) => (
                                       <AlertToast

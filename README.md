@@ -4,7 +4,7 @@ This is a modern frontend application designed to manage and visualize vessel tr
 
 ## Core Features
 
--   **Dynamic Geospatial Dashboard**: A live, coordinate-based map that visualizes vessel traffic using real latitude and longitude data.
+-   **Dynamic Geospatial Dashboard**: A live, coordinate-based map that visualizes vessel traffic. Features include customizable map themes (Day, Dusk, Night), interactive vessel and berth details, and status-based vessel filtering.
 -   **Proactive & Automated Alerts**: A sophisticated alert system to enhance operator awareness and response time.
 -   **Vessel Trip & Stopover Tracking**: Automatically generates a unique Trip ID for each vessel visit, from approach to departure, providing a clear, auditable trail.
 -   **Comprehensive Trip Directory**: A dedicated, sortable, and exportable page to view the complete lifecycle of every trip.
@@ -58,11 +58,19 @@ To connect to a real-world AIS data feed from a hardware receiver (via UDP or a 
 
 **[==> View the Go-Live Guide](./HOWTO-GOLIVE.md) <==**
 
-## Deployment on a VPS
+## Deployment
 
-For detailed, step-by-step instructions on how to deploy this application and its required backend infrastructure to a fresh Ubuntu or Debian-based VPS, please refer to the deployment guide.
+### Standard VPS Deployment
 
-**[==> View the Deployment Guide](./HOWTO-DEPLOY.md) <==**
+For detailed, step-by-step instructions on how to deploy this application and its required backend infrastructure to a fresh Ubuntu or Debian-based VPS, please refer to the main deployment guide.
+
+**[==> View the VPS Deployment Guide](./HOWTO-DEPLOY.md) <==**
+
+### Raspberry Pi Kiosk Deployment
+
+For setting up a dedicated, standalone monitoring station, a comprehensive guide is available for deploying the application on a Raspberry Pi in full-screen "kiosk" mode, complete with instructions for connecting to a live hardware AIS feed.
+
+**[==> View the Raspberry Pi Kiosk Guide](./HOWTO-DEPLOY-RPI.md) <==**
 
 ## How It Works: Technical Overview
 
