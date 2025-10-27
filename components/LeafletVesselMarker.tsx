@@ -3,7 +3,7 @@ import { Marker, Tooltip } from 'react-leaflet';
 import * as L from 'leaflet';
 import ReactDOMServer from 'react-dom/server';
 import type { Ship } from '../types';
-import { ShipStatus, UserRole } from '../types';
+import { ShipStatus, UserRole, InteractionEventType } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { usePort } from '../context/PortContext';
 import ShipIcon from './icons/ShipIcon';
@@ -11,6 +11,7 @@ import BerthIcon from './icons/BerthIcon';
 import TankerIcon from './icons/TankerIcon';
 import CargoShipIcon from './icons/CargoShipIcon';
 import { calculateBearing, toDeg } from '../utils/geolocation';
+import { useLogger } from '../context/InteractionLoggerContext';
 
 // FIX: Augment Leaflet's MarkerOptions to include properties from the leaflet-rotatedmarker plugin,
 // which are passed down by React-Leaflet's Marker component. By augmenting the L namespace directly,
@@ -117,6 +118,7 @@ const DockedVesselIcon: React.FC<{ ship: Ship }> = ({ ship }) => {
 
 const LeafletVesselMarker: React.FC<LeafletVesselMarkerProps> = ({ ship, isInteractive }) => {
     const { actions, state } = usePort();
+    const { log } = useLogger();
     const { berths } = state;
 
     const rotationAngle = useMemo(() => {
@@ -156,8 +158,19 @@ const LeafletVesselMarker: React.FC<LeafletVesselMarkerProps> = ({ ship, isInter
 
     if (!ship.lat || !ship.lon) return null;
 
+    const handleVesselClick = () => {
+        // FIX: Removed 'shipId' property which is not part of the LogDetails type. 'targetId' is sufficient.
+        log(InteractionEventType.MAP_INTERACTION, {
+            action: 'Click Vessel',
+            targetId: ship.id,
+            value: ship.name,
+            message: `User clicked on vessel "${ship.name}" (ID: ${ship.id}) on the map.`
+        });
+        actions.openModal({ type: 'shipForm', ship });
+    };
+
     const eventHandlers = isInteractive ? {
-        click: () => actions.openModal({ type: 'shipForm', ship }),
+        click: handleVesselClick,
     } : {};
 
     return (

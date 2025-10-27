@@ -105,6 +105,7 @@ interface PortMapProps {
 const PortMap: React.FC<PortMapProps> = ({ ships, berths, selectedPort }) => {
   const { actions } = usePort();
   const { currentUser } = useAuth();
+  const { log } = useLogger();
   const [statusFilters, setStatusFilters] = useState<Set<ShipStatus>>(new Set(FILTERABLE_STATUSES));
   
   const theme = selectedPort.mapTheme || 'day';
@@ -142,6 +143,17 @@ const PortMap: React.FC<PortMapProps> = ({ ships, berths, selectedPort }) => {
         toast.success(`Map theme set to ${newTheme}`);
         actions.updatePort(selectedPort.id, { ...selectedPort, mapTheme: newTheme });
     }
+  };
+
+  const handleBerthClick = (berth: Berth) => {
+    // FIX: Removed 'berthId' property which is not part of the LogDetails type. 'targetId' is sufficient.
+    log(InteractionEventType.MAP_INTERACTION, {
+        action: 'Click Berth',
+        targetId: berth.id,
+        value: berth.name,
+        message: `User clicked on berth "${berth.name}" (ID: ${berth.id}) on the map.`
+    });
+    actions.openModal({ type: 'berthDetail', berth });
   };
 
   const mapCenter: [number, number] = [selectedPort.lat, selectedPort.lon];
@@ -194,7 +206,7 @@ const PortMap: React.FC<PortMapProps> = ({ ships, berths, selectedPort }) => {
                 key={berth.id}
                 positions={berth.geometry}
                 pathOptions={pathOptions}
-                eventHandlers={isInteractive ? { click: () => actions.openModal({ type: 'berthDetail', berth }) } : {}}
+                eventHandlers={isInteractive ? { click: () => handleBerthClick(berth) } : {}}
               />
             );
           })}

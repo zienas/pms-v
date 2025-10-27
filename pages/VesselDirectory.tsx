@@ -221,10 +221,10 @@ const VesselDirectory: React.FC = () => {
         </div>
       </div>
       <div className="flex-1 overflow-x-auto">
-        <table className="w-full text-left text-sm text-gray-300 min-w-[800px]">
+        <table className="w-full text-left text-sm text-gray-300 min-w-[1100px]">
             <thead className="bg-gray-700/50 text-xs text-gray-400 uppercase sticky top-0">
                 <tr>
-                    {['name', 'imo', 'currentTripId', 'type', 'pilotId', 'status'].map(key => (
+                    {['name', 'imo', 'currentTripId', 'type', 'pilotId', 'status', 'eta', 'etd'].map(key => (
                         <th className="px-4 py-3" key={key}>
                             <button onClick={() => handleRequestSort(key as keyof Ship)} className="flex items-center gap-1 hover:text-white capitalize">
                                 {key.replace('currentTripId', 'Trip ID').replace('pilotId', 'Pilot')} <SortIcon direction={getSortDirectionFor(key as keyof Ship)} />
@@ -252,6 +252,8 @@ const VesselDirectory: React.FC = () => {
                         <td className="px-4 py-3">{ship.type}</td>
                         <td className="px-4 py-3">{ship.pilotId ? userMap.get(ship.pilotId) || 'Unknown Pilot' : '—'}</td>
                         <td className="px-4 py-3"><span className={`px-2 py-1 text-xs font-medium rounded-full border border-current ${Object.values(ShipStatus).includes(ship.status) ? statusColors[ship.status] : statusColors[ShipStatus.LEFT_PORT]}`}>{ship.status}</span></td>
+                        <td className="px-4 py-3 whitespace-nowrap">{new Date(ship.eta).toLocaleString()}</td>
+                        <td className="px-4 py-3 whitespace-nowrap">{new Date(ship.etd).toLocaleString()}</td>
                         <td className="px-4 py-3 text-right">
                            <div className="flex items-center justify-end gap-1">
                                 <button onClick={() => handleActionClick('history', ship)} className="p-1 text-gray-300 hover:text-blue-400" title="View Movement History"><ClockIcon className="h-5 w-5" /></button>
