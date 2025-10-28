@@ -1,6 +1,6 @@
 // services/seedData.ts
 import { BerthType, ShipStatus, UserRole, MovementEventType, TripStatus } from '../types';
-import type { Port, Berth, Ship, User, ShipMovement, Trip, LoginHistoryEntry, InteractionLogEntry } from '../types';
+import type { Port, Berth, Ship, User, ShipMovement, Trip, LoginHistoryEntry, InteractionLogEntry, ApiLogEntry } from '../types';
 import { createCircle, createRectangleFromLine } from '../utils/geolocation';
 
 // --- GEOSPATIAL DATA ---
@@ -161,4 +161,5 @@ export const initialSeedData = {
   movements: [] as ShipMovement[],
   loginHistory: [] as LoginHistoryEntry[],
   interactionLog: [] as InteractionLogEntry[],
+  apiLog: [] as ApiLogEntry[],
 };

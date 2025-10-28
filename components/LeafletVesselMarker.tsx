@@ -159,12 +159,11 @@ const LeafletVesselMarker: React.FC<LeafletVesselMarkerProps> = ({ ship, isInter
     if (!ship.lat || !ship.lon) return null;
 
     const handleVesselClick = () => {
-        // FIX: Removed 'shipId' property which is not part of the LogDetails type. 'targetId' is sufficient.
         log(InteractionEventType.MAP_INTERACTION, {
             action: 'Click Vessel',
             targetId: ship.id,
-            value: ship.name,
-            message: `User clicked on vessel "${ship.name}" (ID: ${ship.id}) on the map.`
+            value: { name: ship.name, shipId: ship.id },
+            message: `User clicked on vessel marker "${ship.name}" (ID: ${ship.id}) on the map.`
         });
         actions.openModal({ type: 'shipForm', ship });
     };

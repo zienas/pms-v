@@ -1,6 +1,6 @@
 import React, { useReducer, useCallback, createContext, useContext, useMemo, useRef, useEffect } from 'react';
 import { toast } from 'react-hot-toast';
-import type { Ship, Berth, Alert, Port, Trip, User, AisSource, ModalState, AisData, ShipMovement, LoginHistoryEntry, InteractionLogEntry } from '../types';
+import type { Ship, Berth, Alert, Port, Trip, User, AisSource, ModalState, AisData, ShipMovement, LoginHistoryEntry, InteractionLogEntry, ApiLogEntry } from '../types';
 import { AlertType, ShipStatus, UserRole, MovementEventType } from '../types';
 import * as api from '../services/api';
 import { runAisSimulationStep } from '../services/aisSimulator';
@@ -9,6 +9,7 @@ import { webSocketService } from '../services/webSocketService';
 import { useAuth } from './AuthContext';
 import AlertToast from '../components/AlertToast';
 import { playNotificationSound } from '../utils/audio';
+import GroupedAlertToast from '../components/GroupedAlertToast';
 
 // --- STATE ---
 interface PortState {
@@ -22,6 +23,7 @@ interface PortState {
   movements: ShipMovement[];
   loginHistory: LoginHistoryEntry[];
   interactionLogs: InteractionLogEntry[];
+  apiLogs: ApiLogEntry[];
   
   // UI State
   isLoading: boolean;
@@ -38,7 +40,7 @@ type Action =
   | { type: 'SET_LOADING'; payload: boolean }
   | { type: 'SET_INITIAL_PORTS'; payload: { ports: Port[], accessiblePorts: Port[], selectedPortId: string | null } }
   | { type: 'SET_ALL_BERTHS'; payload: Berth[] }
-  | { type: 'SET_PORT_DATA'; payload: { ships: Ship[]; berths: Berth[]; trips: Trip[]; movements: ShipMovement[]; loginHistory: LoginHistoryEntry[]; interactionLogs: InteractionLogEntry[] } }
+  | { type: 'SET_PORT_DATA'; payload: { ships: Ship[]; berths: Berth[]; trips: Trip[]; movements: ShipMovement[]; loginHistory: LoginHistoryEntry[]; interactionLogs: InteractionLogEntry[], apiLogs: ApiLogEntry[] } }
   | { type: 'SET_SELECTED_PORT_ID'; payload: string | null }
   | { type: 'CLEAR_DATA' }
   | { type: 'SET_ALERTS'; payload: Alert[] }
@@ -48,7 +50,7 @@ type Action =
   | { type: 'UPDATE_SHIP_AIS'; payload: Ship };
 
 const initialState: PortState = {
-  ships: [], berths: [], trips: [], alerts: [], ports: [], allBerths: [], movements: [], loginHistory: [], interactionLogs: [],
+  ships: [], berths: [], trips: [], alerts: [], ports: [], allBerths: [], movements: [], loginHistory: [], interactionLogs: [], apiLogs: [],
   isLoading: true, selectedPortId: null, accessiblePorts: [], modal: null,
   selectedPort: null,
 };
@@ -76,9 +78,10 @@ const portReducer = (state: PortState, action: Action): PortState => {
             movements: [],
             loginHistory: [],
             interactionLogs: [],
+            apiLogs: [],
         };
     }
-    case 'CLEAR_DATA': return { ...state, ships: [], berths: [], trips: [], alerts: [], movements: [], loginHistory: [], interactionLogs: [] };
+    case 'CLEAR_DATA': return { ...state, ships: [], berths: [], trips: [], alerts: [], movements: [], loginHistory: [], interactionLogs: [], apiLogs: [] };
     case 'SET_ALERTS': return { ...state, alerts: action.payload };
     case 'OPEN_MODAL': return { ...state, modal: action.payload };
     case 'CLOSE_MODAL': return { ...state, modal: null };
@@ -189,17 +192,18 @@ export const PortProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const fetchDataForPort = async (portId: string, signal: AbortSignal) => {
             try {
                 dispatch({ type: 'SET_LOADING', payload: true });
-                const [ships, berths, trips, movements, allLoginHistory, interactionLogs] = await Promise.all([
+                const [ships, berths, trips, movements, allLoginHistory, interactionLogs, apiLogs] = await Promise.all([
                     api.getShips(portId), 
                     api.getBerths(portId), 
                     api.getTripsForPort(portId), 
                     api.getHistoryForPort(portId),
                     api.getLoginHistory(),
                     api.getInteractionLogs(portId),
+                    api.getApiLogs(),
                 ]);
                 if (!signal.aborted) {
                     const loginHistory = allLoginHistory.filter(h => h.portId === portId);
-                    dispatch({ type: 'SET_PORT_DATA', payload: { ships, berths, trips, movements, loginHistory, interactionLogs } });
+                    dispatch({ type: 'SET_PORT_DATA', payload: { ships, berths, trips, movements, loginHistory, interactionLogs, apiLogs } });
                 }
             } catch (error) {
                 if (!signal.aborted) toast.error(`Failed to load data for port.`);
@@ -281,74 +285,87 @@ export const PortProvider: React.FC<{ children: React.ReactNode }> = ({ children
         
         const generateAlerts = (approachingThreshold: number, pilotThreshold: number) => {
             const timer = setInterval(() => {
-                const { selectedPort, ships, selectedPortId, alerts } = stateRef.current;
+                const { selectedPort, ships, selectedPortId, alerts: previousAlerts } = stateRef.current;
                 if (!selectedPort) {
                     dispatch({ type: 'SET_ALERTS', payload: [] });
                     return;
                 }
                 const newAlerts: Alert[] = [];
-                const currentPilotAlertIds = new Set<string>();
-
+        
                 ships.forEach(ship => {
                     if (ship.lat && ship.lon && ship.status === ShipStatus.APPROACHING) {
                         const distance = calculateDistanceNM(ship.lat, ship.lon, selectedPort.lat, selectedPort.lon);
                         
-                        // General approaching alert
                         if (distance <= approachingThreshold) {
                            newAlerts.push({ id: `alert-approach-${ship.id}`, portId: selectedPortId!, type: AlertType.WARNING, message: `Vessel ${ship.name} is approaching port at ${distance.toFixed(2)} NM.`, shipId: ship.id, timestamp: new Date().toISOString() });
                         }
-
-                        // Pilot assignment alert
+        
                         if (distance <= pilotThreshold && !ship.pilotId) {
                             const alertId = `alert-pilot-${ship.id}`;
                             const message = `Vessel ${ship.name} requires pilot assignment. It is within ${distance.toFixed(2)} NM of the port.`;
-                             const newPilotAlert: Alert = {
+                             newAlerts.push({
                                 id: alertId,
                                 portId: selectedPortId!,
                                 type: AlertType.ERROR,
                                 message,
                                 shipId: ship.id,
                                 timestamp: new Date().toISOString()
-                            };
-                            newAlerts.push(newPilotAlert);
-                            currentPilotAlertIds.add(alertId);
-
-                            // Trigger audible/visual notification only once
-                            if (!triggeredPilotAlertsRef.current.has(alertId)) {
-                                playNotificationSound();
-                                toast(
-                                    (t) => (
-                                      <AlertToast
-                                        alert={newPilotAlert}
-                                        toastId={t.id}
-                                      />
-                                    ),
-                                    {
-                                      id: alertId,
-                                      duration: Infinity,
-                                      style: {
-                                        background: 'transparent',
-                                        padding: '0',
-                                        boxShadow: 'none',
-                                        border: 'none',
-                                      }
-                                    }
-                                );
-                                triggeredPilotAlertsRef.current.add(alertId);
-                            }
+                            });
                         }
                     }
                 });
-
-                // Clean up resolved pilot alerts from the tracking ref
+        
+                // --- Singleton Toast Notification Logic ---
+                const existingAcknowledgedIds = new Set(previousAlerts.filter(a => a.acknowledged).map(a => a.id));
+        
+                const unacknowledgedPilotAlerts = newAlerts.filter(
+                    a => a.type === AlertType.ERROR && a.id.startsWith('alert-pilot-') && !existingAcknowledgedIds.has(a.id)
+                );
+        
+                const PILOT_TOAST_ID = 'pilot-alert-toast';
+        
+                const newlyCreatedPilotAlerts = unacknowledgedPilotAlerts.filter(
+                    alert => !triggeredPilotAlertsRef.current.has(alert.id)
+                );
+        
+                if (newlyCreatedPilotAlerts.length > 0) {
+                    playNotificationSound();
+                    newlyCreatedPilotAlerts.forEach(alert => triggeredPilotAlertsRef.current.add(alert.id));
+                }
+        
+                const totalUnacknowledgedPilotAlerts = unacknowledgedPilotAlerts.length;
+        
+                if (totalUnacknowledgedPilotAlerts === 0) {
+                    toast.dismiss(PILOT_TOAST_ID);
+                } else if (totalUnacknowledgedPilotAlerts === 1) {
+                    const singleAlert = unacknowledgedPilotAlerts[0];
+                    toast(
+                        (t) => <AlertToast alert={singleAlert} toastId={t.id} />,
+                        {
+                            id: PILOT_TOAST_ID,
+                            duration: Infinity,
+                            style: { background: 'transparent', padding: '0', boxShadow: 'none', border: 'none' }
+                        }
+                    );
+                } else {
+                    toast(
+                        (t) => <GroupedAlertToast count={totalUnacknowledgedPilotAlerts} alertType={AlertType.ERROR} toastId={t.id} />,
+                        {
+                            id: PILOT_TOAST_ID,
+                            duration: Infinity,
+                            style: { background: 'transparent', padding: '0', boxShadow: 'none', border: 'none' }
+                        }
+                    );
+                }
+        
+                const unacknowledgedPilotAlertIds = new Set(unacknowledgedPilotAlerts.map(a => a.id));
                 triggeredPilotAlertsRef.current.forEach(alertId => {
-                    if (!currentPilotAlertIds.has(alertId)) {
+                    if (!unacknowledgedPilotAlertIds.has(alertId)) {
                         triggeredPilotAlertsRef.current.delete(alertId);
                     }
                 });
                 
-                const existingAcknowledged = new Map(alerts.filter(a => a.acknowledged).map(a => [a.id, a]));
-                const finalAlerts = newAlerts.map(alert => ({...alert, acknowledged: existingAcknowledged.has(alert.id) }));
+                const finalAlerts = newAlerts.map(alert => ({ ...alert, acknowledged: existingAcknowledgedIds.has(alert.id) }));
                 
                 dispatch({ type: 'SET_ALERTS', payload: finalAlerts });
             }, 5000);

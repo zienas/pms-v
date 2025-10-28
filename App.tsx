@@ -199,8 +199,8 @@ const MainApp: React.FC = () => {
         if (interactiveElement) {
             const element = interactiveElement as HTMLElement;
 
-            // Don't log clicks inside form inputs or on the map canvas
-            if (['INPUT', 'TEXTAREA', 'SELECT'].includes(element.tagName) || element.closest('.leaflet-container')) {
+            // Don't log clicks inside form inputs or on the map component
+            if (['INPUT', 'TEXTAREA', 'SELECT'].includes(element.tagName) || element.closest('[data-component="port-map"]')) {
                 return;
             }
 
@@ -243,10 +243,25 @@ const MainApp: React.FC = () => {
         document.removeEventListener('click', handleGlobalClick);
         window.removeEventListener('resize', handleResize);
     };
-}, [log]);
+  }, [log]);
 
-// Effect to enforce role-based view restrictions
-useEffect(() => {
+  // Effect to handle navigation requests from toasts
+  useEffect(() => {
+    const handleNavigation = (event: CustomEvent) => {
+        if (event.detail && typeof event.detail === 'string') {
+            setActiveView(event.detail as View);
+        }
+    };
+    
+    window.addEventListener('navigateTo', handleNavigation as EventListener);
+
+    return () => {
+        window.removeEventListener('navigateTo', handleNavigation as EventListener);
+    };
+  }, [setActiveView]);
+
+  // Effect to enforce role-based view restrictions
+  useEffect(() => {
     if (currentUser?.role === UserRole.AGENT) {
         const agentAllowedViews: View[] = ['dashboard', 'vessels', 'trips', 'alerts', 'settings'];
         if (!agentAllowedViews.includes(activeView)) {
@@ -254,11 +269,11 @@ useEffect(() => {
             setActiveView('dashboard');
         }
     }
-}, [activeView, currentUser, setActiveView]);
+  }, [activeView, currentUser, setActiveView]);
 
 
   const renderView = () => {
-    if (isLoading) {
+    if (isLoading && activeView !== 'dashboard') { // Keep dashboard visible but show loading on map
         return <LoadingSpinner message="Loading Port Data..." />;
     }
     if (!selectedPort && accessiblePorts.length > 0) {

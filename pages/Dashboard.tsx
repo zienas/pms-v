@@ -8,7 +8,7 @@ import { UserRole } from '../types';
 const Dashboard: React.FC = () => {
   const { state } = usePort();
   const { currentUser } = useAuth();
-  const { selectedPort, ships, berths } = state;
+  const { selectedPort, ships, berths, isLoading } = state;
 
   const displayedShips = useMemo(() => {
     if (currentUser?.role === UserRole.PILOT) {
@@ -31,7 +31,7 @@ const Dashboard: React.FC = () => {
         <DashboardStats ships={displayedShips} berths={berths} />
       </div>
       <div className="flex-1 min-h-0">
-         <PortMap ships={displayedShips} berths={berths} selectedPort={selectedPort} />
+         <PortMap ships={displayedShips} berths={berths} selectedPort={selectedPort} isLoading={isLoading} />
       </div>
     </div>
   );

@@ -3,7 +3,7 @@
 // It is designed to be a drop-in replacement for a service that would make real HTTP requests.
 
 import type {
-  Ship, Berth, Port, User, ShipMovement, LoginHistoryEntry, Trip, AisData, InteractionLogEntry, InteractionEventType, View
+  Ship, Berth, Port, User, ShipMovement, LoginHistoryEntry, Trip, AisData, InteractionLogEntry, InteractionEventType, View, ApiLogEntry
 } from '../types';
 import { initialSeedData } from './seedData';
 import { UserRole, ShipStatus, TripStatus, MovementEventType } from '../types';
@@ -38,8 +38,12 @@ const saveDatabase = (db: typeof initialSeedData): void => {
 };
 
 const initializeDatabase = (): typeof initialSeedData => {
-  saveDatabase(initialSeedData);
-  return initialSeedData;
+  const db = { ...initialSeedData };
+  if (!db.apiLog) {
+      db.apiLog = [];
+  }
+  saveDatabase(db);
+  return db;
 };
 
 // Ensure database is initialized on first load
@@ -50,16 +54,58 @@ if (!localStorage.getItem(DB_KEY)) {
 // Helper to simulate network delay
 const simulateDelay = (ms = 200) => new Promise(res => setTimeout(res, ms));
 
+// --- API Logging Wrapper ---
+const withApiLogging = <T extends (...args: any[]) => Promise<any>>(
+    method: string,
+    urlTemplate: string,
+    fn: T
+): T => {
+    return (async (...args: Parameters<T>): Promise<ReturnType<T>> => {
+        const startTime = performance.now();
+        let statusCode = 200;
+        // Replace placeholders like :id with actual values from arguments
+        let url = urlTemplate;
+        if (args[0] && typeof args[0] === 'string') {
+            url = url.replace(/:\w+/, args[0]);
+        }
+        
+        try {
+            return await fn(...args);
+        } catch (e) {
+            statusCode = 500;
+            throw e;
+        } finally {
+            const durationMs = performance.now() - startTime;
+            const currentDb = getDatabase();
+            const newLog: ApiLogEntry = {
+                id: `api-${Date.now()}-${Math.random()}`,
+                timestamp: new Date().toISOString(),
+                method,
+                url,
+                statusCode,
+                durationMs: Math.round(durationMs),
+            };
+            if (!currentDb.apiLog) currentDb.apiLog = [];
+            currentDb.apiLog.unshift(newLog);
+            if (currentDb.apiLog.length > 500) { // Cap logs
+                currentDb.apiLog.pop();
+            }
+            saveDatabase(currentDb);
+        }
+    }) as T;
+};
+
 
 // --- User & Auth ---
 
-export const getUsers = async (): Promise<User[]> => {
+const _getUsers = async (): Promise<User[]> => {
   await simulateDelay();
   const db = getDatabase();
   return db.users.map(({ password, ...user }) => user); // Don't send password to client
 };
+export const getUsers = withApiLogging('GET', '/users', _getUsers);
 
-export const loginUser = async (name: string, password_provided: string, portId: string): Promise<User> => {
+const _loginUser = async (name: string, password_provided: string, portId: string): Promise<User> => {
     await simulateDelay(500);
     const db = getDatabase();
     const user = db.users.find(u => u.name === name);
@@ -88,8 +134,9 @@ export const loginUser = async (name: string, password_provided: string, portId:
     const { password, ...userToReturn } = user;
     return userToReturn;
 };
+export const loginUser = withApiLogging('POST', '/auth/login', _loginUser);
 
-export const logoutUser = async (userId: string): Promise<void> => {
+const _logoutUser = async (userId: string): Promise<void> => {
     await simulateDelay();
     const db = getDatabase();
     const lastLogin = db.loginHistory
@@ -102,8 +149,10 @@ export const logoutUser = async (userId: string): Promise<void> => {
     }
     dbCache = null; // Clear cache on logout
 };
+export const logoutUser = withApiLogging('POST', '/auth/logout', _logoutUser);
 
-export const addUser = async (userData: Omit<User, 'id'>): Promise<User> => {
+
+const _addUser = async (userData: Omit<User, 'id'>): Promise<User> => {
     await simulateDelay();
     const db = getDatabase();
     const newUser: User = {
@@ -118,8 +167,9 @@ export const addUser = async (userData: Omit<User, 'id'>): Promise<User> => {
     const { password, ...userToReturn } = newUser;
     return userToReturn;
 };
+export const addUser = withApiLogging('POST', '/users', _addUser);
 
-export const updateUser = async (id: string, userData: User): Promise<User> => {
+const _updateUser = async (id: string, userData: User): Promise<User> => {
     await simulateDelay();
     const db = getDatabase();
     const userIndex = db.users.findIndex(u => u.id === id);
@@ -134,8 +184,10 @@ export const updateUser = async (id: string, userData: User): Promise<User> => {
     const { password, ...userToReturn } = db.users[userIndex];
     return userToReturn;
 };
+export const updateUser = withApiLogging('PUT', '/users/:id', _updateUser);
 
-export const updateOwnPassword = async (userId: string, newPassword: string): Promise<User> => {
+
+const _updateOwnPassword = async (userId: string, newPassword: string): Promise<User> => {
     await simulateDelay();
     const db = getDatabase();
     const user = db.users.find(u => u.id === userId);
@@ -147,22 +199,25 @@ export const updateOwnPassword = async (userId: string, newPassword: string): Pr
     const { password, ...userToReturn } = user;
     return userToReturn;
 };
+export const updateOwnPassword = withApiLogging('PUT', '/users/:id/password', _updateOwnPassword);
 
-export const deleteUser = async (id: string): Promise<void> => {
+const _deleteUser = async (id: string): Promise<void> => {
     await simulateDelay();
     const db = getDatabase();
     db.users = db.users.filter(u => u.id !== id);
     saveDatabase(db);
 };
+export const deleteUser = withApiLogging('DELETE', '/users/:id', _deleteUser);
 
-export const getLoginHistory = async (): Promise<LoginHistoryEntry[]> => {
+const _getLoginHistory = async (): Promise<LoginHistoryEntry[]> => {
     await simulateDelay();
     return getDatabase().loginHistory;
 };
+export const getLoginHistory = withApiLogging('GET', '/logs/login-history', _getLoginHistory);
 
 // --- Interaction Logs ---
 export const logInteraction = async (entry: Omit<InteractionLogEntry, 'id' | 'timestamp'>): Promise<InteractionLogEntry> => {
-    // No delay for logging to not slow down UI
+    // No delay for logging to not slow down UI and not logging this API call to avoid loops
     const db = getDatabase();
     const newLog: InteractionLogEntry = {
         ...entry,
@@ -170,7 +225,6 @@ export const logInteraction = async (entry: Omit<InteractionLogEntry, 'id' | 'ti
         timestamp: new Date().toISOString(),
     };
     db.interactionLog.unshift(newLog);
-    // To avoid performance issues, cap the log size
     if (db.interactionLog.length > 1000) {
         db.interactionLog = db.interactionLog.slice(0, 1000);
     }
@@ -178,20 +232,27 @@ export const logInteraction = async (entry: Omit<InteractionLogEntry, 'id' | 'ti
     return newLog;
 };
 
-export const getInteractionLogs = async (portId: string): Promise<InteractionLogEntry[]> => {
+const _getInteractionLogs = async (portId: string): Promise<InteractionLogEntry[]> => {
     await simulateDelay();
     return getDatabase().interactionLog.filter(log => log.portId === portId);
 };
+export const getInteractionLogs = withApiLogging('GET', '/logs/interaction', _getInteractionLogs);
 
+const _getApiLogs = async (): Promise<ApiLogEntry[]> => {
+    await simulateDelay();
+    return getDatabase().apiLog || [];
+};
+export const getApiLogs = withApiLogging('GET', '/logs/api', _getApiLogs);
 
 // --- Ports ---
 
-export const getPorts = async (): Promise<Port[]> => {
+const _getPorts = async (): Promise<Port[]> => {
     await simulateDelay();
     return getDatabase().ports;
 };
+export const getPorts = withApiLogging('GET', '/ports', _getPorts);
 
-export const addPort = async (portData: Omit<Port, 'id'>): Promise<Port> => {
+const _addPort = async (portData: Omit<Port, 'id'>): Promise<Port> => {
     await simulateDelay();
     const db = getDatabase();
     const newPort: Port = {
@@ -204,8 +265,9 @@ export const addPort = async (portData: Omit<Port, 'id'>): Promise<Port> => {
     saveDatabase(db);
     return newPort;
 };
+export const addPort = withApiLogging('POST', '/ports', _addPort);
 
-export const updatePort = async (id: string, portData: Port): Promise<Port> => {
+const _updatePort = async (id: string, portData: Port): Promise<Port> => {
     await simulateDelay();
     const db = getDatabase();
     const index = db.ports.findIndex(p => p.id === id);
@@ -214,8 +276,9 @@ export const updatePort = async (id: string, portData: Port): Promise<Port> => {
     saveDatabase(db);
     return db.ports[index];
 };
+export const updatePort = withApiLogging('PUT', '/ports/:id', _updatePort);
 
-export const deletePort = async (id: string): Promise<void> => {
+const _deletePort = async (id: string): Promise<void> => {
     await simulateDelay();
     const db = getDatabase();
     db.ports = db.ports.filter(p => p.id !== id);
@@ -224,19 +287,22 @@ export const deletePort = async (id: string): Promise<void> => {
     db.movements = db.movements.filter(m => m.portId !== id);
     saveDatabase(db);
 };
+export const deletePort = withApiLogging('DELETE', '/ports/:id', _deletePort);
 
 // --- Berths ---
-export const getBerths = async (portId: string): Promise<Berth[]> => {
+const _getBerths = async (portId: string): Promise<Berth[]> => {
     await simulateDelay();
     return getDatabase().berths.filter(b => b.portId === portId);
 };
+export const getBerths = withApiLogging('GET', '/ports/:portId/berths', _getBerths);
 
-export const getAllBerths = async (): Promise<Berth[]> => {
+const _getAllBerths = async (): Promise<Berth[]> => {
     await simulateDelay();
     return getDatabase().berths;
 };
+export const getAllBerths = withApiLogging('GET', '/berths', _getAllBerths);
 
-export const addBerth = async (portId: string, berthData: Omit<Berth, 'id' | 'portId'>): Promise<Berth> => {
+const _addBerth = async (portId: string, berthData: Omit<Berth, 'id' | 'portId'>): Promise<Berth> => {
     await simulateDelay();
     const db = getDatabase();
     const newBerth: Berth = { ...berthData, id: `berth-${Date.now()}`, portId };
@@ -244,8 +310,9 @@ export const addBerth = async (portId: string, berthData: Omit<Berth, 'id' | 'po
     saveDatabase(db);
     return newBerth;
 };
+export const addBerth = withApiLogging('POST', '/berths', _addBerth);
 
-export const updateBerth = async (portId: string, id: string, berthData: Berth): Promise<Berth> => {
+const _updateBerth = async (portId: string, id: string, berthData: Berth): Promise<Berth> => {
     await simulateDelay();
     const db = getDatabase();
     const index = db.berths.findIndex(b => b.id === id);
@@ -254,24 +321,29 @@ export const updateBerth = async (portId: string, id: string, berthData: Berth):
     saveDatabase(db);
     return db.berths[index];
 };
+export const updateBerth = withApiLogging('PUT', '/berths/:id', _updateBerth);
 
-export const deleteBerth = async (portId: string, berthId: string): Promise<void> => {
+const _deleteBerth = async (portId: string, berthId: string): Promise<void> => {
     await simulateDelay();
     const db = getDatabase();
     db.berths = db.berths.filter(b => b.id !== berthId);
     saveDatabase(db);
 };
+export const deleteBerth = withApiLogging('DELETE', '/berths/:id', _deleteBerth);
+
 
 // --- Ships ---
-export const getShips = async (portId: string): Promise<Ship[]> => {
+const _getShips = async (portId: string): Promise<Ship[]> => {
     await simulateDelay();
     return getDatabase().ships.filter(s => s.portId === portId);
 };
+export const getShips = withApiLogging('GET', '/ports/:portId/ships', _getShips);
 
-export const getAllShips = async (): Promise<Ship[]> => {
+const _getAllShips = async (): Promise<Ship[]> => {
     await simulateDelay();
     return getDatabase().ships;
 };
+export const getAllShips = withApiLogging('GET', '/ships', _getAllShips);
 
 const createMovement = (db: typeof initialSeedData, ship: Ship, eventType: MovementEventType, details: ShipMovement['details']): void => {
     const movement: ShipMovement = {
@@ -286,7 +358,7 @@ const createMovement = (db: typeof initialSeedData, ship: Ship, eventType: Movem
     db.movements.unshift(movement);
 };
 
-export const addShip = async (shipData: Omit<Ship, 'id'>): Promise<Ship> => {
+const _addShip = async (shipData: Omit<Ship, 'id'>): Promise<Ship> => {
     await simulateDelay();
     const db = getDatabase();
     
@@ -317,8 +389,10 @@ export const addShip = async (shipData: Omit<Ship, 'id'>): Promise<Ship> => {
     saveDatabase(db);
     return newShip;
 };
+export const addShip = withApiLogging('POST', '/ships', _addShip);
 
-export const updateShip = async (id: string, shipData: Ship): Promise<Ship> => {
+
+const _updateShip = async (id: string, shipData: Ship): Promise<Ship> => {
     await simulateDelay();
     const db = getDatabase();
     const index = db.ships.findIndex(s => s.id === id);
@@ -383,22 +457,26 @@ export const updateShip = async (id: string, shipData: Ship): Promise<Ship> => {
     saveDatabase(db);
     return updatedShip;
 };
+export const updateShip = withApiLogging('PUT', '/ships/:id', _updateShip);
 
-export const deleteShip = async (portId: string, shipId: string): Promise<void> => {
+const _deleteShip = async (portId: string, shipId: string): Promise<void> => {
     await simulateDelay();
     const db = getDatabase();
     db.ships = db.ships.filter(s => s.id !== shipId);
     db.movements = db.movements.filter(m => m.shipId !== shipId);
     saveDatabase(db);
 };
+export const deleteShip = withApiLogging('DELETE', '/ships/:id', _deleteShip);
+
 
 // --- Trips ---
-export const getTripsForPort = async (portId: string): Promise<Trip[]> => {
+const _getTripsForPort = async (portId: string): Promise<Trip[]> => {
     await simulateDelay();
     return getDatabase().trips.filter(t => t.portId === portId);
 };
+export const getTripsForPort = withApiLogging('GET', '/ports/:portId/trips', _getTripsForPort);
 
-export const updateTrip = async (id: string, tripData: Trip): Promise<Trip> => {
+const _updateTrip = async (id: string, tripData: Trip): Promise<Trip> => {
     await simulateDelay();
     const db = getDatabase();
     const index = db.trips.findIndex(t => t.id === id);
@@ -407,20 +485,23 @@ export const updateTrip = async (id: string, tripData: Trip): Promise<Trip> => {
     saveDatabase(db);
     return db.trips[index];
 };
+export const updateTrip = withApiLogging('PUT', '/trips/:id', _updateTrip);
 
 
 // --- Movements / History ---
-export const getHistoryForPort = async (portId: string): Promise<ShipMovement[]> => {
+const _getHistoryForPort = async (portId: string): Promise<ShipMovement[]> => {
     await simulateDelay();
     return getDatabase().movements.filter(m => m.portId === portId);
 };
+export const getHistoryForPort = withApiLogging('GET', '/ports/:portId/history', _getHistoryForPort);
 
-export const getShipHistory = async (portId: string, shipId: string): Promise<ShipMovement[]> => {
+const _getShipHistory = async (portId: string, shipId: string): Promise<ShipMovement[]> => {
     await simulateDelay();
     return getDatabase().movements.filter(m => m.shipId === shipId);
 };
+export const getShipHistory = withApiLogging('GET', '/ships/:id/history', _getShipHistory);
 
-export const addShipMovement = async (movementData: Omit<ShipMovement, 'id'>): Promise<ShipMovement> => {
+const _addShipMovement = async (movementData: Omit<ShipMovement, 'id'>): Promise<ShipMovement> => {
     await simulateDelay();
     const db = getDatabase();
     const newMovement: ShipMovement = {
@@ -431,9 +512,10 @@ export const addShipMovement = async (movementData: Omit<ShipMovement, 'id'>): P
     saveDatabase(db);
     return newMovement;
 };
+export const addShipMovement = withApiLogging('POST', '/movements', _addShipMovement);
 
 // --- AIS ---
-export const updateShipFromAIS = async (aisData: AisData): Promise<Ship> => {
+const _updateShipFromAIS = async (aisData: AisData): Promise<Ship> => {
     await simulateDelay(50); // AIS updates should be fast
     const db = getDatabase();
     
@@ -493,3 +575,4 @@ export const updateShipFromAIS = async (aisData: AisData): Promise<Ship> => {
     saveDatabase(db);
     return ship;
 };
+export const updateShipFromAIS = withApiLogging('POST', '/ais/update', _updateShipFromAIS);

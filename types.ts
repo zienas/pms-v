@@ -191,6 +191,15 @@ export interface InteractionLogEntry {
     };
 }
 
+export interface ApiLogEntry {
+  id: string;
+  timestamp: string; // ISO string
+  method: string;
+  url: string;
+  statusCode: number;
+  durationMs: number;
+}
+
 
 export interface AisData {
   imo: string;

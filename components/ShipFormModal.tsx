@@ -19,21 +19,32 @@ const InputField: React.FC<{
   error?: string;
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   readOnly?: boolean;
-}> = ({ label, name, type, value, error, onChange, readOnly = false }) => {
+  unit?: string;
+}> = ({ label, name, type, value, error, onChange, readOnly = false, unit }) => {
   return (
     <div>
       <label htmlFor={name} className="block text-sm font-medium text-gray-300">{label}</label>
-      <input
-        type={type}
-        id={name}
-        name={name}
-        value={value}
-        onChange={onChange}
-        readOnly={readOnly}
-        className={`mt-1 block w-full px-3 py-2 bg-gray-700 text-white border rounded-md focus:outline-none focus:ring-2 ${
-          error ? 'border-red-500 focus:ring-red-500' : 'border-gray-600 focus:ring-cyan-500'
-        } ${readOnly ? 'bg-gray-600 cursor-not-allowed' : ''}`}
-      />
+      <div className="relative mt-1">
+        <input
+          type={type}
+          id={name}
+          name={name}
+          value={value}
+          onChange={onChange}
+          readOnly={readOnly}
+          title={error} // Add title for tooltip on hover
+          className={`block w-full px-3 py-2 bg-gray-700 text-white border rounded-md focus:outline-none focus:ring-2 ${
+            unit ? 'pr-10' : '' // Add padding for the unit
+          } ${
+            error ? 'border-red-500 focus:ring-red-500' : 'border-gray-600 focus:ring-cyan-500'
+          } ${readOnly ? 'bg-gray-600 cursor-not-allowed' : ''}`}
+        />
+        {unit && (
+          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+            <span className="text-gray-400 sm:text-sm">{unit}</span>
+          </div>
+        )}
+      </div>
       {error && <p className="text-red-500 text-xs mt-1">{error}</p>}
     </div>
   );
@@ -155,8 +166,20 @@ const ShipFormModal: React.FC = () => {
     if (!formData.name.trim()) newErrors.name = 'Ship name is required.';
     if (!/^\d{7}$/.test(formData.imo)) newErrors.imo = 'IMO must be a 7-digit number.';
     if (formData.type.trim() && !/^[a-zA-Z0-9\s-]+$/.test(formData.type)) newErrors.type = 'Ship type can only contain letters, numbers, spaces, and hyphens.';
-    if (formData.length <= 0) newErrors.length = 'Length must be a positive number.';
-    if (formData.draft <= 0) newErrors.draft = 'Draft must be a positive number.';
+    
+    // Updated validation for length and draft
+    if (formData.length <= 0) {
+        newErrors.length = 'Length must be a positive number.';
+    } else if (formData.length > 500) { // Reasonableness check
+        newErrors.length = 'Length seems unreasonably large (max 500m).';
+    }
+    
+    if (formData.draft <= 0) {
+        newErrors.draft = 'Draft must be a positive number.';
+    } else if (formData.draft > 40) { // Reasonableness check
+        newErrors.draft = 'Draft seems unreasonably large (max 40m).';
+    }
+    
     if (formData.status === ShipStatus.DOCKED && formData.berthIds.length === 0) newErrors.berthIds = 'A ship with status "Docked" must be assigned to a berth.';
 
     // Date validation
@@ -246,8 +269,8 @@ const ShipFormModal: React.FC = () => {
             )}
             <InputField label="Ship Type" name="type" type="text" value={formData.type} onChange={handleChange} error={errors.type} readOnly={isAgentMode} />
             <InputField label="Flag" name="flag" type="text" value={formData.flag} onChange={handleChange} error={errors.flag} readOnly={isAgentMode} />
-            <InputField label="Length (m)" name="length" type="number" value={formData.length} onChange={handleChange} error={errors.length} readOnly={isAgentMode} />
-            <InputField label="Draft (m)" name="draft" type="number" value={formData.draft} onChange={handleChange} error={errors.draft} readOnly={isAgentMode} />
+            <InputField label="Length" name="length" type="number" value={formData.length} onChange={handleChange} error={errors.length} readOnly={isAgentMode} unit="m" />
+            <InputField label="Draft" name="draft" type="number" value={formData.draft} onChange={handleChange} error={errors.draft} readOnly={isAgentMode} unit="m" />
             <div>
               <label htmlFor="eta" className="block text-sm font-medium text-gray-300">ETA</label>
               <input type="datetime-local" id="eta" name="eta" value={formData.eta} onChange={handleChange} readOnly={isAgentMode && !shipToEdit} className={`mt-1 block w-full px-3 py-2 bg-gray-700 text-white border rounded-md focus:outline-none focus:ring-2 ${errors.eta ? 'border-red-500 focus:ring-red-500' : 'border-gray-600 focus:ring-cyan-500'} ${isAgentMode && !shipToEdit ? 'bg-gray-600 cursor-not-allowed' : ''}`} />

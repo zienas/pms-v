@@ -10,7 +10,7 @@ import autoTable from 'jspdf-autotable';
 import PDFIcon from '../components/icons/PDFIcon';
 import addHeaderWithLogo from '../utils/pdfUtils';
 import { formatDuration } from '../utils/formatters';
-import { MovementEventType, ShipMovement, LoginHistoryEntry, InteractionLogEntry } from '../types';
+import { MovementEventType, ShipMovement, LoginHistoryEntry, InteractionLogEntry, ApiLogEntry } from '../types';
 
 interface UnifiedLog {
     id: string;
@@ -18,19 +18,26 @@ interface UnifiedLog {
     eventType: string;
     subjectName: string;
     details: string;
+    // Optional fields for different log types
     tripId?: string;
     imo?: string;
     action?: string;
     value?: any;
+    method?: string;
+    url?: string;
+    statusCode?: number;
+    durationMs?: number;
 }
 
-type LogTab = 'all' | 'vessel' | 'action' | 'user' | 'interaction';
+type LogTab = 'all' | 'vessel' | 'action' | 'user' | 'interaction' | 'api';
 
 const SystemLogs: React.FC = () => {
     const { state } = usePort();
-    const { movements, ships, selectedPort, loginHistory, interactionLogs } = state;
+    const { movements, ships, selectedPort, loginHistory, interactionLogs, apiLogs } = state;
     
     const [filter, setFilter] = useState('');
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
     const [activeTab, setActiveTab] = useState<LogTab>('all');
     const [currentPage, setCurrentPage] = useState(1);
     const LOGS_PER_PAGE = 50;
@@ -78,35 +85,43 @@ const SystemLogs: React.FC = () => {
             value: log.details.value,
         }));
 
+        const processApiLogs = (logs: ApiLogEntry[]): UnifiedLog[] => logs.map(log => ({
+            id: log.id,
+            timestamp: log.timestamp,
+            eventType: 'API Request',
+            subjectName: `${log.method} ${log.url}`,
+            details: `Status: ${log.statusCode}`,
+            method: log.method,
+            url: log.url,
+            statusCode: log.statusCode,
+            durationMs: log.durationMs,
+        }));
 
         switch (activeTab) {
-            case 'vessel':
-                return processMovements(movements);
+            case 'vessel': return processMovements(movements);
             case 'action':
-                const actionTypes: string[] = [
-                    MovementEventType.BERTH_ASSIGNMENT,
-                    MovementEventType.PILOT_ASSIGNMENT,
-                    MovementEventType.AGENT_ASSIGNMENT,
-                    MovementEventType.CREATED,
-                ];
+                const actionTypes: string[] = [ MovementEventType.BERTH_ASSIGNMENT, MovementEventType.PILOT_ASSIGNMENT, MovementEventType.AGENT_ASSIGNMENT, MovementEventType.CREATED ];
                 return processMovements(movements.filter(log => actionTypes.includes(log.eventType)));
-            case 'user':
-                return processLogins(loginHistory);
-            case 'interaction':
-                return processInteractions(interactionLogs);
-            case 'all':
-            default:
-                return [
-                    ...processMovements(movements), 
-                    ...processLogins(loginHistory),
-                    ...processInteractions(interactionLogs),
-                ];
+            case 'user': return processLogins(loginHistory);
+            case 'interaction': return processInteractions(interactionLogs);
+            case 'api': return processApiLogs(apiLogs);
+            case 'all': default:
+                return [ ...processMovements(movements), ...processLogins(loginHistory), ...processInteractions(interactionLogs), ...processApiLogs(apiLogs) ];
         }
-    }, [activeTab, movements, loginHistory, interactionLogs, shipMap]);
+    }, [activeTab, movements, loginHistory, interactionLogs, apiLogs, shipMap]);
 
     const filteredLogs = useMemo(() => {
         setCurrentPage(1); // Reset to first page on filter change
+        
+        const start = startDate ? new Date(startDate).getTime() : 0;
+        // Add 1 day minus 1ms to include the whole end date
+        const end = endDate ? new Date(endDate).getTime() + 86400000 - 1 : Infinity;
+
         return displayedLogs.filter(log => {
+            const logTime = new Date(log.timestamp).getTime();
+            if (logTime < start || logTime > end) {
+                return false;
+            }
             const lowerCaseFilter = filter.toLowerCase();
             return (
                 log.subjectName.toLowerCase().includes(lowerCaseFilter) ||
@@ -115,7 +130,7 @@ const SystemLogs: React.FC = () => {
                 (log.tripId && log.tripId.toLowerCase().includes(lowerCaseFilter))
             );
         });
-    }, [displayedLogs, filter]);
+    }, [displayedLogs, filter, startDate, endDate]);
 
     const { items: sortedLogs, requestSort, sortConfig } = useSortableData<UnifiedLog>(filteredLogs, { key: 'timestamp', direction: 'descending' });
     const getSortDirectionFor = (key: keyof UnifiedLog) => sortConfig?.key === key ? sortConfig.direction : undefined;
@@ -133,6 +148,13 @@ const SystemLogs: React.FC = () => {
             setCurrentPage(newPage);
         }
     };
+    
+    const handleResetFilters = () => {
+        setFilter('');
+        setStartDate('');
+        setEndDate('');
+        toast.success("Filters reset.");
+    };
 
     const tabs: { id: LogTab; label: string }[] = [
         { id: 'all', label: 'All Events' },
@@ -140,53 +162,47 @@ const SystemLogs: React.FC = () => {
         { id: 'action', label: 'Port Actions' },
         { id: 'user', label: 'User Sessions' },
         { id: 'interaction', label: 'UI Interactions' },
+        { id: 'api', label: 'API Logs' },
     ];
     const currentTabLabel = tabs.find(t => t.id === activeTab)?.label || 'System';
 
     const handleExportCSV = () => {
         if (!selectedPort) return;
-        if (sortedLogs.length === 0) {
-            toast.error('No log data to export.');
-            return;
-        }
-
-        const dataToExport = sortedLogs.map(log => ({
-            'Timestamp': new Date(log.timestamp).toLocaleString(),
-            'Subject': log.subjectName,
-            'Event Type': log.eventType,
-            'Trip ID': activeTab !== 'user' ? log.tripId || 'N/A' : 'N/A',
-            'Details': log.details,
-        }));
-        
+        if (sortedLogs.length === 0) { toast.error('No log data to export.'); return; }
+        const dataToExport = sortedLogs.map(log => {
+            const base = {
+                'Timestamp': new Date(log.timestamp).toLocaleString(),
+                'Subject': log.subjectName,
+                'Event Type': log.eventType,
+                'Details': log.details,
+            };
+            if (activeTab === 'api') {
+                return { ...base, 'Duration (ms)': log.durationMs };
+            }
+            return { ...base, 'Trip ID': log.tripId || 'N/A' };
+        });
         downloadCSV(dataToExport, `${currentTabLabel.replace(' ', '_').toLowerCase()}_logs_${selectedPort.name.replace(/\s+/g, '_')}.csv`);
     };
 
     const handleExportPDF = () => {
         if (!selectedPort) return;
-        if (sortedLogs.length === 0) {
-            toast.error('No log data to export.');
-            return;
-        }
-
+        if (sortedLogs.length === 0) { toast.error('No log data to export.'); return; }
         const doc = new jsPDF({ orientation: 'landscape' });
         const tableColumns = ['Timestamp', 'Subject', 'Event Type', 'Details'];
-        if (activeTab !== 'user') {
-            tableColumns.splice(3, 0, 'Trip ID');
+        let tableRows: (string | number)[][] = [];
+
+        if (activeTab === 'api') {
+            tableColumns.push('Duration (ms)');
+            tableRows = sortedLogs.map(log => [
+                new Date(log.timestamp).toLocaleString(), log.subjectName, log.eventType, log.details, log.durationMs ?? '',
+            ]);
+        } else {
+             tableColumns.splice(3, 0, 'Trip ID');
+             tableRows = sortedLogs.map(log => [
+                new Date(log.timestamp).toLocaleString(), log.subjectName, log.eventType, log.tripId ? log.tripId.split('-')[1] : '', log.details,
+            ]);
         }
-
-        const tableRows = sortedLogs.map(log => {
-            const row = [
-                new Date(log.timestamp).toLocaleString(),
-                log.subjectName,
-                log.eventType,
-                log.details,
-            ];
-            if (activeTab !== 'user') {
-                row.splice(3, 0, log.tripId ? log.tripId.split('-')[1] : '');
-            }
-            return row;
-        });
-
+        
         autoTable(doc, {
             head: [tableColumns], body: tableRows, theme: 'striped',
             styles: { fontSize: 8, cellPadding: 2 },
@@ -198,7 +214,6 @@ const SystemLogs: React.FC = () => {
             },
             margin: { top: 38 }
         });
-
         doc.save(`${currentTabLabel.replace(' ', '_').toLowerCase()}_logs_${selectedPort.name.replace(/\s+/g, '_')}.pdf`);
     };
     
@@ -245,8 +260,17 @@ const SystemLogs: React.FC = () => {
                 </nav>
             </div>
 
-            <div className="flex gap-4 mb-4">
-                <input type="text" placeholder={`Filter ${currentTabLabel}...`} value={filter} onChange={(e) => setFilter(e.target.value)} className="w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 items-end">
+                <input type="text" placeholder={`Filter ${currentTabLabel}...`} value={filter} onChange={(e) => setFilter(e.target.value)} className="lg:col-span-2 px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+                <div>
+                    <label htmlFor="start-date" className="block text-xs font-medium text-gray-400 mb-1">Start Date</label>
+                    <input type="date" id="start-date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+                </div>
+                <div>
+                    <label htmlFor="end-date" className="block text-xs font-medium text-gray-400 mb-1">End Date</label>
+                    <input type="date" id="end-date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+                </div>
+                 <button onClick={handleResetFilters} className="px-3 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-500 text-sm whitespace-nowrap lg:col-start-4">Reset Filters</button>
             </div>
 
             <div className="flex-1 overflow-x-auto">
@@ -256,9 +280,9 @@ const SystemLogs: React.FC = () => {
                             <th className="px-4 py-3"><button onClick={() => requestSort('timestamp')} className="flex items-center gap-1 hover:text-white">Timestamp <SortIcon direction={getSortDirectionFor('timestamp')} /></button></th>
                             <th className="px-4 py-3"><button onClick={() => requestSort('subjectName')} className="flex items-center gap-1 hover:text-white">Subject <SortIcon direction={getSortDirectionFor('subjectName')} /></button></th>
                             <th className="px-4 py-3"><button onClick={() => requestSort('eventType')} className="flex items-center gap-1 hover:text-white">Event Type <SortIcon direction={getSortDirectionFor('eventType')} /></button></th>
-                            {activeTab !== 'user' && activeTab !== 'interaction' && <th className="px-4 py-3"><button onClick={() => requestSort('tripId')} className="flex items-center gap-1 hover:text-white">Trip ID <SortIcon direction={getSortDirectionFor('tripId')} /></button></th>}
+                            {activeTab !== 'user' && activeTab !== 'interaction' && activeTab !== 'api' && <th className="px-4 py-3"><button onClick={() => requestSort('tripId')} className="flex items-center gap-1 hover:text-white">Trip ID <SortIcon direction={getSortDirectionFor('tripId')} /></button></th>}
                             <th className="px-4 py-3">Details</th>
-                            {activeTab === 'interaction' && <th className="px-4 py-3">Value</th>}
+                            {activeTab === 'api' && <th className="px-4 py-3"><button onClick={() => requestSort('durationMs')} className="flex items-center gap-1 hover:text-white">Duration <SortIcon direction={getSortDirectionFor('durationMs')} /></button></th>}
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-700">
@@ -267,13 +291,13 @@ const SystemLogs: React.FC = () => {
                                 <td className="px-4 py-3 whitespace-nowrap">{new Date(log.timestamp).toLocaleString()}</td>
                                 <td className="px-4 py-3 font-medium text-white">{log.subjectName}</td>
                                 <td className="px-4 py-3"><span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-700 text-gray-300">{log.eventType}</span></td>
-                                {activeTab !== 'user' && activeTab !== 'interaction' && <td className="px-4 py-3 font-mono text-xs text-gray-400">{log.tripId ? log.tripId.split('-')[1] : '—'}</td>}
+                                {activeTab !== 'user' && activeTab !== 'interaction' && activeTab !== 'api' && <td className="px-4 py-3 font-mono text-xs text-gray-400">{log.tripId ? log.tripId.split('-')[1] : '—'}</td>}
                                 <td className="px-4 py-3">{log.details}</td>
-                                {activeTab === 'interaction' && <td className="px-4 py-3 text-cyan-300">{log.value !== undefined ? String(log.value) : ''}</td>}
+                                {activeTab === 'api' && <td className="px-4 py-3 text-cyan-300">{log.durationMs}ms</td>}
                             </tr>
                         ))}
                         {sortedLogs.length === 0 && (
-                            <tr><td colSpan={activeTab === 'all' ? 5 : 4} className="text-center py-8 text-gray-500">{displayedLogs.length === 0 ? "No log entries available." : "No logs match your filter."}</td></tr>
+                            <tr><td colSpan={5} className="text-center py-8 text-gray-500">{displayedLogs.length === 0 ? "No log entries available." : "No logs match your filters."}</td></tr>
                         )}
                     </tbody>
                 </table>
