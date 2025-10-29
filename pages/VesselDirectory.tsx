@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import type { Ship } from '../types';
+import type { Ship, View } from '../types';
 import { ShipStatus, UserRole, InteractionEventType } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { useSortableData } from '../hooks/useSortableData';
@@ -58,7 +58,11 @@ const getShipTypeIcon = (shipType: string): React.ElementType => {
     return ShipIcon; // Default fallback
 };
 
-const VesselDirectory: React.FC = () => {
+interface VesselDirectoryProps {
+    setActiveView: (view: View) => void;
+}
+
+const VesselDirectory: React.FC<VesselDirectoryProps> = ({ setActiveView }) => {
   const { state, actions } = usePort();
   const { ships, berths, selectedPort, movements } = state;
   const { currentUser, users } = useAuth();
@@ -196,6 +200,15 @@ const VesselDirectory: React.FC = () => {
     });
   };
 
+  const handleVesselDoubleClick = (ship: Ship) => {
+    if (!ship.lat || !ship.lon) {
+        toast.error(`Vessel "${ship.name}" has no position data to focus on.`);
+        return;
+    }
+    actions.setFocusedVesselId(ship.id);
+    setActiveView('dashboard');
+  };
+
   const canEditVessel = (ship: Ship) => {
     if (!currentUser) return false;
     const { role, id } = currentUser;
@@ -249,7 +262,7 @@ const VesselDirectory: React.FC = () => {
             <tbody className="divide-y divide-gray-700">
                 {sortedShips.map(ship => (
                     <tr key={ship.id} className={`group transition-colors duration-200 ${ship.status === ShipStatus.LEFT_PORT ? 'bg-gray-800/60' : ''} ${ship.hasDangerousGoods ? 'bg-red-900/20 hover:bg-red-900/30' : 'hover:bg-gray-800/50'}`}>
-                        <td className="px-4 py-3 font-medium">
+                        <td onDoubleClick={() => handleVesselDoubleClick(ship)} className="px-4 py-3 font-medium cursor-pointer" title="Double-click to view on map">
                             <div className="flex items-center gap-2">
                                 {(() => {
                                     const Icon = getShipTypeIcon(ship.type);

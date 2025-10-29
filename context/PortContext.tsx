@@ -30,6 +30,7 @@ interface PortState {
   selectedPortId: string | null;
   accessiblePorts: Port[];
   modal: ModalState | null;
+  focusedVesselId: string | null;
 
   // Derived
   selectedPort: Port | null;
@@ -47,11 +48,12 @@ type Action =
   | { type: 'OPEN_MODAL'; payload: ModalState }
   | { type: 'CLOSE_MODAL' }
   | { type: 'UPDATE_SHIP_POSITION'; payload: { shipId: string; lat: number; lon: number } }
-  | { type: 'UPDATE_SHIP_AIS'; payload: Ship };
+  | { type: 'UPDATE_SHIP_AIS'; payload: Ship }
+  | { type: 'SET_FOCUSED_VESSEL'; payload: string | null };
 
 const initialState: PortState = {
   ships: [], berths: [], trips: [], alerts: [], ports: [], allBerths: [], movements: [], loginHistory: [], interactionLogs: [], apiLogs: [],
-  isLoading: true, selectedPortId: null, accessiblePorts: [], modal: null,
+  isLoading: true, selectedPortId: null, accessiblePorts: [], modal: null, focusedVesselId: null,
   selectedPort: null,
 };
 
@@ -102,6 +104,7 @@ const portReducer = (state: PortState, action: Action): PortState => {
             : [...state.ships, updatedShip];
         return { ...state, ships: updatedShips };
     }
+    case 'SET_FOCUSED_VESSEL': return { ...state, focusedVesselId: action.payload };
     default: return state;
   }
 };
@@ -132,6 +135,7 @@ interface PortContextType {
     acknowledgeAlert: (alertId: string) => void;
     removeAlert: (alertId: string) => void;
     addMovementLog: (ship: Ship, eventType: MovementEventType, message: string, timestamp?: string) => Promise<void>;
+    setFocusedVesselId: (shipId: string | null) => void;
   };
 }
 
@@ -216,6 +220,7 @@ export const PortProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const clearData = () => dispatch({ type: 'CLEAR_DATA' });
         const openModal = (modal: ModalState) => dispatch({ type: 'OPEN_MODAL', payload: modal });
         const closeModal = () => dispatch({ type: 'CLOSE_MODAL' });
+        const setFocusedVesselId = (shipId: string | null) => dispatch({ type: 'SET_FOCUSED_VESSEL', payload: shipId });
 
         const crudActions = {
             addShip: async (shipData: Omit<Ship, 'id'>) => {
@@ -375,10 +380,11 @@ export const PortProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const runAisSimulation = (aisSource: AisSource, pilotThreshold: number) => {
             if (aisSource !== 'simulator') return () => {};
             const interval = setInterval(async () => {
-                const { allBerths, selectedPortId } = stateRef.current;
-                if (selectedPortId) {
+                const { allBerths, selectedPortId, selectedPort } = stateRef.current;
+                if (selectedPortId && selectedPort) {
                     const allShips = await api.getAllShips(); // Fetch all ships for a global simulation
-                    const aisUpdates = runAisSimulationStep(allShips, allBerths);
+                    const portCenter = { lat: selectedPort.lat, lon: selectedPort.lon };
+                    const aisUpdates = runAisSimulationStep(allShips, allBerths, selectedPortId, portCenter);
                     
                     for (const update of aisUpdates) {
                         const updatedShip = await api.updateShipFromAIS(update);
@@ -459,6 +465,7 @@ export const PortProvider: React.FC<{ children: React.ReactNode }> = ({ children
             acknowledgeAlert,
             removeAlert,
             addMovementLog,
+            setFocusedVesselId,
             ...crudActions
         };
     }, [currentUser, loggedInPortId]);

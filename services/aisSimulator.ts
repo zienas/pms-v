@@ -5,6 +5,17 @@ import { calculateDistanceNM, calculateBearing, toRad, toDeg, destinationPoint }
 
 const SIMULATION_INTERVAL_S = 7;
 const PORT_EXIT_DISTANCE_NM = 20;
+// Increased probability to generate a new vessel roughly every minute
+const NEW_VESSEL_PROBABILITY = 0.12; 
+
+const sampleVessels = [
+    { name: 'Odyssey', type: 'Container Ship', callSign: 'A8CS5' },
+    { name: 'Voyager', type: 'Bulk Carrier', callSign: 'V7HP9' },
+    { name: 'Helios', type: 'Tanker', callSign: '3FBP8' },
+    { name: 'Neptune', type: 'Cargo Ship', callSign: '9V7823' },
+    { name: 'Stardust', type: 'LNG Tanker', callSign: '9HA5120' },
+    { name: 'Aurora', type: 'Cruise Ship', callSign: 'C6FN7' },
+];
 
 const knotsToDegreesPerSecond = (knots: number): number => {
     const metersPerSecond = knots * 0.514444;
@@ -12,24 +23,65 @@ const knotsToDegreesPerSecond = (knots: number): number => {
     return metersPerSecond / metersPerDegree;
 };
 
-export const runAisSimulationStep = (allShips: Ship[], allBerths: Berth[]): AisData[] => {
+export const runAisSimulationStep = (
+    allShips: Ship[], 
+    allBerths: Berth[],
+    portId: string,
+    portCenter: { lat: number, lon: number }
+): AisData[] => {
     const activeShips = allShips.filter(s => s.status !== ShipStatus.LEFT_PORT && s.lat && s.lon);
     const updatedShipData: AisData[] = [];
+
+    // --- New Vessel Generation ---
+    if (Math.random() < NEW_VESSEL_PROBABILITY) {
+        const existingImos = new Set(allShips.map(s => s.imo));
+        let newImo: string;
+        do {
+            newImo = Math.floor(1000000 + Math.random() * 9000000).toString();
+        } while (existingImos.has(newImo));
+
+        const template = sampleVessels[Math.floor(Math.random() * sampleVessels.length)];
+        
+        const bearingToPortDegrees = Math.random() * 360;
+        const startBearingDegrees = (bearingToPortDegrees + 180) % 360; // Start from opposite direction
+        const distanceNm = 15 + Math.random() * 5; // Start 15-20 NM away
+        
+        // FIX: Convert bearing from degrees to radians before passing to destinationPoint function.
+        const startBearingRadians = toRad(startBearingDegrees);
+        const [startLat, startLon] = destinationPoint(portCenter.lat, portCenter.lon, distanceNm * 1852, startBearingRadians);
+
+        const newVesselAisData: AisData = {
+            imo: newImo,
+            portId: portId,
+            name: template.name,
+            callSign: template.callSign,
+            type: template.type,
+            status: ShipStatus.APPROACHING,
+            lat: startLat,
+            lon: startLon,
+            heading: (toDeg(calculateBearing(startLat, startLon, portCenter.lat, portCenter.lon)) + 360) % 360,
+        };
+
+        updatedShipData.push(newVesselAisData);
+        console.log(`[SIM] Generating new vessel: ${template.name} (IMO: ${newImo}) for port ${portId}`);
+    }
+
 
     activeShips.forEach(ship => {
         let updatedShip = { ...ship };
         
-        const portBerths = allBerths.filter(b => b.portId === ship.portId);
-        const portAnchorages = portBerths.filter(b => b.type === BerthType.ANCHORAGE);
-        const portCenter = { lat: portAnchorages[0]?.geometry?.[0]?.[0] || 1.26, lon: portAnchorages[0]?.geometry?.[0]?.[1] || 103.82 }; // Fallback
+        // FIX: This logic was flawed. It should use the passed `portCenter` for the current port.
+        // The previous logic could pick an arbitrary port's center if there were no anchorages defined.
+        const shipPortCenter = portCenter;
 
         // --- Status-based Logic ---
         switch (updatedShip.status) {
             case ShipStatus.APPROACHING:
                 if (!updatedShip.targetLat || !updatedShip.targetLon) {
                     // Assign a target anchorage if none exists
-                    if (portAnchorages.length > 0) {
-                        const targetAnchorage = portAnchorages[Math.floor(Math.random() * portAnchorages.length)];
+                    const shipPortAnchorages = allBerths.filter(b => b.portId === ship.portId && b.type === BerthType.ANCHORAGE);
+                    if (shipPortAnchorages.length > 0) {
+                        const targetAnchorage = shipPortAnchorages[Math.floor(Math.random() * shipPortAnchorages.length)];
                         const center = L.polygon(targetAnchorage.geometry!).getBounds().getCenter();
                         updatedShip.targetLat = center.lat;
                         updatedShip.targetLon = center.lng;
@@ -48,13 +100,13 @@ export const runAisSimulationStep = (allShips: Ship[], allBerths: Berth[]): AisD
             
             case ShipStatus.DEPARTING:
                 if (!updatedShip.targetLat || !updatedShip.targetLon) {
-                    const bearingFromPort = calculateBearing(portCenter.lat, portCenter.lon, updatedShip.lat!, updatedShip.lon!);
-                    const exitPoint = destinationPoint(portCenter.lat, portCenter.lon, PORT_EXIT_DISTANCE_NM * 1852, bearingFromPort);
+                    const bearingFromPort = calculateBearing(shipPortCenter.lat, shipPortCenter.lon, updatedShip.lat!, updatedShip.lon!);
+                    const exitPoint = destinationPoint(shipPortCenter.lat, shipPortCenter.lon, PORT_EXIT_DISTANCE_NM * 1852, bearingFromPort);
                     updatedShip.targetLat = exitPoint[0];
                     updatedShip.targetLon = exitPoint[1];
                 }
 
-                const distanceToPort = calculateDistanceNM(updatedShip.lat!, updatedShip.lon!, portCenter.lat, portCenter.lon);
+                const distanceToPort = calculateDistanceNM(updatedShip.lat!, updatedShip.lon!, shipPortCenter.lat, shipPortCenter.lon);
                 if (distanceToPort > PORT_EXIT_DISTANCE_NM) {
                     updatedShip.status = ShipStatus.LEFT_PORT;
                 }

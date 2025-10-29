@@ -308,7 +308,7 @@ const MainApp: React.FC = () => {
 
     switch(activeView) {
         case 'dashboard': return <Dashboard />;
-        case 'vessels': return <VesselDirectory />;
+        case 'vessels': return <VesselDirectory setActiveView={setActiveView} />;
         case 'berths': return <BerthDirectory />;
         case 'alerts': return <AlertsDashboard />;
         case 'trips': return <TripDirectory />;

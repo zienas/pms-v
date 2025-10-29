@@ -1,14 +1,51 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import MenuIcon from './icons/MenuIcon';
 import { useAuth } from '../context/AuthContext';
 import { usePort } from '../context/PortContext';
 import { UserRole, InteractionEventType } from '../types';
 import { DEFAULT_APP_LOGO_PNG } from '../utils/pdfUtils';
 import { useLogger } from '../context/InteractionLoggerContext';
+import { useSettings } from '../context/SettingsContext';
 
 interface HeaderProps {
     onMenuClick: () => void;
 }
+
+const AisStatusIndicator: React.FC = () => {
+    const { aisSource, isAisSimulationEnabled } = useSettings();
+
+    const { statusText, dotColor, titleText } = useMemo(() => {
+        if (aisSource === 'simulator') {
+            if (isAisSimulationEnabled) {
+                return {
+                    statusText: 'AIS: Simulating',
+                    dotColor: 'bg-green-500 animate-pulse',
+                    titleText: 'Internal AIS simulator is running.'
+                };
+            } else {
+                return {
+                    statusText: 'AIS: Inactive',
+                    dotColor: 'bg-gray-500',
+                    titleText: 'Internal AIS simulator is paused. Enable it in Settings.'
+                };
+            }
+        } else {
+            return {
+                statusText: 'AIS: Live Feed',
+                dotColor: 'bg-yellow-500',
+                titleText: `Attempting to connect to live AIS feed (${aisSource}). Go to Settings to change source.`
+            };
+        }
+    }, [aisSource, isAisSimulationEnabled]);
+
+    return (
+        <div className="hidden sm:flex items-center gap-2 p-2 rounded-md bg-gray-800" title={titleText}>
+            <span className={`w-3 h-3 rounded-full ${dotColor}`}></span>
+            <span className="text-xs text-gray-300 font-medium">{statusText}</span>
+        </div>
+    );
+};
+
 
 const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   const { currentUser, logout } = useAuth();
@@ -39,6 +76,7 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
         </h1>
       </div>
       <div className="flex items-center gap-2 sm:gap-4">
+        <AisStatusIndicator />
         {showPortSelector && (
             <div className="hidden sm:block">
                 <label htmlFor="port-select" className="sr-only">Select Port</label>

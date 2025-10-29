@@ -44,26 +44,47 @@ interface MapControllerProps {
   zoom: number;
   theme: MapTheme;
   onThemeChange: (theme: MapTheme) => void;
+  focusedVesselId: string | null;
+  ships: Ship[];
 }
 
 // Helper component to control map view and add custom controls
-const MapController: React.FC<MapControllerProps> = ({ center, zoom, theme, onThemeChange }) => {
+const MapController: React.FC<MapControllerProps> = ({ center, zoom, theme, onThemeChange, focusedVesselId, ships }) => {
   const map = useMap();
   const { log } = useLogger();
+  const { actions } = usePort();
 
   // This effect handles view changes when the port changes, and fixes tile rendering issues.
   useEffect(() => {
-    map.flyTo(center, zoom);
+    // Only fly to the default center if we are not currently trying to focus on a specific vessel
+    if (!focusedVesselId) {
+        map.flyTo(center, zoom);
+    }
     
-    // A small timeout allows the DOM to update before Leaflet recalculates the size,
-    // especially important after a smooth `flyTo` animation.
     const timer = setTimeout(() => {
         map.invalidateSize();
     }, 400);
 
     return () => clearTimeout(timer);
-    // FIX: Depend on primitive lat/lon values, not the array reference.
   }, [center[0], center[1], zoom, map]);
+
+  // Effect to handle focusing on a specific vessel from another view
+  useEffect(() => {
+    if (focusedVesselId) {
+        const vesselToFocus = ships.find(s => s.id === focusedVesselId);
+        if (vesselToFocus && vesselToFocus.lat && vesselToFocus.lon) {
+            map.flyTo([vesselToFocus.lat, vesselToFocus.lon], 16, { animate: true, duration: 1 });
+            actions.setFocusedVesselId(null); // Reset focus state
+        } else if (vesselToFocus) {
+            toast.error(`Vessel "${vesselToFocus.name}" has no position data to focus on.`);
+            actions.setFocusedVesselId(null);
+        } else {
+            // Vessel not found (maybe stale state), just clear it
+            actions.setFocusedVesselId(null);
+        }
+    }
+  }, [focusedVesselId, ships, map, actions]);
+
 
   useMapEvents({
       zoomend: (e) => {
@@ -116,7 +137,8 @@ interface PortMapProps {
 }
 
 const PortMap: React.FC<PortMapProps> = ({ ships, berths, selectedPort, isLoading }) => {
-  const { actions } = usePort();
+  const { actions, state } = usePort();
+  const { focusedVesselId } = state;
   const { currentUser } = useAuth();
   const { log } = useLogger();
   const [statusFilters, setStatusFilters] = useState<Set<ShipStatus>>(new Set(FILTERABLE_STATUSES));
@@ -187,7 +209,14 @@ const PortMap: React.FC<PortMapProps> = ({ ships, berths, selectedPort, isLoadin
           scrollWheelZoom={true}
           style={mapContainerStyle}
         >
-          <MapController center={mapCenter} zoom={mapZoom} theme={theme} onThemeChange={handleThemeChange} />
+          <MapController 
+            center={mapCenter} 
+            zoom={mapZoom} 
+            theme={theme} 
+            onThemeChange={handleThemeChange} 
+            focusedVesselId={focusedVesselId}
+            ships={ships}
+          />
           <TileLayer
             key={theme}
             attribution={themes[theme].attribution}
