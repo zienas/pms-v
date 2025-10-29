@@ -31,6 +31,8 @@ export enum MovementEventType {
   AGENT_ASSIGNMENT = 'Agent Assignment',
   PILOT_ONBOARD = 'Pilot Onboard',
   PILOT_OFFBOARD = 'Pilot Offboard',
+  MANUAL_LOG = 'Manual Log',
+  PORT_SERVICE = 'Port Service',
 }
 
 export enum TripStatus {
@@ -55,6 +57,7 @@ export enum InteractionEventType {
     BUTTON_CLICK = 'Button Click',
     GENERIC_CLICK = 'Generic Click',
     BROWSER_ZOOM = 'Browser Zoom',
+    USER_LOGOUT = 'User Logout',
 }
 
 
@@ -92,6 +95,7 @@ export interface Ship {
   portId: string;
   name: string;
   imo: string;
+  callSign?: string;
   type: string;
   length: number;
   draft: number;
@@ -198,6 +202,8 @@ export interface ApiLogEntry {
   url: string;
   statusCode: number;
   durationMs: number;
+  userId?: string;
+  userName?: string;
 }
 
 
@@ -205,6 +211,7 @@ export interface AisData {
   imo: string;
   portId: string;
   name?: string;
+  callSign?: string;
   type?: string;
   status?: ShipStatus;
   lat?: number;
@@ -231,6 +238,7 @@ export type View =
   | 'alerts'
   | 'trips'
   | 'vessel-analytics'
+  | 'vessel-movements'
   | 'logs'
   | 'management'
   | 'users'
@@ -248,4 +256,6 @@ export type ModalState =
   | { type: 'userForm'; user: User | null }
   | { type: 'tripDetail'; trip: Trip }
   | { type: 'reassignBerth'; ship: Ship }
-  | { type: 'assignPilot'; ship: Ship };
+  | { type: 'assignPilot'; ship: Ship }
+  | { type: 'logMovement'; ship: Ship }
+  | { type: 'generatePrompt'; title: string; prompt: string };

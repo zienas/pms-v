@@ -65,7 +65,7 @@ const ShipFormModal: React.FC = () => {
   const isAgentMode = currentUser.role === UserRole.AGENT;
 
   const [formData, setFormData] = useState<Omit<Ship, 'id' | 'portId'> | Ship>({
-    name: '', imo: '', type: '', length: 0, draft: 0, flag: '',
+    name: '', imo: '', callSign: '', type: '', length: 0, draft: 0, flag: '',
     eta: new Date().toISOString().substring(0, 16),
     etd: new Date().toISOString().substring(0, 16),
     status: ShipStatus.APPROACHING, berthIds: [], departureDate: undefined,
@@ -116,6 +116,7 @@ const ShipFormModal: React.FC = () => {
     if (shipToEdit) {
       setFormData({
         ...shipToEdit,
+        callSign: shipToEdit.callSign || '',
         hasDangerousGoods: shipToEdit.hasDangerousGoods || false,
         eta: new Date(shipToEdit.eta).toISOString().substring(0, 16),
         etd: new Date(shipToEdit.etd).toISOString().substring(0, 16),
@@ -123,7 +124,7 @@ const ShipFormModal: React.FC = () => {
       setPrimaryBerthId(shipToEdit.berthIds[0] || '');
     } else {
         setFormData({
-            name: '', imo: '', type: '', length: 0, draft: 0, flag: '',
+            name: '', imo: '', callSign: '', type: '', length: 0, draft: 0, flag: '',
             eta: new Date().toISOString().substring(0, 16),
             etd: new Date().toISOString().substring(0, 16),
             status: ShipStatus.APPROACHING, berthIds: [], departureDate: undefined,
@@ -165,6 +166,7 @@ const ShipFormModal: React.FC = () => {
     const newErrors: { [key: string]: string } = {};
     if (!formData.name.trim()) newErrors.name = 'Ship name is required.';
     if (!/^\d{7}$/.test(formData.imo)) newErrors.imo = 'IMO must be a 7-digit number.';
+    if (formData.callSign && !/^[A-Z0-9]{3,7}$/.test(formData.callSign.toUpperCase())) newErrors.callSign = 'Invalid call sign format.';
     if (formData.type.trim() && !/^[a-zA-Z0-9\s-]+$/.test(formData.type)) newErrors.type = 'Ship type can only contain letters, numbers, spaces, and hyphens.';
     
     // Updated validation for length and draft
@@ -267,6 +269,7 @@ const ShipFormModal: React.FC = () => {
                     <input type="text" disabled value={shipToEdit.currentTripId} className="mt-1 block w-full px-3 py-2 bg-gray-900/50 text-gray-400 border border-gray-600 rounded-md font-mono" />
                 </div>
             )}
+            <InputField label="Call Sign" name="callSign" type="text" value={formData.callSign || ''} onChange={handleChange} error={errors.callSign} readOnly={isAgentMode} />
             <InputField label="Ship Type" name="type" type="text" value={formData.type} onChange={handleChange} error={errors.type} readOnly={isAgentMode} />
             <InputField label="Flag" name="flag" type="text" value={formData.flag} onChange={handleChange} error={errors.flag} readOnly={isAgentMode} />
             <InputField label="Length" name="length" type="number" value={formData.length} onChange={handleChange} error={errors.length} readOnly={isAgentMode} unit="m" />

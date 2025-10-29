@@ -227,7 +227,7 @@ const ShipHistoryModal: React.FC<ShipHistoryModalProps> = ({ ship, portId, onClo
     addHeaderWithLogo(doc, selectedPort, `Movement History: ${ship.name}`);
     doc.setFontSize(11);
     doc.setTextColor(100);
-    doc.text(`IMO: ${ship.imo}`, 14, 30);
+    doc.text(`IMO: ${ship.imo} | Call Sign: ${ship.callSign || 'N/A'}`, 14, 30);
     finalY = 35;
 
     // --- Location Summary Table ---
@@ -320,7 +320,10 @@ const ShipHistoryModal: React.FC<ShipHistoryModalProps> = ({ ship, portId, onClo
     <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
       <div className="bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-5xl border border-gray-700 flex flex-col max-h-full">
         <div className="flex justify-between items-center mb-4 pb-4 border-b border-gray-700 flex-shrink-0">
-            <h2 className="text-2xl font-bold">Movement History: {ship.name}</h2>
+            <div>
+                <h2 className="text-2xl font-bold">Movement History: {ship.name}</h2>
+                <p className="text-sm text-gray-400">IMO: {ship.imo} | Call Sign: {ship.callSign || 'N/A'}</p>
+            </div>
             <div className="flex items-center gap-2">
                 <button data-logging-handler="true" onClick={handlePopOut} className="p-2 rounded-full text-gray-400 hover:bg-gray-700 hover:text-white" title="Open in new window">
                     <ExternalLinkIcon className="w-5 h-5" />

@@ -1,161 +1,143 @@
 import React, { useState, useMemo } from 'react';
-import type { Trip, Ship } from '../types';
+import type { Trip } from '../types';
 import { TripStatus, UserRole, InteractionEventType } from '../types';
 import { useAuth } from '../context/AuthContext';
+import { usePort } from '../context/PortContext';
 import { useSortableData } from '../hooks/useSortableData';
+import { useLogger } from '../context/InteractionLoggerContext';
 import SortIcon from '../components/icons/SortIcon';
 import { downloadCSV } from '../utils/export';
 import DownloadIcon from '../components/icons/DownloadIcon';
-import PDFIcon from '../components/icons/PDFIcon';
 import { formatDuration } from '../utils/formatters';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
-import { usePort } from '../context/PortContext';
-import addHeaderWithLogo from '../utils/pdfUtils';
-import { useLogger } from '../context/InteractionLoggerContext';
-import { toast } from 'react-hot-toast';
+import DocumentTextIcon from '../components/icons/DocumentTextIcon';
 
 const statusColors: { [key in TripStatus]: string } = {
   [TripStatus.ACTIVE]: 'bg-green-500/20 text-green-300 border-green-500',
-  [TripStatus.COMPLETED]: 'bg-gray-600/20 text-gray-400 border-gray-600',
+  [TripStatus.COMPLETED]: 'bg-gray-500/20 text-gray-400 border-gray-600',
 };
 
 const TripDirectory: React.FC = () => {
   const { state, actions } = usePort();
-  const { trips, ships, selectedPort } = state;
+  const { trips, selectedPort } = state;
   const { currentUser, users } = useAuth();
   const { log } = useLogger();
-  
+
   const [filter, setFilter] = useState('');
-  const [showCompleted, setShowCompleted] = useState(true);
-  
+  const [statusFilter, setStatusFilter] = useState<TripStatus | 'all'>('all');
+
   const userMap = useMemo(() => new Map(users.map(u => [u.id, u.name])), [users]);
-  const canExport = useMemo(() => currentUser?.role === UserRole.ADMIN || currentUser?.role === UserRole.SUPERVISOR, [currentUser]);
+
+  const canExport = useMemo(() => !!currentUser && [UserRole.ADMIN, UserRole.SUPERVISOR].includes(currentUser.role), [currentUser]);
 
   const filteredTrips = useMemo(() => {
     let tripsToFilter = trips;
-
     if (currentUser?.role === UserRole.AGENT) {
         tripsToFilter = trips.filter(trip => trip.agentId === currentUser.id);
+    } else if (currentUser?.role === UserRole.PILOT) {
+        tripsToFilter = trips.filter(trip => trip.pilotId === currentUser.id);
     }
     
     return tripsToFilter
-      .filter(trip => showCompleted || trip.status !== TripStatus.COMPLETED)
-      .filter(trip => 
-        trip.vesselName?.toLowerCase().includes(filter.toLowerCase()) || 
-        trip.vesselImo?.includes(filter) ||
-        trip.id.toLowerCase().includes(filter.toLowerCase())
-      );
-  }, [trips, filter, showCompleted, currentUser]);
+      .filter(trip => statusFilter === 'all' || trip.status === statusFilter)
+      .filter(trip => {
+          const lowerCaseFilter = filter.toLowerCase();
+          return (
+              trip.id.toLowerCase().includes(lowerCaseFilter) ||
+              trip.vesselName?.toLowerCase().includes(lowerCaseFilter) ||
+              trip.vesselImo?.includes(lowerCaseFilter)
+          );
+      });
+  }, [trips, filter, statusFilter, currentUser]);
 
   const { items: sortedTrips, requestSort, sortConfig } = useSortableData<Trip>(filteredTrips, { key: 'arrivalTimestamp', direction: 'descending' });
-  const getSortDirectionFor = (key: keyof Trip) => sortConfig?.key === key ? sortConfig.direction : undefined;
-  
-  const handleFilterChange = (value: string) => {
-      log(InteractionEventType.FILTER_APPLIED, { action: 'Filter trips', value });
-      setFilter(value);
+
+  const getSortDirectionFor = (key: keyof Trip) => {
+    if (!sortConfig) return undefined;
+    return sortConfig.key === key ? sortConfig.direction : undefined;
   };
   
+  const handleRequestSort = (key: keyof Trip) => {
+    log(InteractionEventType.SORT_APPLIED, { action: 'Sort trips', value: key });
+    requestSort(key);
+  };
+
   const handleExportCSV = () => {
     if (!selectedPort) return;
     log(InteractionEventType.DATA_EXPORT, { action: 'Export Trip Directory to CSV' });
     const dataToExport = sortedTrips.map(trip => ({
-      'Trip ID': trip.id, 'Vessel Name': trip.vesselName, 'IMO': trip.vesselImo, 'Status': trip.status,
+      'Trip ID': trip.id,
+      'Vessel Name': trip.vesselName,
+      'IMO': trip.vesselImo,
+      'Status': trip.status,
       'Arrival': new Date(trip.arrivalTimestamp).toLocaleString(),
-      'Departure': trip.departureTimestamp ? new Date(trip.departureTimestamp).toLocaleString() : 'Active',
+      'Departure': trip.departureTimestamp ? new Date(trip.departureTimestamp).toLocaleString() : '',
       'Duration': trip.departureTimestamp ? formatDuration(new Date(trip.departureTimestamp).getTime() - new Date(trip.arrivalTimestamp).getTime()) : 'Active',
       'Agent': trip.agentId ? userMap.get(trip.agentId) || 'Unknown' : 'N/A',
       'Pilot': trip.pilotId ? userMap.get(trip.pilotId) || 'Unknown' : 'N/A',
     }));
     downloadCSV(dataToExport, `trip_directory_${selectedPort.name.replace(/\s+/g, '_')}.csv`);
   };
-
-  const handleExportPDF = () => {
-    if (!selectedPort) return;
-    log(InteractionEventType.DATA_EXPORT, { action: 'Export Trip Directory to PDF' });
-    const doc = new jsPDF({ orientation: 'landscape' });
-    const tableColumns = ["Trip ID", "Vessel Name (IMO)", "Status", "Arrival", "Departure", "Duration", "Agent", "Pilot"];
-    const tableRows = sortedTrips.map(trip => [
-        trip.id.split('-')[1], `${trip.vesselName} (${trip.vesselImo})`, trip.status,
-        new Date(trip.arrivalTimestamp).toLocaleString(),
-        trip.departureTimestamp ? new Date(trip.departureTimestamp).toLocaleString() : '—',
-        trip.departureTimestamp ? formatDuration(new Date(trip.departureTimestamp).getTime() - new Date(trip.arrivalTimestamp).getTime()) : 'Active',
-        trip.agentId ? userMap.get(trip.agentId) || 'Unknown' : 'N/A',
-        trip.pilotId ? userMap.get(trip.pilotId) || 'Unknown' : 'N/A',
-    ]);
-    
-    autoTable(doc, {
-        head: [tableColumns], body: tableRows, theme: 'striped',
-        styles: { fontSize: 8, cellPadding: 2 }, headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
-        columnStyles: { 1: { fontStyle: 'bold' } },
-        didDrawPage: (data: any) => {
-            addHeaderWithLogo(doc, selectedPort, "Trip Directory");
-            doc.setFontSize(10);
-            doc.text(`Page ${doc.getNumberOfPages()}`, data.settings.margin.left, doc.internal.pageSize.getHeight() - 10);
-        },
-        margin: { top: 38 }
+  
+  const handleViewDetails = (trip: Trip) => {
+    log(InteractionEventType.MODAL_OPEN, {
+        action: 'Open TripDetail',
+        targetId: trip.id,
+        value: trip.vesselName,
     });
-    doc.save(`trip_directory_${selectedPort.name.replace(/\s+/g, '_')}.pdf`);
-  };
-
-  const handleRowClick = (trip: Trip) => {
-    if (currentUser?.role === UserRole.AGENT) {
-        log(InteractionEventType.MODAL_OPEN, { action: 'Open ShipForm (Agent Edit)', targetId: trip.shipId, value: trip.vesselName });
-        const ship = ships.find(s => s.id === trip.shipId);
-        if (ship) {
-            actions.openModal({ type: 'shipForm', ship });
-        } else {
-            toast.error('Could not find the vessel for this trip.');
-        }
-    } else {
-        log(InteractionEventType.MODAL_OPEN, { action: 'View Trip Details', targetId: trip.id, value: trip.vesselName });
-        actions.openModal({ type: 'tripDetail', trip });
-    }
+    actions.openModal({ type: 'tripDetail', trip });
   };
 
   return (
-    <div className="bg-gray-900/50 rounded-lg p-3 sm:p-4 h-full flex flex-col">
+    <div className="bg-gray-900/50 rounded-lg p-3 sm:p-4 h-full flex flex-col" data-log-context="Trip Directory">
       <div className="flex flex-col md:flex-row justify-between md:items-center mb-4 gap-4">
         <h1 className="text-2xl font-bold text-white">Trip Directory</h1>
-        {canExport && (
-            <div className="flex items-center gap-2 sm:gap-4">
-                <button onClick={handleExportPDF} className="px-3 py-2 bg-red-700 text-white rounded-md hover:bg-red-800 text-sm flex items-center gap-2"><PDFIcon className="w-4 h-4" /> Export PDF</button>
-                <button onClick={handleExportCSV} className="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm flex items-center gap-2"><DownloadIcon className="w-4 h-4" /> Export CSV</button>
-            </div>
-        )}
+        {canExport && <button onClick={handleExportCSV} className="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm flex items-center gap-2"><DownloadIcon className="w-4 h-4" /> Export CSV</button>}
       </div>
       <div className="flex flex-col md:flex-row gap-4 mb-4">
-        <input type="text" placeholder="Filter by vessel, IMO, or Trip ID..." value={filter} onChange={(e) => handleFilterChange(e.target.value)} className="w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500" />
-        <label className="flex items-center text-sm text-gray-300 whitespace-nowrap"><input type="checkbox" checked={showCompleted} onChange={(e) => setShowCompleted(e.target.checked)} className="w-4 h-4 text-cyan-600 bg-gray-700 border-gray-600 rounded" /><span className="ml-2">Show completed trips</span></label>
+        <input type="text" placeholder="Filter by Vessel Name, IMO, or Trip ID..." value={filter} onChange={(e) => setFilter(e.target.value)} className="w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as TripStatus | 'all')} className="w-full md:w-auto px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500">
+            <option value="all">All Statuses</option>
+            {Object.values(TripStatus).map(status => <option key={status} value={status}>{status}</option>)}
+        </select>
       </div>
       <div className="flex-1 overflow-x-auto">
         <table className="w-full text-left text-sm text-gray-300 min-w-[1000px]">
             <thead className="bg-gray-700/50 text-xs text-gray-400 uppercase sticky top-0">
                 <tr>
-                    {['id', 'vesselName', 'status', 'arrivalTimestamp', 'departureTimestamp'].map(key => (
-                       <th className="px-4 py-3" key={key}><button onClick={() => requestSort(key as keyof Trip)} className="flex items-center gap-1 hover:text-white capitalize">{key.replace('vesselName', 'Vessel').replace('Timestamp', '')} <SortIcon direction={getSortDirectionFor(key as keyof Trip)} /></button></th>
+                    {['vesselName', 'vesselImo', 'id', 'status', 'arrivalTimestamp', 'departureTimestamp', 'agentId', 'pilotId'].map(key => (
+                        <th className="px-4 py-3" key={key}>
+                            <button onClick={() => handleRequestSort(key as keyof Trip)} className="flex items-center gap-1 hover:text-white capitalize">
+                                {key.replace('vesselName', 'Vessel').replace('vesselImo', 'IMO').replace('id', 'Trip ID').replace('Timestamp', '').replace('Id', '')}
+                                <SortIcon direction={getSortDirectionFor(key as keyof Trip)} />
+                            </button>
+                        </th>
                     ))}
                     <th className="px-4 py-3">Duration</th>
-                    {['agentId', 'pilotId'].map(key => (
-                       <th className="px-4 py-3" key={key}><button onClick={() => requestSort(key as keyof Trip)} className="flex items-center gap-1 hover:text-white capitalize">{key.replace('Id', '')} <SortIcon direction={getSortDirectionFor(key as keyof Trip)} /></button></th>
-                    ))}
+                    <th className="px-4 py-3 text-right">Actions</th>
                 </tr>
             </thead>
             <tbody className="divide-y divide-gray-700">
                 {sortedTrips.map(trip => (
-                    <tr key={trip.id} onClick={() => handleRowClick(trip)} className="group transition-colors duration-200 cursor-pointer hover:bg-gray-800/50">
+                    <tr key={trip.id} className="group hover:bg-gray-800/50">
+                        <td className="px-4 py-3 font-medium text-white">{trip.vesselName}</td>
+                        <td className="px-4 py-3">{trip.vesselImo}</td>
                         <td className="px-4 py-3 font-mono text-xs text-gray-400">{trip.id.split('-')[1]}</td>
-                        <td className="px-4 py-3 font-medium text-white">{trip.vesselName} <span className="text-gray-500">({trip.vesselImo})</span></td>
-                        <td className="px-4 py-3"><span className={`px-2 py-1 text-xs font-medium rounded-full border ${statusColors[trip.status]}`}>{trip.status}</span></td>
-                        <td className="px-4 py-3">{new Date(trip.arrivalTimestamp).toLocaleString()}</td>
-                        <td className="px-4 py-3">{trip.departureTimestamp ? new Date(trip.departureTimestamp).toLocaleString() : '—'}</td>
-                        <td className="px-4 py-3">{trip.departureTimestamp ? formatDuration(new Date(trip.departureTimestamp).getTime() - new Date(trip.arrivalTimestamp).getTime()) : formatDuration(Date.now() - new Date(trip.arrivalTimestamp).getTime())}</td>
+                        <td className="px-4 py-3"><span className={`px-2 py-1 text-xs font-medium rounded-full border border-current ${statusColors[trip.status]}`}>{trip.status}</span></td>
+                        <td className="px-4 py-3 whitespace-nowrap">{new Date(trip.arrivalTimestamp).toLocaleString()}</td>
+                        <td className="px-4 py-3 whitespace-nowrap">{trip.departureTimestamp ? new Date(trip.departureTimestamp).toLocaleString() : '—'}</td>
                         <td className="px-4 py-3">{trip.agentId ? userMap.get(trip.agentId) || 'Unknown' : '—'}</td>
                         <td className="px-4 py-3">{trip.pilotId ? userMap.get(trip.pilotId) || 'Unknown' : '—'}</td>
+                        <td className="px-4 py-3">{trip.departureTimestamp ? formatDuration(new Date(trip.departureTimestamp).getTime() - new Date(trip.arrivalTimestamp).getTime()) : 'Active'}</td>
+                        <td className="px-4 py-3 text-right">
+                           <div className="flex items-center justify-end gap-1">
+                                <button onClick={() => handleViewDetails(trip)} className="p-1 text-gray-300 hover:text-cyan-400" title="View Trip Details"><DocumentTextIcon className="h-5 w-5" /></button>
+                            </div>
+                        </td>
                     </tr>
                 ))}
             </tbody>
         </table>
+        {sortedTrips.length === 0 && <div className="text-center py-8 text-gray-500">No trips match the current filters.</div>}
       </div>
     </div>
   );

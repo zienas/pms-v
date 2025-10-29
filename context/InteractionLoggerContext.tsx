@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useCallback, useMemo, useRef, useEffect } from 'react';
 import type { InteractionEventType, View } from '../types';
 import * as api from '../services/api';
 import { useAuth } from './AuthContext';
@@ -21,26 +21,53 @@ const InteractionLoggerContext = createContext<InteractionLoggerContextType | un
 export const InteractionLoggerProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { currentUser } = useAuth();
     const { state } = usePort();
-    const { selectedPortId } = state;
+    
+    // Use refs to hold the latest state without causing the log function to be recreated
+    const authRef = useRef({ currentUser });
+    const portStateRef = useRef({ selectedPortId: state.selectedPortId });
+
+    useEffect(() => {
+        authRef.current = { currentUser };
+    }, [currentUser]);
+
+    useEffect(() => {
+        portStateRef.current = { selectedPortId: state.selectedPortId };
+    }, [state.selectedPortId]);
+
 
     const log = useCallback((eventType: InteractionEventType, details: LogDetails) => {
-        if (!currentUser || !selectedPortId) {
+        const { currentUser: currentAuthUser } = authRef.current;
+        const { selectedPortId: currentPortId } = portStateRef.current;
+
+        if (!currentAuthUser || !currentPortId) {
             return; // Don't log if user is not logged in or no port is selected
         }
 
-        const message = details.message || `${details.action || eventType}${details.value !== undefined ? `: ${details.value}` : ''}`;
+        let valueString = '';
+        if (details.value !== undefined) {
+            if (typeof details.value === 'object' && details.value !== null) {
+                try {
+                    valueString = `: ${JSON.stringify(details.value)}`;
+                } catch (e) {
+                    valueString = ': [unserializable object]';
+                }
+            } else {
+                valueString = `: ${details.value}`;
+            }
+        }
+        const message = details.message || `${details.action || eventType}${valueString}`;
 
         api.logInteraction({
-            userId: currentUser.id,
-            userName: currentUser.name,
-            portId: selectedPortId,
+            userId: currentAuthUser.id,
+            userName: currentAuthUser.name,
+            portId: currentPortId,
             eventType,
             details: {
                 ...details,
                 message,
             },
         });
-    }, [currentUser, selectedPortId]);
+    }, []); // The dependency array is now empty, making `log` a stable function
 
     const value = useMemo(() => ({ log }), [log]);
 

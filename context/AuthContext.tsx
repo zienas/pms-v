@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, createContext, useContext, useMemo } from 'react';
 import type { User } from '../types';
-import { UserRole } from '../types';
+import { UserRole, InteractionEventType } from '../types';
 import * as api from '../services/api';
 import { toast } from 'react-hot-toast';
 
@@ -64,7 +64,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
   
   const logout = useCallback(async (reason?: string) => {
-    if (currentUser) {
+    if (currentUser && loggedInPortId) {
+        // Log the logout event before clearing the user session
+        await api.logInteraction({
+            userId: currentUser.id,
+            userName: currentUser.name,
+            portId: loggedInPortId,
+            eventType: InteractionEventType.USER_LOGOUT,
+            details: {
+                message: `User '${currentUser.name}' logged out. ${reason ? `Reason: ${reason}` : ''}`.trim(),
+                action: 'User Logout'
+            }
+        });
         await api.logoutUser(currentUser.id);
     }
     if (reason) {
@@ -73,7 +84,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setCurrentUser(null);
     setLoggedInPortId(null);
     setIsPasswordChangeRequired(false);
-  }, [currentUser]);
+    // Clear the session user info used for API logging
+    localStorage.removeItem('pms_session_user');
+  }, [currentUser, loggedInPortId]);
 
   const addUser = async (user: Omit<User, 'id'>) => {
       await toast.promise(api.addUser(user), {

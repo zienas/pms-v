@@ -122,6 +122,7 @@ export const runAisSimulationStep = (allShips: Ship[], allBerths: Berth[]): AisD
         updatedShipData.push({
             imo: updatedShip.imo,
             portId: updatedShip.portId,
+            callSign: updatedShip.callSign,
             lat: updatedShip.lat,
             lon: updatedShip.lon,
             heading: updatedShip.heading,

@@ -4,6 +4,8 @@ import { AlertType, UserRole } from '../types';
 import WarningIcon from '../components/icons/WarningIcon';
 import { usePort } from '../context/PortContext';
 import { useAuth } from '../context/AuthContext';
+import { generateAlertIncidentPrompt } from '../utils/promptGenerator';
+import SparkleIcon from '../components/icons/SparkleIcon';
 
 const alertStyles: Record<AlertType, { iconColor: string; borderColor: string; bgColor: string }> = {
   [AlertType.ERROR]: {
@@ -60,9 +62,19 @@ const AlertsDashboard: React.FC = () => {
      }
    };
 
+   const handleGeneratePrompt = (alert: Alert) => {
+    const ship = ships.find(s => s.id === alert.shipId) || null;
+    const prompt = generateAlertIncidentPrompt(alert, ship);
+    actions.openModal({
+      type: 'generatePrompt',
+      title: `Incident Report Draft`,
+      prompt: prompt,
+    });
+  };
+
    if (alerts.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-gray-500 bg-gray-900/50 rounded-lg">
+      <div className="flex flex-col items-center justify-center h-full text-gray-500 bg-gray-900/50 rounded-lg" data-log-context="Alerts Dashboard">
         <WarningIcon className="w-24 h-24 mb-4 opacity-30" />
         <h1 className="text-2xl font-bold">No Active Alerts</h1>
         <p className="text-md mt-2">The port operations are currently clear.</p>
@@ -71,7 +83,7 @@ const AlertsDashboard: React.FC = () => {
   }
   
   return (
-    <div className="bg-gray-900/50 rounded-lg p-4 h-full flex flex-col">
+    <div className="bg-gray-900/50 rounded-lg p-4 h-full flex flex-col" data-log-context="Alerts Dashboard">
       <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-4">
         <h1 className="text-2xl font-bold text-white">Active Alerts ({filteredAlerts.length})</h1>
         <div className="flex items-center gap-4 text-sm">
@@ -118,6 +130,9 @@ const AlertsDashboard: React.FC = () => {
                     </div>
                   </div>
                   <div className="flex justify-end items-center gap-2 border-t border-gray-700/50 pt-3">
+                      <button onClick={() => handleGeneratePrompt(alert)} className="px-3 py-1 text-sm bg-purple-700 text-white rounded-md hover:bg-purple-600 flex items-center gap-1">
+                        <SparkleIcon className="w-4 h-4" /> AI Draft
+                      </button>
                       {alert.acknowledged ? (
                           <span className="text-xs text-green-400 font-semibold mr-auto px-2">Acknowledged</span>
                       ) : (

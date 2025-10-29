@@ -63,7 +63,7 @@ const UserManagement: React.FC = () => {
     };
 
     return (
-        <div className="bg-gray-900/50 rounded-lg p-3 sm:p-4 h-full flex flex-col text-white space-y-6">
+        <div className="bg-gray-900/50 rounded-lg p-3 sm:p-4 h-full flex flex-col text-white space-y-6" data-log-context="User Management">
             <div>
                 <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-4">
                     <h1 className="text-2xl font-bold">User Management</h1>

@@ -27,9 +27,12 @@ interface UnifiedLog {
     url?: string;
     statusCode?: number;
     durationMs?: number;
+    userId?: string;
+    userName?: string;
 }
 
 type LogTab = 'all' | 'vessel' | 'action' | 'user' | 'interaction' | 'api';
+const LOGS_PER_PAGE = 50;
 
 const SystemLogs: React.FC = () => {
     const { state } = usePort();
@@ -39,10 +42,13 @@ const SystemLogs: React.FC = () => {
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
     const [activeTab, setActiveTab] = useState<LogTab>('all');
+    const [methodFilter, setMethodFilter] = useState('all');
+    const [statusCodeFilter, setStatusCodeFilter] = useState('all');
     const [currentPage, setCurrentPage] = useState(1);
-    const LOGS_PER_PAGE = 50;
 
     const shipMap = useMemo(() => new Map(ships.map(s => [s.id, s])), [ships]);
+    const uniqueMethods = useMemo(() => ['all', ...Array.from(new Set(apiLogs.map(log => log.method)))], [apiLogs]);
+    const uniqueStatusCodes = useMemo(() => ['all', ...Array.from(new Set(apiLogs.map(log => log.statusCode.toString())))].sort(), [apiLogs]);
 
     const displayedLogs = useMemo(() => {
         const processMovements = (movs: ShipMovement[]): UnifiedLog[] => movs.map(log => ({
@@ -95,7 +101,12 @@ const SystemLogs: React.FC = () => {
             url: log.url,
             statusCode: log.statusCode,
             durationMs: log.durationMs,
+            userId: log.userId,
+            userName: log.userName,
         }));
+        
+        setMethodFilter('all');
+        setStatusCodeFilter('all');
 
         switch (activeTab) {
             case 'vessel': return processMovements(movements);
@@ -114,7 +125,6 @@ const SystemLogs: React.FC = () => {
         setCurrentPage(1); // Reset to first page on filter change
         
         const start = startDate ? new Date(startDate).getTime() : 0;
-        // Add 1 day minus 1ms to include the whole end date
         const end = endDate ? new Date(endDate).getTime() + 86400000 - 1 : Infinity;
 
         return displayedLogs.filter(log => {
@@ -122,15 +132,24 @@ const SystemLogs: React.FC = () => {
             if (logTime < start || logTime > end) {
                 return false;
             }
+
+            if (activeTab === 'api') {
+                if (methodFilter !== 'all' && log.method !== methodFilter) return false;
+                if (statusCodeFilter !== 'all' && log.statusCode?.toString() !== statusCodeFilter) return false;
+            }
+            
+            if (!filter) return true;
+
             const lowerCaseFilter = filter.toLowerCase();
             return (
                 log.subjectName.toLowerCase().includes(lowerCaseFilter) ||
                 log.eventType.toLowerCase().includes(lowerCaseFilter) ||
                 log.details.toLowerCase().includes(lowerCaseFilter) ||
-                (log.tripId && log.tripId.toLowerCase().includes(lowerCaseFilter))
+                (log.tripId && log.tripId.toLowerCase().includes(lowerCaseFilter)) ||
+                (log.userName && log.userName.toLowerCase().includes(lowerCaseFilter))
             );
         });
-    }, [displayedLogs, filter, startDate, endDate]);
+    }, [displayedLogs, filter, startDate, endDate, methodFilter, statusCodeFilter, activeTab]);
 
     const { items: sortedLogs, requestSort, sortConfig } = useSortableData<UnifiedLog>(filteredLogs, { key: 'timestamp', direction: 'descending' });
     const getSortDirectionFor = (key: keyof UnifiedLog) => sortConfig?.key === key ? sortConfig.direction : undefined;
@@ -153,6 +172,8 @@ const SystemLogs: React.FC = () => {
         setFilter('');
         setStartDate('');
         setEndDate('');
+        setMethodFilter('all');
+        setStatusCodeFilter('all');
         toast.success("Filters reset.");
     };
 
@@ -169,38 +190,51 @@ const SystemLogs: React.FC = () => {
     const handleExportCSV = () => {
         if (!selectedPort) return;
         if (sortedLogs.length === 0) { toast.error('No log data to export.'); return; }
-        const dataToExport = sortedLogs.map(log => {
-            const base = {
-                'Timestamp': new Date(log.timestamp).toLocaleString(),
-                'Subject': log.subjectName,
-                'Event Type': log.eventType,
-                'Details': log.details,
-            };
-            if (activeTab === 'api') {
-                return { ...base, 'Duration (ms)': log.durationMs };
-            }
-            return { ...base, 'Trip ID': log.tripId || 'N/A' };
-        });
-        downloadCSV(dataToExport, `${currentTabLabel.replace(' ', '_').toLowerCase()}_logs_${selectedPort.name.replace(/\s+/g, '_')}.csv`);
+        let dataToExport;
+        const filename = `${currentTabLabel.replace(/\s+/g, '_').toLowerCase()}_logs_${selectedPort.name.replace(/\s+/g, '_')}.csv`;
+        
+        switch(activeTab) {
+            case 'api':
+                dataToExport = sortedLogs.map(log => ({
+                    'Timestamp': new Date(log.timestamp).toLocaleString(),
+                    'Method': log.method,
+                    'URL': log.url,
+                    'Status': log.statusCode,
+                    'Duration (ms)': log.durationMs,
+                    'User': log.userName || 'N/A',
+                }));
+                break;
+            default:
+                 dataToExport = sortedLogs.map(log => ({
+                    'Timestamp': new Date(log.timestamp).toLocaleString(),
+                    'Subject': log.subjectName,
+                    'Event Type': log.eventType,
+                    'Details': log.details,
+                    'Trip ID': log.tripId || 'N/A',
+                }));
+        }
+        downloadCSV(dataToExport, filename);
     };
 
     const handleExportPDF = () => {
         if (!selectedPort) return;
         if (sortedLogs.length === 0) { toast.error('No log data to export.'); return; }
         const doc = new jsPDF({ orientation: 'landscape' });
-        const tableColumns = ['Timestamp', 'Subject', 'Event Type', 'Details'];
-        let tableRows: (string | number)[][] = [];
+        let tableColumns: string[];
+        let tableRows: (string | number)[][];
 
-        if (activeTab === 'api') {
-            tableColumns.push('Duration (ms)');
-            tableRows = sortedLogs.map(log => [
-                new Date(log.timestamp).toLocaleString(), log.subjectName, log.eventType, log.details, log.durationMs ?? '',
-            ]);
-        } else {
-             tableColumns.splice(3, 0, 'Trip ID');
-             tableRows = sortedLogs.map(log => [
-                new Date(log.timestamp).toLocaleString(), log.subjectName, log.eventType, log.tripId ? log.tripId.split('-')[1] : '', log.details,
-            ]);
+        switch(activeTab) {
+            case 'api':
+                tableColumns = ['Timestamp', 'Method', 'URL', 'Status', 'Duration(ms)', 'User'];
+                tableRows = sortedLogs.map(log => [
+                    new Date(log.timestamp).toLocaleString(), log.method ?? '', log.url ?? '', log.statusCode ?? '', log.durationMs ?? '', log.userName || 'N/A',
+                ]);
+                break;
+            default:
+                tableColumns = ['Timestamp', 'Subject', 'Event Type', 'Trip ID', 'Details'];
+                tableRows = sortedLogs.map(log => [
+                    new Date(log.timestamp).toLocaleString(), log.subjectName, log.eventType, log.tripId ? log.tripId.split('-')[1] : '', log.details,
+                ]);
         }
         
         autoTable(doc, {
@@ -214,26 +248,18 @@ const SystemLogs: React.FC = () => {
             },
             margin: { top: 38 }
         });
-        doc.save(`${currentTabLabel.replace(' ', '_').toLowerCase()}_logs_${selectedPort.name.replace(/\s+/g, '_')}.pdf`);
+        doc.save(`${currentTabLabel.replace(/\s+/g, '_').toLowerCase()}_logs_${selectedPort.name.replace(/\s+/g, '_')}.pdf`);
     };
     
     const PaginationControls: React.FC = () => {
         if (totalPages <= 1) return null;
         return (
             <div className="flex justify-between items-center mt-4 text-sm text-gray-300">
-                <button
-                    onClick={() => handlePageChange(currentPage - 1)}
-                    disabled={currentPage === 1}
-                    className="px-4 py-2 bg-gray-700 rounded-md hover:bg-gray-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                >
+                <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} className="px-4 py-2 bg-gray-700 rounded-md hover:bg-gray-600 transition disabled:opacity-50 disabled:cursor-not-allowed">
                     &larr; Previous
                 </button>
                 <span>Page {currentPage} of {totalPages} ({sortedLogs.length} total entries)</span>
-                <button
-                    onClick={() => handlePageChange(currentPage + 1)}
-                    disabled={currentPage === totalPages}
-                    className="px-4 py-2 bg-gray-700 rounded-md hover:bg-gray-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                >
+                <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} className="px-4 py-2 bg-gray-700 rounded-md hover:bg-gray-600 transition disabled:opacity-50 disabled:cursor-not-allowed">
                     Next &rarr;
                 </button>
             </div>
@@ -241,7 +267,7 @@ const SystemLogs: React.FC = () => {
     };
 
     return (
-        <div className="bg-gray-900/50 rounded-lg p-3 sm:p-4 h-full flex flex-col">
+        <div className="bg-gray-900/50 rounded-lg p-3 sm:p-4 h-full flex flex-col" data-log-context="System Logs">
             <div className="flex flex-col md:flex-row justify-between md:items-center mb-4 gap-4">
                 <h1 className="text-2xl font-bold text-white">System Event Logs</h1>
                 <div className="flex items-center gap-2 sm:gap-4">
@@ -260,8 +286,27 @@ const SystemLogs: React.FC = () => {
                 </nav>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4 items-end">
-                <input type="text" placeholder={`Filter ${currentTabLabel}...`} value={filter} onChange={(e) => setFilter(e.target.value)} className="lg:col-span-2 px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-4 items-end">
+                <div className={activeTab === 'api' ? 'lg:col-span-1' : 'lg:col-span-2'}>
+                    <label htmlFor="text-filter" className="block text-xs font-medium text-gray-400 mb-1">Filter by Keyword</label>
+                    <input id="text-filter" type="text" placeholder={`Filter ${currentTabLabel}...`} value={filter} onChange={(e) => setFilter(e.target.value)} className="w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500" />
+                </div>
+                {activeTab === 'api' && (
+                    <>
+                        <div>
+                            <label htmlFor="method-filter" className="block text-xs font-medium text-gray-400 mb-1">HTTP Method</label>
+                            <select id="method-filter" value={methodFilter} onChange={e => setMethodFilter(e.target.value)} className="w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                                {uniqueMethods.map(m => <option key={m} value={m}>{m.toUpperCase()}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label htmlFor="status-filter" className="block text-xs font-medium text-gray-400 mb-1">Status Code</label>
+                            <select id="status-filter" value={statusCodeFilter} onChange={e => setStatusCodeFilter(e.target.value)} className="w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500">
+                                {uniqueStatusCodes.map(s => <option key={s} value={s}>{s}</option>)}
+                            </select>
+                        </div>
+                    </>
+                )}
                 <div>
                     <label htmlFor="start-date" className="block text-xs font-medium text-gray-400 mb-1">Start Date</label>
                     <input type="date" id="start-date" value={startDate} onChange={e => setStartDate(e.target.value)} className="w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500" />
@@ -270,7 +315,7 @@ const SystemLogs: React.FC = () => {
                     <label htmlFor="end-date" className="block text-xs font-medium text-gray-400 mb-1">End Date</label>
                     <input type="date" id="end-date" value={endDate} onChange={e => setEndDate(e.target.value)} className="w-full px-3 py-2 bg-gray-700 text-white border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500" />
                 </div>
-                 <button onClick={handleResetFilters} className="px-3 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-500 text-sm whitespace-nowrap lg:col-start-4">Reset Filters</button>
+                 <button onClick={handleResetFilters} className="px-3 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-500 text-sm whitespace-nowrap lg:col-start-5">Reset Filters</button>
             </div>
 
             <div className="flex-1 overflow-x-auto">
@@ -282,6 +327,7 @@ const SystemLogs: React.FC = () => {
                             <th className="px-4 py-3"><button onClick={() => requestSort('eventType')} className="flex items-center gap-1 hover:text-white">Event Type <SortIcon direction={getSortDirectionFor('eventType')} /></button></th>
                             {activeTab !== 'user' && activeTab !== 'interaction' && activeTab !== 'api' && <th className="px-4 py-3"><button onClick={() => requestSort('tripId')} className="flex items-center gap-1 hover:text-white">Trip ID <SortIcon direction={getSortDirectionFor('tripId')} /></button></th>}
                             <th className="px-4 py-3">Details</th>
+                            {activeTab === 'api' && <th className="px-4 py-3"><button onClick={() => requestSort('userName')} className="flex items-center gap-1 hover:text-white">User <SortIcon direction={getSortDirectionFor('userName')} /></button></th>}
                             {activeTab === 'api' && <th className="px-4 py-3"><button onClick={() => requestSort('durationMs')} className="flex items-center gap-1 hover:text-white">Duration <SortIcon direction={getSortDirectionFor('durationMs')} /></button></th>}
                         </tr>
                     </thead>
@@ -289,15 +335,16 @@ const SystemLogs: React.FC = () => {
                         {paginatedLogs.map(log => (
                             <tr key={log.id} className="hover:bg-gray-800/50">
                                 <td className="px-4 py-3 whitespace-nowrap">{new Date(log.timestamp).toLocaleString()}</td>
-                                <td className="px-4 py-3 font-medium text-white">{log.subjectName}</td>
-                                <td className="px-4 py-3"><span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-700 text-gray-300">{log.eventType}</span></td>
+                                <td className="px-4 py-3 font-medium text-white truncate max-w-xs">{log.subjectName}</td>
+                                <td className="px-4 py-3"><span className="px-2 py-1 text-xs font-medium rounded-full bg-gray-700 text-gray-300 whitespace-nowrap">{log.eventType}</span></td>
                                 {activeTab !== 'user' && activeTab !== 'interaction' && activeTab !== 'api' && <td className="px-4 py-3 font-mono text-xs text-gray-400">{log.tripId ? log.tripId.split('-')[1] : '—'}</td>}
                                 <td className="px-4 py-3">{log.details}</td>
-                                {activeTab === 'api' && <td className="px-4 py-3 text-cyan-300">{log.durationMs}ms</td>}
+                                {activeTab === 'api' && <td className="px-4 py-3">{log.userName || <span className="text-gray-500 italic">System</span>}</td>}
+                                {activeTab === 'api' && <td className="px-4 py-3 text-cyan-300 whitespace-nowrap">{log.durationMs}ms</td>}
                             </tr>
                         ))}
                         {sortedLogs.length === 0 && (
-                            <tr><td colSpan={5} className="text-center py-8 text-gray-500">{displayedLogs.length === 0 ? "No log entries available." : "No logs match your filters."}</td></tr>
+                            <tr><td colSpan={7} className="text-center py-8 text-gray-500">{displayedLogs.length === 0 ? "No log entries available." : "No logs match your filters."}</td></tr>
                         )}
                     </tbody>
                 </table>

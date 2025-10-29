@@ -2,12 +2,9 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import ShipIcon from './icons/ShipIcon';
 import { toast } from 'react-hot-toast';
-import { useLogger } from '../context/InteractionLoggerContext';
-import { InteractionEventType } from '../types';
 
 const ForcePasswordChangeModal: React.FC = () => {
     const { currentUser, updateOwnPassword, logout } = useAuth();
-    const { log } = useLogger();
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -37,7 +34,6 @@ const ForcePasswordChangeModal: React.FC = () => {
     };
     
     const handleLogout = () => {
-        log(InteractionEventType.BUTTON_CLICK, { action: 'Logout', message: 'User logged out from password change screen.' });
         logout();
     }
 

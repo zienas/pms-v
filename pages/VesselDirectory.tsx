@@ -21,6 +21,9 @@ import ShipIcon from '../components/icons/ShipIcon';
 import TankerIcon from '../components/icons/TankerIcon';
 import CargoShipIcon from '../components/icons/CargoShipIcon';
 import { useLogger } from '../context/InteractionLoggerContext';
+import DocumentTextIcon from '../components/icons/DocumentTextIcon';
+import { generateVesselSummaryPrompt } from '../utils/promptGenerator';
+import SparkleIcon from '../components/icons/SparkleIcon';
 
 const SETTINGS_KEY = 'vesselDirectorySettings';
 
@@ -57,7 +60,7 @@ const getShipTypeIcon = (shipType: string): React.ElementType => {
 
 const VesselDirectory: React.FC = () => {
   const { state, actions } = usePort();
-  const { ships, berths, selectedPort } = state;
+  const { ships, berths, selectedPort, movements } = state;
   const { currentUser, users } = useAuth();
   const { log } = useLogger();
 
@@ -130,7 +133,7 @@ const VesselDirectory: React.FC = () => {
     if (!selectedPort) return;
     log(InteractionEventType.DATA_EXPORT, { action: 'Export Vessel Directory to CSV' });
     const dataToExport = sortedShips.map(ship => ({
-      'Name': ship.name, 'IMO': ship.imo, 'Trip ID': ship.currentTripId || '', 'Type': ship.type,
+      'Name': ship.name, 'IMO': ship.imo, 'Call Sign': ship.callSign || '', 'Trip ID': ship.currentTripId || '', 'Type': ship.type,
       'Dangerous Goods': ship.hasDangerousGoods ? 'YES' : 'NO', 'Length (m)': ship.length, 'Draft (m)': ship.draft,
       'Flag': ship.flag, 'Status': ship.status,
       'ETA': new Date(ship.eta).toLocaleString(), 'ETD': new Date(ship.etd).toLocaleString(),
@@ -145,9 +148,9 @@ const VesselDirectory: React.FC = () => {
     if (!selectedPort) return;
     log(InteractionEventType.DATA_EXPORT, { action: 'Export Vessel Directory to PDF' });
     const doc = new jsPDF();
-    const tableColumns = ["Name", "IMO", "Trip ID", "Type", "Status", "Assigned Berths", "Pilot"];
+    const tableColumns = ["Name", "IMO", "Call Sign", "Trip ID", "Type", "Status", "Assigned Berths", "Pilot"];
     const tableRows = sortedShips.map(ship => [
-        ship.name, ship.imo, ship.currentTripId ? ship.currentTripId.split('-')[1] : '—', ship.type, ship.status,
+        ship.name, ship.imo, ship.callSign || '—', ship.currentTripId ? ship.currentTripId.split('-')[1] : '—', ship.type, ship.status,
         ship.berthIds.map(id => berthMap.get(id)).join(', ') || 'Unassigned',
         ship.pilotId ? userMap.get(ship.pilotId) || 'Unknown' : 'N/A',
     ]);
@@ -166,7 +169,7 @@ const VesselDirectory: React.FC = () => {
     doc.save(`vessel_directory_${selectedPort.name.replace(/\s+/g, '_')}.pdf`);
   };
 
-  const handleActionClick = (type: 'history' | 'reassignBerth' | 'shipForm', ship: Ship) => {
+  const handleActionClick = (type: 'history' | 'reassignBerth' | 'shipForm' | 'logMovement', ship: Ship) => {
     log(InteractionEventType.MODAL_OPEN, {
         action: `Open modal: ${type}`,
         targetId: ship.id,
@@ -184,6 +187,15 @@ const VesselDirectory: React.FC = () => {
     actions.deleteShip(ship.portId, ship.id);
   };
 
+  const handleGeneratePrompt = (ship: Ship) => {
+    const prompt = generateVesselSummaryPrompt(ship, movements, berthMap);
+    actions.openModal({
+      type: 'generatePrompt',
+      title: `AI Prompt for ${ship.name}`,
+      prompt: prompt,
+    });
+  };
+
   const canEditVessel = (ship: Ship) => {
     if (!currentUser) return false;
     const { role, id } = currentUser;
@@ -197,7 +209,7 @@ const VesselDirectory: React.FC = () => {
   }
 
   return (
-    <div className="bg-gray-900/50 rounded-lg p-3 sm:p-4 h-full flex flex-col">
+    <div className="bg-gray-900/50 rounded-lg p-3 sm:p-4 h-full flex flex-col" data-log-context="Vessel Directory">
       <div className="flex flex-col md:flex-row justify-between md:items-center mb-4 gap-4">
         <h1 className="text-2xl font-bold text-white">Vessel Directory</h1>
         <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
@@ -221,13 +233,13 @@ const VesselDirectory: React.FC = () => {
         </div>
       </div>
       <div className="flex-1 overflow-x-auto">
-        <table className="w-full text-left text-sm text-gray-300 min-w-[1100px]">
+        <table className="w-full text-left text-sm text-gray-300 min-w-[1200px]">
             <thead className="bg-gray-700/50 text-xs text-gray-400 uppercase sticky top-0">
                 <tr>
-                    {['name', 'imo', 'currentTripId', 'type', 'pilotId', 'status', 'eta', 'etd'].map(key => (
+                    {['name', 'imo', 'callSign', 'currentTripId', 'type', 'pilotId', 'status', 'eta', 'etd'].map(key => (
                         <th className="px-4 py-3" key={key}>
                             <button onClick={() => handleRequestSort(key as keyof Ship)} className="flex items-center gap-1 hover:text-white capitalize">
-                                {key.replace('currentTripId', 'Trip ID').replace('pilotId', 'Pilot')} <SortIcon direction={getSortDirectionFor(key as keyof Ship)} />
+                                {key.replace('currentTripId', 'Trip ID').replace('pilotId', 'Pilot').replace('callSign', 'Call Sign')} <SortIcon direction={getSortDirectionFor(key as keyof Ship)} />
                             </button>
                         </th>
                     ))}
@@ -248,6 +260,7 @@ const VesselDirectory: React.FC = () => {
                             </div>
                         </td>
                         <td className="px-4 py-3">{ship.imo}</td>
+                        <td className="px-4 py-3">{ship.callSign || '—'}</td>
                         <td className="px-4 py-3 font-mono text-xs text-gray-400">{ship.currentTripId?.split('-')[1] ?? '—'}</td>
                         <td className="px-4 py-3">{ship.type}</td>
                         <td className="px-4 py-3">{ship.pilotId ? userMap.get(ship.pilotId) || 'Unknown Pilot' : '—'}</td>
@@ -256,7 +269,9 @@ const VesselDirectory: React.FC = () => {
                         <td className="px-4 py-3 whitespace-nowrap">{new Date(ship.etd).toLocaleString()}</td>
                         <td className="px-4 py-3 text-right">
                            <div className="flex items-center justify-end gap-1">
+                                <button onClick={() => handleGeneratePrompt(ship)} className="p-1 text-gray-300 hover:text-purple-400" title="Generate AI Prompt"><SparkleIcon className="h-5 w-5" /></button>
                                 <button onClick={() => handleActionClick('history', ship)} className="p-1 text-gray-300 hover:text-blue-400" title="View Movement History"><ClockIcon className="h-5 w-5" /></button>
+                                {canModify && ship.status !== ShipStatus.LEFT_PORT && <button onClick={() => handleActionClick('logMovement', ship)} className="p-1 text-gray-300 hover:text-yellow-400" title="Log Manual Event"><DocumentTextIcon className="h-5 w-5" /></button>}
                                 {canModify && <button onClick={() => handleActionClick('reassignBerth', ship)} className="p-1 text-gray-300 hover:text-green-400" title="Reassign Berth"><ReassignIcon className="h-5 w-5" /></button>}
                                 {canEditVessel(ship) && <button onClick={() => handleActionClick('shipForm', ship)} className="p-1 text-gray-300 hover:text-cyan-400" title="Edit ship"><EditIcon className="h-5 w-5" /></button>}
                                 {canModify && <button onClick={() => handleDeleteShip(ship)} className="p-1 text-gray-300 hover:text-red-500" title="Delete ship"><DeleteIcon className="h-5 w-5" /></button>}

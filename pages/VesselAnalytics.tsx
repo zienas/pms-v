@@ -224,7 +224,7 @@ const VesselAnalytics: React.FC = () => {
     }
 
     return (
-        <div className="bg-gray-900/50 rounded-lg p-3 sm:p-4 h-full flex flex-col">
+        <div className="bg-gray-900/50 rounded-lg p-3 sm:p-4 h-full flex flex-col" data-log-context="Vessel Analytics">
             <div className="flex flex-col md:flex-row justify-between md:items-center mb-6 gap-4">
                 <h1 className="text-2xl font-bold text-white">Vessel Analytics: {selectedPort?.name}</h1>
                 <button onClick={handleExport} className="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm flex items-center gap-2"><DownloadIcon className="w-4 h-4" /> Export CSV</button>

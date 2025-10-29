@@ -11,6 +11,8 @@ import BerthIcon from '../components/icons/BerthIcon';
 import ChartBarIcon from '../components/icons/ChartBarIcon';
 import FireIcon from '../components/icons/FlameIcon';
 import { useLogger } from '../context/InteractionLoggerContext';
+import { generateBerthOccupancyPrompt } from '../utils/promptGenerator';
+import SparkleIcon from '../components/icons/SparkleIcon';
 
 const berthTypeColors: { [key in BerthType]: string } = {
   [BerthType.QUAY]: 'bg-blue-500/20 text-blue-300',
@@ -140,8 +142,19 @@ const BerthDirectory: React.FC = () => {
     setTypeFilter(value);
   };
 
+  const handleGeneratePrompt = (berth: Berth) => {
+    const occupyingShip = ships.find(s => s.berthIds.includes(berth.id) && s.status !== ShipStatus.LEFT_PORT) || null;
+    const occupancy = occupancyData.get(berth.id) || 0;
+    const prompt = generateBerthOccupancyPrompt(berth, occupyingShip, occupancy);
+    actions.openModal({
+      type: 'generatePrompt',
+      title: `AI Prompt for ${berth.name}`,
+      prompt: prompt,
+    });
+  };
+
   return (
-    <div className="bg-gray-900/50 rounded-lg p-3 sm:p-4 h-full flex flex-col">
+    <div className="bg-gray-900/50 rounded-lg p-3 sm:p-4 h-full flex flex-col" data-log-context="Berth Directory">
        <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-4">
         <h1 className="text-2xl font-bold text-white">Berth Directory</h1>
         {canManageBerths && selectedPort && (
@@ -221,6 +234,7 @@ const BerthDirectory: React.FC = () => {
                    {canManageBerths && (
                     <td className="px-4 py-3 text-right">
                          <div className="opacity-0 group-hover:opacity-100 flex justify-end gap-2">
+                            <button onClick={(e) => { e.stopPropagation(); handleGeneratePrompt(berth); }} className="p-1 text-gray-300 hover:text-purple-400" title="Generate AI Prompt"><SparkleIcon className="h-4 w-4" /></button>
                             <button onClick={(e) => { e.stopPropagation(); if(selectedPort) actions.openModal({ type: 'berthForm', port: selectedPort, berth }); }} className="p-1 text-gray-300 hover:text-cyan-400" title="Edit Berth"><EditIcon className="h-4 w-4" /></button>
                             <button onClick={(e) => { e.stopPropagation(); actions.deleteBerth(berth.portId, berth.id); }} className="p-1 text-gray-300 hover:text-red-500" title="Delete Berth"><DeleteIcon className="h-4 w-4" /></button>
                         </div>

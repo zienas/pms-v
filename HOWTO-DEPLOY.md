@@ -249,6 +249,7 @@ CREATE TABLE ships (
     port_id TEXT NOT NULL,
     name VARCHAR(255) NOT NULL,
     imo VARCHAR(7) UNIQUE NOT NULL,
+    call_sign VARCHAR(10),
     type VARCHAR(255),
     length NUMERIC(10, 2) NOT NULL,
     draft NUMERIC(10, 2) NOT NULL,

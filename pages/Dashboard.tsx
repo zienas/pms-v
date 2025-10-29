@@ -25,7 +25,7 @@ const Dashboard: React.FC = () => {
   }
 
   return (
-    <div className="h-full flex flex-col gap-4">
+    <div className="h-full flex flex-col gap-4" data-log-context="Dashboard">
       <div>
         <h1 className="text-2xl font-bold text-white mb-4">Live Port Dashboard</h1>
         <DashboardStats ships={displayedShips} berths={berths} />

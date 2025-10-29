@@ -55,7 +55,7 @@ const PortManagement: React.FC = () => {
 
 
     return (
-        <div className="bg-gray-900/50 rounded-lg p-3 sm:p-4 h-full flex flex-col text-white">
+        <div className="bg-gray-900/50 rounded-lg p-3 sm:p-4 h-full flex flex-col text-white" data-log-context="Port Management">
             <h1 className="text-2xl font-bold mb-4">Port & Berth Management</h1>
             <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-6 min-h-0">
                 {/* Ports List */}

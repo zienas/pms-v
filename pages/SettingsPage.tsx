@@ -86,7 +86,7 @@ const SettingsPage: React.FC = () => {
     const canEditAdvancedSettings = currentUser && [UserRole.ADMIN, UserRole.SUPERVISOR].includes(currentUser.role);
 
     return (
-        <div className="bg-gray-900/50 rounded-lg p-4 sm:p-6 h-full text-white overflow-y-auto">
+        <div className="bg-gray-900/50 rounded-lg p-4 sm:p-6 h-full text-white overflow-y-auto" data-log-context="Settings">
             <h1 className="text-2xl font-bold mb-6">Application Settings</h1>
             <div className="max-w-2xl space-y-8">
                 {canEditAdvancedSettings && (

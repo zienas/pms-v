@@ -28,7 +28,7 @@ const PilotPage: React.FC = () => {
     }
 
     return (
-        <>
+        <div data-log-context="Pilot Log">
             <h1 className="text-2xl font-bold text-white mb-4">Pilot Log: Assigned Vessels</h1>
             {assignedVessels.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -41,7 +41,7 @@ const PilotPage: React.FC = () => {
                     <p className="text-gray-400">You have no active vessels assigned to you.</p>
                 </div>
             )}
-        </>
+        </div>
     );
 };
 

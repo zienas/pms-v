@@ -28,13 +28,15 @@ const VesselPilotCard: React.FC<VesselPilotCardProps> = ({ ship }) => {
 
     const handleOnboardSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        actions.addPilotLog(ship, MovementEventType.PILOT_ONBOARD, onboardComments);
+        const message = `Pilot boarded vessel. ${onboardComments ? `Comments: ${onboardComments}` : ''}`;
+        actions.addMovementLog(ship, MovementEventType.PILOT_ONBOARD, message);
         setOnboardComments(''); // Reset form
     };
 
     const handleOffboardSubmit = (e: React.FormEvent) => {
         e.preventDefault();
-        actions.addPilotLog(ship, MovementEventType.PILOT_OFFBOARD, offboardComments);
+        const message = `Pilot left vessel. ${offboardComments ? `Comments: ${offboardComments}` : ''}`;
+        actions.addMovementLog(ship, MovementEventType.PILOT_OFFBOARD, message);
         setOffboardComments(''); // Reset form
     };
 

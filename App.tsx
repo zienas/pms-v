@@ -31,6 +31,9 @@ import ForcePasswordChangeModal from './components/ForcePasswordChangeModal';
 import { toast } from 'react-hot-toast';
 import { useLogger } from './context/InteractionLoggerContext';
 import PilotPage from './pages/PilotPage';
+import LogMovementModal from './components/LogMovementModal';
+import VesselMovements from './pages/VesselMovements';
+import GeneratePromptModal from './components/GeneratePromptModal';
 
 const LoadingSpinner: React.FC<{ message: string }> = ({ message }) => (
     <div className="flex items-center justify-center h-full">
@@ -88,6 +91,7 @@ const MainApp: React.FC = () => {
   const [activeView, setActiveView] = useState<View>(currentUser?.role === UserRole.PILOT ? 'pilot-log' : 'dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const warningShownForShiftEnd = useRef<number | null>(null);
+  const lastPixelRatio = useRef(window.devicePixelRatio);
 
   const unacknowledgedAlerts = useMemo(() => {
     const baseAlerts = alerts.filter(a => !a.acknowledged);
@@ -188,50 +192,72 @@ const MainApp: React.FC = () => {
     const handleGlobalClick = (event: MouseEvent) => {
         const target = event.target as HTMLElement;
 
-        // If the click is on an element that already has a specific logger, ignore it.
         if (target.closest('[data-logging-handler="true"]')) {
             return;
         }
 
-        // Find the most relevant interactive element, traversing up from the click target.
         const interactiveElement = target.closest('button, a, [role="button"], [role="link"], [role="menuitem"], label, [onclick]');
         
         if (interactiveElement) {
             const element = interactiveElement as HTMLElement;
 
-            // Don't log clicks inside form inputs or on the map component
             if (['INPUT', 'TEXTAREA', 'SELECT'].includes(element.tagName) || element.closest('[data-component="port-map"]')) {
                 return;
             }
 
+            // --- Enhanced Description Logic ---
             let description = 
                 element.ariaLabel ||
-                element.title ||
-                element.textContent?.trim() ||
-                (element as HTMLInputElement).value ||
-                element.id ||
-                element.tagName;
+                element.getAttribute('aria-label');
+            
+            // If no explicit label, try to get a title from the element itself or a more specific child target
+            if (!description) {
+                // The direct click target might be more specific (e.g., an SVG icon inside a button)
+                const specificTarget = target.closest('svg, img');
+                if (specificTarget) {
+                    description = specificTarget.querySelector('title')?.textContent ||
+                                  (specificTarget as HTMLImageElement).alt ||
+                                  specificTarget.getAttribute('title');
+                }
+            }
+            
+            // Fallback to the interactive element's title, text content, name, or id
+            if (!description) {
+                description = element.title ||
+                              element.textContent?.trim() ||
+                              element.getAttribute('name') ||
+                              element.id;
+            }
+            
+            // As a final fallback, use the tag name
+            if (!description) {
+                description = element.tagName;
+            }
 
             if (description) {
+                const contextElement = element.closest('[data-log-context]');
+                const context = contextElement ? contextElement.getAttribute('data-log-context') : 'Global';
+
                 description = description.replace(/\s+/g, ' ').substring(0, 80);
+                const message = `User clicked ${element.tagName.toLowerCase()} element: "${description}" within context: "${context}"`;
+
                 log(InteractionEventType.GENERIC_CLICK, {
                     action: `Click on ${element.tagName}`,
                     value: description,
-                    message: `User clicked on a ${element.tagName} element: "${description}"`,
+                    message: message,
                     targetId: element.id
                 });
             }
         }
     };
     
-    let lastPixelRatio = window.devicePixelRatio;
     const handleResize = () => {
-        if (window.devicePixelRatio !== lastPixelRatio) {
-            lastPixelRatio = window.devicePixelRatio;
+        if (window.devicePixelRatio !== lastPixelRatio.current) {
+            lastPixelRatio.current = window.devicePixelRatio;
             log(InteractionEventType.BROWSER_ZOOM, {
                 action: 'Browser Zoom Changed',
-                value: `Zoom level: ${Math.round(lastPixelRatio * 100)}%`,
-                message: `User changed browser zoom level to ${Math.round(lastPixelRatio * 100)}%`,
+                value: `Zoom level: ${Math.round(lastPixelRatio.current * 100)}%`,
+                message: `User changed browser zoom level to ${Math.round(lastPixelRatio.current * 100)}%`,
             });
         }
     };
@@ -287,6 +313,7 @@ const MainApp: React.FC = () => {
         case 'alerts': return <AlertsDashboard />;
         case 'trips': return <TripDirectory />;
         case 'vessel-analytics': return <VesselAnalytics />;
+        case 'vessel-movements': return <VesselMovements />;
         case 'logs': return <SystemLogs />;
         case 'management': return <PortManagement />;
         case 'users': return <UserManagement />;
@@ -297,56 +324,51 @@ const MainApp: React.FC = () => {
   };
 
   if (currentUser && accessiblePorts.length === 0 && !isLoading) {
-    return (
-      <div className="flex h-screen font-sans bg-gray-900 text-gray-200">
-        <SidebarNav activeView={activeView} setActiveView={setActiveView} alertCount={0} isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
-        <div className="flex flex-col flex-1">
-          <Header onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} />
-          <NoPortsView />
-        </div>
-      </div>
-    );
+      return <NoPortsView />;
   }
 
   return (
-    <div className="flex h-screen font-sans bg-gray-900 text-gray-200 relative">
-      {isSidebarOpen && <div className="fixed inset-0 bg-black/60 z-20 md:hidden" onClick={() => setIsSidebarOpen(false)}></div>}
+    <div className="flex h-screen bg-gray-800 text-gray-200">
       <SidebarNav activeView={activeView} setActiveView={setActiveView} alertCount={unacknowledgedAlerts.length} isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
-      <div className="flex flex-col flex-1 overflow-hidden">
-        <Header onMenuClick={() => setIsSidebarOpen(!isSidebarOpen)} />
-        <main className="flex-1 p-2 sm:p-4 overflow-y-auto bg-gray-800">
+      <div className="flex-1 flex flex-col overflow-hidden">
+        <Header onMenuClick={() => setIsSidebarOpen(true)} />
+        <main className="flex-1 p-3 sm:p-4 overflow-y-auto bg-gray-800">
           {renderView()}
         </main>
       </div>
-
+      
       {/* Modals */}
       {modal?.type === 'shipForm' && <ShipFormModal />}
-      {modal?.type === 'history' && modal.ship && <ShipHistoryModal ship={modal.ship} portId={selectedPortId!} onClose={actions.closeModal} />}
+      {modal?.type === 'history' && <ShipHistoryModal ship={modal.ship} portId={selectedPortId!} onClose={actions.closeModal} />}
       {modal?.type === 'portForm' && <PortFormModal />}
-      {modal?.type === 'berthForm' && modal.port && <BerthFormModal port={modal.port}/>}
+      {modal?.type === 'berthForm' && modal.port && <BerthFormModal port={modal.port} />}
       {modal?.type === 'berthDetail' && modal.berth && <BerthDetailModal berth={modal.berth} />}
-      {modal?.type === 'tripDetail' && modal.trip && <TripDetailModal />}
       {modal?.type === 'userForm' && <UserFormModal />}
+      {modal?.type === 'tripDetail' && <TripDetailModal />}
       {modal?.type === 'reassignBerth' && modal.ship && <ReassignBerthModal ship={modal.ship} />}
       {modal?.type === 'assignPilot' && modal.ship && <AssignPilotModal ship={modal.ship} />}
+      {modal?.type === 'logMovement' && modal.ship && <LogMovementModal ship={modal.ship} />}
+      {modal?.type === 'generatePrompt' && <GeneratePromptModal />}
     </div>
   );
-}
+};
 
-export default function App() {
+const App: React.FC = () => {
     const { currentUser, isLoading, isPasswordChangeRequired } = useAuth();
 
     if (isLoading) {
-        return (
-            <div className="flex items-center justify-center h-screen bg-gray-900">
-                <LoadingSpinner message="Initializing..." />
-            </div>
-        );
+        return <div className="bg-gray-900 h-screen flex items-center justify-center"><LoadingSpinner message="Authenticating..." /></div>;
     }
-    
-    if (currentUser && isPasswordChangeRequired) {
+
+    if (!currentUser) {
+        return <LoginPage />;
+    }
+
+    if (isPasswordChangeRequired) {
         return <ForcePasswordChangeModal />;
     }
     
-    return currentUser ? <MainApp /> : <LoginPage />;
-}
+    return <MainApp />;
+};
+
+export default App;

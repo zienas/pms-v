@@ -20,7 +20,6 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   if (!currentUser) return null;
   
   const handleLogout = () => {
-      log(InteractionEventType.BUTTON_CLICK, { action: 'Logout', message: 'User clicked the logout button.' });
       logout();
   };
 

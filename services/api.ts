@@ -77,6 +77,11 @@ const withApiLogging = <T extends (...args: any[]) => Promise<any>>(
         } finally {
             const durationMs = performance.now() - startTime;
             const currentDb = getDatabase();
+            
+            // Get user info from localStorage if available to enrich logs
+            const sessionUserStr = localStorage.getItem('pms_session_user');
+            const sessionUser = sessionUserStr ? JSON.parse(sessionUserStr) : null;
+
             const newLog: ApiLogEntry = {
                 id: `api-${Date.now()}-${Math.random()}`,
                 timestamp: new Date().toISOString(),
@@ -84,6 +89,8 @@ const withApiLogging = <T extends (...args: any[]) => Promise<any>>(
                 url,
                 statusCode,
                 durationMs: Math.round(durationMs),
+                userId: sessionUser?.id,
+                userName: sessionUser?.name,
             };
             if (!currentDb.apiLog) currentDb.apiLog = [];
             currentDb.apiLog.unshift(newLog);
@@ -132,6 +139,10 @@ const _loginUser = async (name: string, password_provided: string, portId: strin
     
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password, ...userToReturn } = user;
+
+    // Store session user info for API logging
+    localStorage.setItem('pms_session_user', JSON.stringify({ id: user.id, name: user.name }));
+
     return userToReturn;
 };
 export const loginUser = withApiLogging('POST', '/auth/login', _loginUser);
@@ -527,6 +538,7 @@ const _updateShipFromAIS = async (aisData: AisData): Promise<Ship> => {
         ship.lon = aisData.lon ?? ship.lon;
         ship.heading = aisData.heading ?? ship.heading;
         ship.name = aisData.name ?? ship.name;
+        ship.callSign = aisData.callSign ?? ship.callSign;
         ship.type = aisData.type ?? ship.type;
         if (aisData.status && aisData.status !== ship.status) {
             ship.status = aisData.status;
@@ -552,6 +564,7 @@ const _updateShipFromAIS = async (aisData: AisData): Promise<Ship> => {
             portId: aisData.portId,
             imo: aisData.imo,
             name: aisData.name,
+            callSign: aisData.callSign,
             type: aisData.type || 'Unknown',
             status: ShipStatus.APPROACHING,
             lat: aisData.lat,

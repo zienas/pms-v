@@ -131,7 +131,7 @@ interface PortContextType {
     updateTrip: (id: string, tripData: Trip) => Promise<void>;
     acknowledgeAlert: (alertId: string) => void;
     removeAlert: (alertId: string) => void;
-    addPilotLog: (ship: Ship, eventType: MovementEventType.PILOT_ONBOARD | MovementEventType.PILOT_OFFBOARD, comments: string) => Promise<void>;
+    addMovementLog: (ship: Ship, eventType: MovementEventType, message: string, timestamp?: string) => Promise<void>;
   };
 }
 
@@ -424,21 +424,18 @@ export const PortProvider: React.FC<{ children: React.ReactNode }> = ({ children
             toast.dismiss(alertId);
         };
         
-        const addPilotLog = async (ship: Ship, eventType: MovementEventType.PILOT_ONBOARD | MovementEventType.PILOT_OFFBOARD, comments: string) => {
+        const addMovementLog = async (ship: Ship, eventType: MovementEventType, message: string, timestamp?: string) => {
             if (!ship.currentTripId) {
-                toast.error('Cannot log pilot activity for a vessel without an active trip.');
+                toast.error('Cannot log event for a vessel without an active trip.');
                 return;
             }
-            const message = eventType === MovementEventType.PILOT_ONBOARD
-                ? `Pilot boarded vessel. ${comments ? `Comments: ${comments}` : ''}`
-                : `Pilot left vessel. ${comments ? `Comments: ${comments}` : ''}`;
 
             await toast.promise(api.addShipMovement({
                 shipId: ship.id,
                 portId: ship.portId,
                 tripId: ship.currentTripId,
                 eventType,
-                timestamp: new Date().toISOString(),
+                timestamp: timestamp || new Date().toISOString(),
                 details: { message }
             }), {
                 loading: 'Saving log entry...',
@@ -461,7 +458,7 @@ export const PortProvider: React.FC<{ children: React.ReactNode }> = ({ children
             initWebSocket,
             acknowledgeAlert,
             removeAlert,
-            addPilotLog,
+            addMovementLog,
             ...crudActions
         };
     }, [currentUser, loggedInPortId]);
