@@ -66,9 +66,13 @@ To connect to a real-world AIS data feed from a hardware receiver (via UDP or a 
 
 ## Deployment
 
-### Standard VPS Deployment
+### Standard VPS Deployment (Recommended)
 
-For detailed, step-by-step instructions on how to deploy this application and its required backend infrastructure to a fresh Ubuntu or Debian-based VPS, please refer to the main deployment guide.
+The easiest way to deploy this application and its backend infrastructure is with the automated deployment script (`deploy.sh.md`). This script handles all server-side setup on a fresh Ubuntu or Debian-based VPS.
+
+**Note**: The script is provided with a `.md` extension. You will need to rename it to `deploy.sh` on your server before running it.
+
+For detailed instructions on how to use this script, please refer to the main deployment guide.
 
 **[==> View the VPS Deployment Guide](./HOWTO-DEPLOY.md) <==**
 
@@ -90,7 +94,7 @@ The application is architected to be robust and scalable, separating concerns be
 
 -   **Frontend**: Responsible for rendering the user interface and managing user interactions.
 -   **API Service Layer (`services/api.ts`)**: For demonstration and offline use, this file **simulates a complete backend API** using the browser's `localStorage`. It is designed to be a drop-in replacement for a service layer that would make real HTTP requests.
--   **Backend API (Conceptual)**: A server-side application would handle the core business logic, user sessions, and database queries.
+-   **Backend API (Conceptual)**: A server-side application would handle the core business logic, user sessions, and database queries. A guide for building this is provided in `HOWTO-BACKEND.md`.
 -   **Database (PostgreSQL with PostGIS)**: The single source of truth for all data.
 
 ### 2. Database Schema
@@ -130,12 +134,12 @@ The application includes a full authentication and permission system.
 For a real-world deployment, the entire stack (frontend, backend, database) would be managed using Docker and Docker Compose for consistency across environments. An example `docker-compose.yml` file is provided below.
 
 ```yaml
-# docker-compose.yml
+# docker-compose.yml (in the backend directory)
 version: '3.8'
 
 services:
   api:
-    build: ./backend
+    build: . # Assumes a Dockerfile in the backend directory
     ports: [ "4000:4000" ]
     environment:
       - DATABASE_URL=postgresql://port_user:strong_password@db:5432/port_db
@@ -143,16 +147,12 @@ services:
 
   db:
     image: postgis/postgis:13-3.1
-    ports: [ "5432:5432" ]
+    ports: [ "127.0.0.1:5432:5432" ] # Bind to localhost for security
     environment:
       - POSTGRES_USER=port_user
       - POSTGRES_PASSWORD=a_very_strong_password
       - POSTGRES_DB=port_db
     volumes: [ postgres_data:/var/lib/postgresql/data ]
-
-  frontend:
-    build: .
-    ports: [ "80:80" ]
 
 volumes:
   postgres_data:
