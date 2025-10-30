@@ -200,11 +200,17 @@ const VesselDirectory: React.FC<VesselDirectoryProps> = ({ setActiveView }) => {
     });
   };
 
-  const handleVesselDoubleClick = (ship: Ship) => {
+  const handleFocusOnMap = (ship: Ship) => {
     if (!ship.lat || !ship.lon) {
         toast.error(`Vessel "${ship.name}" has no position data to focus on.`);
         return;
     }
+    log(InteractionEventType.VIEW_CHANGE, {
+      action: 'Focus on Vessel from Directory',
+      targetId: ship.id,
+      value: ship.name,
+      message: `User double-clicked ${ship.name} in Vessel Directory to focus on map.`
+    });
     actions.setFocusedVesselId(ship.id);
     setActiveView('dashboard');
   };
@@ -261,8 +267,8 @@ const VesselDirectory: React.FC<VesselDirectoryProps> = ({ setActiveView }) => {
             </thead>
             <tbody className="divide-y divide-gray-700">
                 {sortedShips.map(ship => (
-                    <tr key={ship.id} className={`group transition-colors duration-200 ${ship.status === ShipStatus.LEFT_PORT ? 'bg-gray-800/60' : ''} ${ship.hasDangerousGoods ? 'bg-red-900/20 hover:bg-red-900/30' : 'hover:bg-gray-800/50'}`}>
-                        <td onDoubleClick={() => handleVesselDoubleClick(ship)} className="px-4 py-3 font-medium cursor-pointer" title="Double-click to view on map">
+                    <tr key={ship.id} onDoubleClick={() => handleFocusOnMap(ship)} className={`group transition-colors duration-200 cursor-pointer ${ship.status === ShipStatus.LEFT_PORT ? 'bg-gray-800/60' : ''} ${ship.hasDangerousGoods ? 'bg-red-900/20 hover:bg-red-900/30' : 'hover:bg-gray-800/50'}`} title="Double-click to focus on map">
+                        <td className="px-4 py-3 font-medium">
                             <div className="flex items-center gap-2">
                                 {(() => {
                                     const Icon = getShipTypeIcon(ship.type);

@@ -89,7 +89,7 @@ const MainApp: React.FC = () => {
   } = state;
   
   const [activeView, setActiveView] = useState<View>(currentUser?.role === UserRole.PILOT ? 'pilot-log' : 'dashboard');
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 768);
   const warningShownForShiftEnd = useRef<number | null>(null);
   const lastPixelRatio = useRef(window.devicePixelRatio);
 
@@ -330,8 +330,8 @@ const MainApp: React.FC = () => {
   return (
     <div className="flex h-screen bg-gray-800 text-gray-200">
       <SidebarNav activeView={activeView} setActiveView={setActiveView} alertCount={unacknowledgedAlerts.length} isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header onMenuClick={() => setIsSidebarOpen(true)} />
+      <div className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ease-in-out ${isSidebarOpen ? 'md:ml-64' : 'ml-0'}`}>
+        <Header onMenuClick={() => setIsSidebarOpen(true)} isSidebarOpen={isSidebarOpen} />
         <main className="flex-1 p-3 sm:p-4 overflow-y-auto bg-gray-800">
           {renderView()}
         </main>

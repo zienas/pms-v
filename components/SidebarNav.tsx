@@ -15,6 +15,7 @@ import ChartBarIcon from './icons/ChartBarIcon';
 import RouteIcon from './icons/RouteIcon';
 import DocumentTextIcon from './icons/DocumentTextIcon';
 import HistoryIcon from './icons/HistoryIcon';
+import ChevronDoubleLeftIcon from './icons/ChevronDoubleLeftIcon';
 
 interface SidebarNavProps {
     activeView: View;
@@ -110,7 +111,7 @@ const SidebarNav: React.FC<SidebarNavProps> = ({ activeView, setActiveView, aler
     );
 
     return (
-        <nav className={`fixed top-0 left-0 h-full w-64 bg-gray-900 p-4 border-r border-gray-700 flex flex-col z-30 transform transition-transform duration-300 ease-in-out md:relative md:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <nav className={`fixed top-0 left-0 h-full w-64 bg-gray-900 p-4 border-r border-gray-700 flex flex-col z-30 transform transition-transform duration-300 ease-in-out ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
             <div className="flex items-center justify-between pb-4 mb-4 border-b border-gray-700">
                 <h2 className="text-xl font-bold text-white">Main Menu</h2>
                 <button onClick={() => setIsOpen(false)} className="p-1 text-gray-400 hover:text-white md:hidden" aria-label="Close menu"><CloseIcon className="w-6 h-6" /></button>
@@ -130,9 +131,19 @@ const SidebarNav: React.FC<SidebarNavProps> = ({ activeView, setActiveView, aler
                     return canView && <NavItem key={item.view} config={item} activeView={activeView} onViewChange={handleViewChange} />;
                 })}
             </ul>
-            <div className="mt-auto text-center text-xs text-gray-500">
-                <p>&copy; {new Date().getFullYear()} Port Authority</p>
-                <p>Version 1.0</p>
+            <div className="mt-auto">
+                <button
+                    onClick={() => setIsOpen(false)}
+                    className="hidden md:flex items-center justify-center w-full gap-2 p-2 mb-2 text-gray-400 rounded-md hover:bg-gray-700 hover:text-white"
+                    title="Collapse Sidebar"
+                >
+                    <ChevronDoubleLeftIcon className="w-5 h-5" />
+                    <span className="font-medium">Collapse</span>
+                </button>
+                <div className="text-center text-xs text-gray-500">
+                    <p>&copy; {new Date().getFullYear()} Port Authority</p>
+                    <p>Version 1.0</p>
+                </div>
             </div>
         </nav>
     );

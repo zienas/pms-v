@@ -165,7 +165,23 @@ const ShipFormModal: React.FC = () => {
   const validate = (): boolean => {
     const newErrors: { [key: string]: string } = {};
     if (!formData.name.trim()) newErrors.name = 'Ship name is required.';
-    if (!/^\d{7}$/.test(formData.imo)) newErrors.imo = 'IMO must be a 7-digit number.';
+    
+    // --- Enhanced IMO Validation ---
+    if (!/^\d{7}$/.test(formData.imo)) {
+        newErrors.imo = 'IMO must be a 7-digit number.';
+    } else {
+        const digits = formData.imo.split('').map(Number);
+        const checkDigit = digits[6];
+        // The check digit is the last digit of the sum of products of the first six digits.
+        const sum = digits.slice(0, 6).reduce((acc, digit, index) => {
+            return acc + (digit * (7 - index));
+        }, 0);
+        
+        if (sum % 10 !== checkDigit) {
+            newErrors.imo = 'Invalid IMO number (check digit mismatch).';
+        }
+    }
+
     if (formData.callSign && !/^[A-Z0-9]{3,7}$/.test(formData.callSign.toUpperCase())) newErrors.callSign = 'Invalid call sign format.';
     if (formData.type.trim() && !/^[a-zA-Z0-9\s-]+$/.test(formData.type)) newErrors.type = 'Ship type can only contain letters, numbers, spaces, and hyphens.';
     

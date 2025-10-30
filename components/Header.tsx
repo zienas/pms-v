@@ -9,6 +9,7 @@ import { useSettings } from '../context/SettingsContext';
 
 interface HeaderProps {
     onMenuClick: () => void;
+    isSidebarOpen: boolean;
 }
 
 const AisStatusIndicator: React.FC = () => {
@@ -47,7 +48,7 @@ const AisStatusIndicator: React.FC = () => {
 };
 
 
-const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
+const Header: React.FC<HeaderProps> = ({ onMenuClick, isSidebarOpen }) => {
   const { currentUser, logout } = useAuth();
   const { state, actions } = usePort();
   const { log } = useLogger();
@@ -63,7 +64,11 @@ const Header: React.FC<HeaderProps> = ({ onMenuClick }) => {
   return (
     <header className="flex items-center justify-between p-3 sm:p-4 bg-gray-900 border-b border-gray-700 shadow-md flex-shrink-0">
       <div className="flex items-center overflow-hidden">
-        <button onClick={onMenuClick} className="p-2 mr-2 text-gray-300 hover:text-white md:hidden" aria-label="Open menu">
+        <button 
+            onClick={onMenuClick} 
+            className={`p-2 mr-2 text-gray-300 hover:text-white ${isSidebarOpen ? 'md:hidden' : ''}`}
+            aria-label="Open menu"
+        >
           <MenuIcon className="w-6 h-6" />
         </button>
         <img

@@ -29,6 +29,12 @@ This is a modern frontend application designed to manage and visualize vessel tr
 -   **Data Export (CSV & PDF)**: Authorized users can export data grids and detailed trip reports to CSV and professional, print-ready PDF documents.
 -   **Fully Responsive Design**: Optimized for mobile devices with a collapsible sidebar and responsive tables.
 
+## User Documentation
+
+For a detailed guide on how to use the application based on your user role, please refer to the main user guide.
+
+**[==> View the User Guide](./USER-GUIDE.md) <==**
+
 ## Alert System Workflow
 
 The alert system has a clear workflow designed to draw the operator's attention to important events and guide them toward resolution.

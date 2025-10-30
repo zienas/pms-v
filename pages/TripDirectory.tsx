@@ -10,6 +10,7 @@ import { downloadCSV } from '../utils/export';
 import DownloadIcon from '../components/icons/DownloadIcon';
 import { formatDuration } from '../utils/formatters';
 import DocumentTextIcon from '../components/icons/DocumentTextIcon';
+import { toast } from 'react-hot-toast';
 
 const statusColors: { [key in TripStatus]: string } = {
   [TripStatus.ACTIVE]: 'bg-green-500/20 text-green-300 border-green-500',
@@ -18,7 +19,7 @@ const statusColors: { [key in TripStatus]: string } = {
 
 const TripDirectory: React.FC = () => {
   const { state, actions } = usePort();
-  const { trips, selectedPort } = state;
+  const { trips, selectedPort, ships } = state;
   const { currentUser, users } = useAuth();
   const { log } = useLogger();
 
@@ -86,6 +87,20 @@ const TripDirectory: React.FC = () => {
     });
     actions.openModal({ type: 'tripDetail', trip });
   };
+  
+  const handleOpenVesselHistory = (trip: Trip) => {
+    const ship = ships.find(s => s.id === trip.shipId);
+    if (ship) {
+      log(InteractionEventType.MODAL_OPEN, {
+          action: 'Open ShipHistory (from Trip DblClick)',
+          targetId: ship.id,
+          value: ship.name,
+      });
+      actions.openModal({ type: 'history', ship });
+    } else {
+      toast.error(`Could not find vessel details for this trip.`);
+    }
+  };
 
   return (
     <div className="bg-gray-900/50 rounded-lg p-3 sm:p-4 h-full flex flex-col" data-log-context="Trip Directory">
@@ -118,7 +133,12 @@ const TripDirectory: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-gray-700">
                 {sortedTrips.map(trip => (
-                    <tr key={trip.id} className="group hover:bg-gray-800/50">
+                    <tr 
+                        key={trip.id} 
+                        onDoubleClick={() => handleOpenVesselHistory(trip)}
+                        className="group hover:bg-gray-800/50 cursor-pointer"
+                        title="Double-click to view vessel history"
+                    >
                         <td className="px-4 py-3 font-medium text-white">{trip.vesselName}</td>
                         <td className="px-4 py-3">{trip.vesselImo}</td>
                         <td className="px-4 py-3 font-mono text-xs text-gray-400">{trip.id.split('-')[1]}</td>
