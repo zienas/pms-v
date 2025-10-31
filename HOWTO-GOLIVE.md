@@ -1,6 +1,6 @@
 # How to Go Live: Connecting a Real AIS Data Feed
 
-This guide explains the architecture and provides practical examples for replacing the built-in AIS simulator with a live data feed from a real-world AIS hardware receiver.
+This guide explains the architecture and provides practical examples for replacing the built-in AIS simulator with a live data feed from a real-world AIS hardware receiver on either a **Linux** (e.g., Raspberry Pi, VPS) or **Windows** machine.
 
 ## 1. Architectural Overview: The Need for an Ingestion Service
 
@@ -22,121 +22,111 @@ The final data flow in a live environment will look like this:
 
 ---
 
-## 2. Building the AIS Ingestion Service (Node.js Examples)
+## 2. Prerequisites
 
-Here are two practical examples of how to build this service using Node.js. You would choose the option that matches your hardware setup.
+1.  **Node.js**: You must have a modern version of Node.js (v16+) installed on the computer that will run the listener service.
+    *   **For Windows**: Download the LTS installer from [nodejs.org](https://nodejs.org/).
+    *   **For Linux/Debian**: Follow instructions at [NodeSource](https://github.com/nodesource/distributions).
+2.  **Project Files**: You need the application source code on the listener computer. You can get this by cloning the project repository with `git`.
+3.  **Administrator/Root Access**: You will need administrative privileges to install background services and configure the firewall.
 
-### Prerequisites
+---
 
-You will need Node.js installed on the server where you plan to run this service.
+## 3. Configuration (Manual Step)
 
-1.  **On your server, create a new project folder:**
+Before running a listener script (either manually or with the automated script), you must configure it. Open either `services/ais-udp-listener.js` or `services/ais-serial-listener.js` in a text editor and modify the variables in the `// --- Configuration ---` section:
+
+*   **`API_ENDPOINT`**: **Crucial**. This must be the full URL to your main backend API. If you followed the VPS deployment guide, this will be something like `https://pvms.your-domain.com/api/ais/update`.
+*   **`PORT_ID_FOR_THIS_FEED`**: Set this to the ID of the port that this AIS feed corresponds to (e.g., `'port-sg'`).
+*   **`UDP_PORT`** (for UDP listener): The network port your AIS hardware broadcasts to.
+*   **`SERIAL_PORT_PATH`** (for Serial listener): The system path to your serial device.
+    *   On Windows, this will be `'COM3'`, `'COM4'`, etc. Check Device Manager to find the correct port.
+    *   On Linux, this is typically `'/dev/ttyUSB0'` or `'/dev/ttyS0'`.
+
+---
+
+## 4. Running the Service
+
+### For Windows (Recommended Method: Automated Script)
+
+The easiest way to set up the listener on Windows is with the provided PowerShell script.
+
+1.  **Locate and Rename the Script**: Find the `setup-windows-listener.ps1.md` file in the project's root directory. Rename it to `setup-windows-listener.ps1`.
+2.  **Run as Administrator**: Right-click the newly renamed `setup-windows-listener.ps1` file and select **"Run with PowerShell"**.
+3.  **Approve UAC**: If the User Account Control (UAC) prompt appears, click **Yes** to allow the script to run with administrator privileges.
+4.  **Follow On-Screen Prompts**: The script will guide you through the process, asking whether you want to set up a UDP or Serial listener.
+5.  **Final Configuration**: After the script finishes, it will remind you to perform the manual configuration step described in **Section 3** above. If you've already done it, simply restart the service by running `pm2 restart ais-ingestion-service` in a PowerShell window.
+
+### For Linux / Raspberry Pi
+
+1.  **Install PM2**:
     ```bash
-    mkdir ais-ingestion-service
-    cd ais-ingestion-service
-    npm init -y
+    sudo npm install -g pm2
     ```
-
-2.  **Install the necessary packages:**
+2.  **Install Dependencies**: In the project's root folder, run:
     ```bash
-    # For parsing NMEA sentences and making HTTP requests
-    npm install nmea-0183 node-fetch
-
-    # If you are using a serial port connection, ALSO install this:
+    # For all listeners
+    npm install ws nmea-0183
+    # For serial/USB listeners ONLY
     npm install serialport @serialport/parser-readline
     ```
+3.  **Start the Service** (choose one):
+    ```bash
+    # For UDP/LAN
+    pm2 start services/ais-udp-listener.js --name "ais-ingestion-service"
 
-### Option A: Listening from a UDP / LAN Source
+    # For Serial/USB
+    pm2 start services/ais-serial-listener.js --name "ais-ingestion-service"
+    ```
+4.  **Enable on Boot**:
+    ```bash
+    pm2 save
+    pm2 startup
+    # (PM2 will give you a command to copy and paste. Run that command.)
+    ```
 
-Many modern AIS receivers broadcast NMEA sentences over a local network via UDP. Create a file named `ais-udp-listener.js` and paste the code below.
+---
+---
 
-```javascript
-// ais-udp-listener.js
-/**
- * NOTE: This is a BACKEND service script.
- * It is designed to be run with Node.js, not in the browser.
- * This script listens for AIS data on a UDP port, parses it, and forwards it
- * to the main application's backend API.
- *
- * --- SETUP ---
- * 1. Install Node.js on your server.
- * 2. Create a project folder: `mkdir ais-ingestion && cd ais-ingestion`
- * 3. Initialize the project: `npm init -y`
- * 4. Install dependencies: `npm install nmea-0183 node-fetch`
- *
- * --- TO RUN ---
- * Direct: `node ais-udp-listener.js`
- * Production (with PM2):
- *   `sudo npm install -g pm2`
- *   `pm2 start ais-udp-listener.js --name "ais-ingestion-service"`
- *   `pm2 save`
- *   `pm2 startup` (and follow instructions)
- */
+## Appendix: Manual Windows Setup
 
-const dgram = require('dgram');
-const { Nmea0183, AisMessage, Vdm } = require('nmea-0183');
-const fetch = require('node-fetch');
+These steps are for reference and are automated by the PowerShell script.
 
-// --- Configuration ---
-const UDP_PORT = 10110; // The port your AIS receiver is broadcasting to
-const UDP_HOST = '0.0.0.0'; // Listen on all available network interfaces
-// This should be the full URL to your backend API endpoint.
-const API_ENDPOINT = 'http://localhost:4000/api/updateShipFromAIS'; 
-const PORT_ID_FOR_THIS_FEED = 'port-sg'; // Configure which port this AIS feed belongs to
+1.  **Install PM2 and Startup Package**: Open **PowerShell as an Administrator**.
+    ```powershell
+    # Install PM2 globally
+    npm install -g pm2
 
-const server = dgram.createSocket('udp4');
-const nmeaParser = new Nmea0183();
+    # Install the package to manage Windows startup services
+    npm install -g pm2-windows-startup
+    ```
+2.  **Configure Startup**:
+    ```powershell
+    # Configure the startup script for PM2
+    pm2-startup install
+    ```
+3.  **Install Dependencies**: From a regular PowerShell prompt in the project's root folder:
+    ```powershell
+    # For all listeners
+    npm install ws nmea-0183
+    # For serial/USB listeners ONLY
+    npm install serialport @serialport/parser-readline
+    ```
+4.  **Start the Service**:
+    ```powershell
+    # For UDP/LAN
+    pm2 start services/ais-udp-listener.js --name "ais-ingestion-service"
 
-// A temporary in-memory map to link a vessel's MMSI to its IMO number.
-// In a production system, this might be backed by a more persistent cache like Redis.
-const mmsiToImoMap = new Map();
-
-// This event is triggered whenever the parser successfully decodes a NMEA sentence.
-nmeaParser.on('data', (data) => {
-    // We are interested in VDM sentences, which contain AIS messages.
-    if (data instanceof Vdm) {
-        const message = data.message;
-        if (message instanceof AisMessage) {
-            handleAisMessage(message);
-        }
-    }
-});
-
-function handleAisMessage(message) {
-    let payload = null;
-    
-    // Type 5: Static and Voyage Related Data (IMO, name, type)
-    if (message.messageType === 5 && message.imo) {
-        // When we get a Type 5 message, we learn the ship's IMO number and can link it to its MMSI.
-        mmsiToImoMap.set(message.mmsi, message.imo);
-        payload = {
-            imo: message.imo.toString(),
-            portId: PORT_ID_FOR_THIS_FEED,
-            name: message.shipname?.trim(),
-            callSign: message.callsign?.trim(),
-            type: message.shipType?.toString(),
-        };
-        console.log(`[AIS] Parsed Voyage Info for IMO: ${payload.imo}`);
-        sendToBackend(payload);
-    }
-
-    // Type 1, 2, 3: Position Report Class A
-    // These messages give us the ship's position but usually only contain the MMSI.
-    // We check our map to see if we know the IMO for this MMSI.
-    if ([1, 2, 3].includes(message.messageType) && mmsiToImoMap.has(message.mmsi)) {
-        payload = {
-            imo: mmsiToImoMap.get(message.mmsi).toString(),
-            portId: PORT_ID_FOR_THIS_FEED,
-            lat: message.lat,
-            lon: message.lon,
-            status: mapNavStatus(message.navStatus),
-        };
-         console.log(`[AIS] Parsed Position Report for IMO: ${payload.imo}`);
-        sendToBackend(payload);
-    }
-}
-
-// Map AIS Navigational Status codes to our application's specific statuses.
-function mapNavStatus(navStatus) {
-    const code = navStatus?.code;
-    
+    # For Serial/USB
+    pm2 start services/ais-serial-listener.js --name "ais-ingestion-service"
+    ```
+5.  **Save the Process List**:
+    ```powershell
+    pm2 save
+    ```
+6.  **Firewall Configuration (UDP Listener Only)**:
+    *   Open **Windows Defender Firewall with Advanced Security**.
+    *   Go to **Inbound Rules** -> **New Rule...**.
+    *   Select **Port**, then **UDP**.
+    *   Enter the specific local port your AIS receiver uses (e.g., `10110`).
+    *   Select **Allow the connection**, apply to profiles, and give it a name like "AIS UDP Inbound".

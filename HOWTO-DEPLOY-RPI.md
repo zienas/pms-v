@@ -25,48 +25,43 @@ For a multi-user or centralized system, you would follow the main `HOWTO-DEPLOY.
 
 ---
 
-## Step 1: Initial Raspberry Pi Setup
+## Step 1: Install Node.js (Prerequisite)
 
-1.  **Boot Up and Connect**: Insert the SD card, connect your peripherals and display, and power on the Pi. Complete the initial setup wizard (setting country, language, password, and connecting to Wi-Fi).
+The versions of Node.js in the standard Raspberry Pi OS repositories can be outdated. The recommended method is to use the official NodeSource repository to get a modern version.
 
-2.  **Update System Packages**: It's crucial to start with an up-to-date system. Open a terminal window and run:
+1.  **Update Your System**: First, open a terminal on your Raspberry Pi and make sure all your system packages are up to date.
     ```bash
-    # Update the list of available packages
     sudo apt update
-
-    # Upgrade all installed packages to their latest versions
     sudo apt upgrade -y
     ```
+
+2.  **Download and Run the NodeSource Setup Script**: This command downloads a script that will configure your system to install Node.js version 18.x (a stable Long-Term Support version).
+    ```bash
+    curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+    ```
+
+3.  **Install Node.js**: After running the script above, you can now install Node.js using `apt`. `npm` (Node Package Manager) is included automatically.
+    ```bash
+    sudo apt install nodejs -y
+    ```
+
+4.  **Verify the Installation**: Check that Node.js and npm have been installed correctly.
+    ```bash
+    node -v
+    npm -v
+    ```
+    You should see the version numbers printed to the terminal (e.g., `v18.17.1` and `9.6.7`).
 
 ---
 
 ## Step 2: Install Core Dependencies
 
-We need to install `git` to download the application code, `Node.js` and `npm` to build it, and `nginx` to serve it.
+We need to install `git` to download the application code and `nginx` to serve it.
 
 1.  **Install Git and Nginx**:
     ```bash
     sudo apt install git nginx -y
     ```
-
-2.  **Install Node.js and npm**: We will use NodeSource to get a modern version of Node.js.
-    ```bash
-    # Download and execute the NodeSource setup script for Node.js v18.x
-    curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-
-    # Install Node.js (npm is included)
-    sudo apt install nodejs -y
-    ```
-
-3.  **Verify Installations**:
-    ```bash
-    git --version
-    node -v
-    npm -v
-    nginx -v
-    ```
-    You should see version numbers for each command.
-
 ---
 
 ## Step 3: Download and Build the Application
@@ -148,50 +143,34 @@ Nginx will act as the local web server that provides the application files to th
 
 ---
 
-## Step 5: Set Up Live AIS Feed (Recommended)
+## Step 5: Set Up Live AIS Feed (Recommended Method: Automated Script)
 
-To connect a real AIS receiver, you need to run a background service on the Pi that listens for the data and forwards it to the frontend application.
+To connect a real AIS receiver, you need to run a background service on the Pi that listens for the data and forwards it to the frontend application. The easiest way to set this up is with the automated script.
 
-1.  **Install Ingestion Service Dependencies**: In your project folder (`~/pvms`), install the required Node.js packages.
+1.  **Navigate to Project Directory**: Make sure you are in the project's root folder.
     ```bash
-    # Navigate to your project directory if you're not already there
     cd ~/pvms
-
-    # Install packages for WebSockets and NMEA parsing
-    npm install ws nmea-0183
-
-    # If you are using a SERIAL/USB connection, ALSO install this:
-    npm install serialport @serialport/parser-readline
     ```
 
-2.  **Configure the Ingestion Script**:
-    Choose the script that matches your hardware and open it for editing.
-    *   **For UDP/LAN**: `nano services/ais-udp-listener.js`
-    *   **For Serial/USB**: `nano services/ais-serial-listener.js`
-
-    Inside the file, find the `PORT_ID_FOR_THIS_FEED` variable and change its value to match the ID of the port you are monitoring in the application (e.g., `'port-rt'`). Save and exit.
-
-3.  **Set up a Background Service with PM2**: PM2 is a process manager that will ensure your AIS listener runs continuously and restarts automatically on boot.
+2.  **Rename and Make Executable**: The script is provided with a `.md` extension. You must rename it and make it executable.
     ```bash
-    # Install PM2 globally
-    sudo npm install -g pm2
-
-    # Start the service (CHOOSE ONE):
-    # For UDP/LAN:
-    pm2 start services/ais-udp-listener.js --name "ais-udp-service"
-
-    # For Serial/USB:
-    pm2 start services/ais-serial-listener.js --name "ais-serial-service"
-
-    # Tell PM2 to save the process list for reboot
-    pm2 save
-
-    # Create a startup script so PM2 launches on boot
-    pm2 startup
-    # (This will give you a command to copy and paste. Run it.)
+    mv setup-rpi-listener.sh.md setup-rpi-listener.sh
+    chmod +x setup-rpi-listener.sh
     ```
 
-4.  **Enable Live Feed in the Application**:
+3.  **Run the Script**:
+    ```bash
+    sudo ./setup-rpi-listener.sh
+    ```
+
+4.  **Follow On-Screen Instructions**: The script will guide you through the process, installing dependencies and setting up the background service with PM2.
+
+5.  **Final Configuration**: After the script finishes, it will remind you to perform the one required manual step: **configuring the listener script**.
+    *   Open either `services/ais-udp-listener.js` or `services/ais-serial-listener.js` (whichever one you chose).
+    *   Edit the `API_ENDPOINT` and `PORT_ID_FOR_THIS_FEED` variables.
+    *   After saving, restart the service with the command provided by the script (e.g., `pm2 restart ais-udp-service`).
+
+6.  **Enable Live Feed in the Application**:
     *   Once the app is running in the browser, log in.
     *   Go to the **Settings** page from the sidebar.
     *   Under **AIS Data Source**, select either "Live UDP/LAN Feed" or "Live Serial Port Feed".
@@ -243,8 +222,35 @@ Your Raspberry Pi is now fully configured.
 
 Your dedicated kiosk is now complete!
 
-## Troubleshooting
+---
+---
 
-*   **Blank Screen or "Can't connect" in browser**: Ensure Nginx is running (`sudo systemctl status nginx`). Check the Nginx error logs (`tail /var/log/nginx/error.log`).
-*   **No Live AIS Data**: Check your PM2 service status with `pm2 list`. Look at its logs with `pm2 logs ais-udp-service` (or `ais-serial-service`). Ensure your AIS hardware is connected and powered on, and that you've selected the correct live data source in the application's Settings page.
-*   **Browser Doesn't Start on Boot**: Check for typos in your `~/.config/lxsession/LXDE-pi/autostart` file. Ensure the file permissions are correct.
+## Appendix: Manual AIS Service Setup
+
+These steps are for reference and are automated by the `setup-rpi-listener.sh` script.
+
+1.  **Install PM2**:
+    ```bash
+    sudo npm install -g pm2
+    ```
+2.  **Install Dependencies**: In the project's root folder (`~/pvms`), run:
+    ```bash
+    # For all listeners
+    npm install ws nmea-0183
+    # For serial/USB listeners ONLY
+    npm install serialport @serialport/parser-readline
+    ```
+3.  **Start the Service** (choose one):
+    ```bash
+    # For UDP/LAN
+    pm2 start services/ais-udp-listener.js --name "ais-ingestion-service"
+
+    # For Serial/USB
+    pm2 start services/ais-serial-listener.js --name "ais-ingestion-service"
+    ```
+4.  **Enable on Boot**:
+    ```bash
+    pm2 save
+    pm2 startup
+    # (PM2 will give you a command to copy and paste. Run that command.)
+    ```

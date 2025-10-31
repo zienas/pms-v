@@ -24,7 +24,10 @@ const { Nmea0183, AisMessage, Vdm } = require('nmea-0183');
 const WebSocket = require('ws');
 
 // --- Configuration ---
-const SERIAL_PORT_PATH = '/dev/ttyUSB0'; // Linux path. For Windows, use 'COM3', etc.
+// ** IMPORTANT: Change this path to match your system **
+// For Linux/macOS, it's typically '/dev/ttyUSB0', '/dev/tty.usbmodem', etc.
+// For Windows, it will be 'COM3', 'COM4', etc. Check Device Manager.
+const SERIAL_PORT_PATH = '/dev/ttyUSB0';
 const BAUD_RATE = 38400; // Common for AIS, but check your receiver's manual
 const WEBSOCKET_PORT = 8080; // Port for the WebSocket server (must match frontend)
 // ** IMPORTANT: Change this to match the Port ID you are monitoring in the app **

@@ -4,6 +4,8 @@ import { ShipStatus, UserRole, InteractionEventType } from '../types';
 import { useAuth } from '../context/AuthContext';
 import { usePort } from '../context/PortContext';
 import { useLogger } from '../context/InteractionLoggerContext';
+import PortCenterIcon from './icons/PortCenterIcon';
+import { toast } from 'react-hot-toast';
 
 type AssignmentStatus = {
     isValid: boolean;
@@ -262,6 +264,20 @@ const ShipFormModal: React.FC = () => {
     });
     closeModal();
   };
+
+  const handleCenterOnMap = () => {
+    if (shipToEdit) {
+        log(InteractionEventType.BUTTON_CLICK, {
+            action: 'Center on Map from Ship Form',
+            targetId: shipToEdit.id,
+            value: shipToEdit.name,
+            message: `User clicked 'Center on Map' for vessel ${shipToEdit.name}`
+        });
+        actions.setFocusedVesselId(shipToEdit.id);
+        closeModal();
+        window.dispatchEvent(new CustomEvent('navigateTo', { detail: 'dashboard' }));
+    }
+  };
   
   const getBerthSelectClasses = () => {
     const base = "mt-1 block w-full px-3 py-2 bg-gray-700 text-white border rounded-md focus:outline-none focus:ring-2 disabled:bg-gray-600 disabled:cursor-not-allowed";
@@ -380,9 +396,26 @@ const ShipFormModal: React.FC = () => {
             </div>
            )}
 
-          <div className="flex justify-end gap-4 pt-4">
-            <button type="button" onClick={handleCancel} data-logging-handler="true" className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors">Cancel</button>
-            <button type="submit" data-logging-handler="true" className="px-4 py-2 bg-cyan-600 text-white rounded-md hover:bg-cyan-700 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed" disabled={!assignmentStatus.isValid}>Save Ship</button>
+          <div className="flex justify-between items-center gap-4 pt-4">
+            <div>
+                {shipToEdit && (
+                    <button
+                        type="button"
+                        onClick={handleCenterOnMap}
+                        disabled={!shipToEdit.lat || !shipToEdit.lon}
+                        data-logging-handler="true"
+                        className="flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-500 transition-colors disabled:bg-gray-700 disabled:text-gray-500 disabled:cursor-not-allowed"
+                        title={!shipToEdit.lat || !shipToEdit.lon ? "Vessel has no position data" : "Center vessel on map"}
+                    >
+                        <PortCenterIcon className="w-5 h-5" />
+                        Center
+                    </button>
+                )}
+            </div>
+            <div className="flex items-center gap-4">
+                <button type="button" onClick={handleCancel} data-logging-handler="true" className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors">Cancel</button>
+                <button type="submit" data-logging-handler="true" className="px-4 py-2 bg-cyan-600 text-white rounded-md hover:bg-cyan-700 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed" disabled={!assignmentStatus.isValid}>Save Ship</button>
+            </div>
           </div>
         </form>
       </div>
