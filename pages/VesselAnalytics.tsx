@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import type { Ship, Port, ShipMovement, Berth } from '../types';
-import { ShipStatus, BerthType, InteractionEventType } from '../types';
+import { ShipStatus, BerthType, InteractionEventType, MovementEventType } from '../types';
 import * as api from '../services/api';
 import { useSortableData } from '../hooks/useSortableData';
 import { formatDuration } from '../utils/formatters';
@@ -93,18 +93,25 @@ const VesselAnalytics: React.FC = () => {
                 const tripEnd = new Date(tripMovements[tripMovements.length - 1].timestamp).getTime();
                 statsByShip[shipId].durations.push(tripEnd - tripStart);
 
+                let currentBerthIds: string[] = []; // Track berth state across movements
+
                 // 6. Calculate dwell and anchorage time for this trip
                 for (let i = 0; i < tripMovements.length - 1; i++) {
                     const currentMov = tripMovements[i];
                     const nextMov = tripMovements[i + 1];
                     const durationInState = new Date(nextMov.timestamp).getTime() - new Date(currentMov.timestamp).getTime();
                     
-                    const berthIds = currentMov.details.berthIds || [];
-                    const isAtDock = berthIds.some(id => {
+                    // Update the current berth state if this is a berth assignment event
+                    if (currentMov.eventType === MovementEventType.BERTH_ASSIGNMENT && currentMov.details.berthIds) {
+                        currentBerthIds = currentMov.details.berthIds;
+                    }
+
+                    // Calculate time spent based on the persistent state
+                    const isAtDock = currentBerthIds.some(id => {
                         const berth = berthMap.get(id);
                         return berth && (berth.type === BerthType.BERTH || berth.type === BerthType.QUAY);
                     });
-                    const isAtAnchorage = berthIds.some(id => berthMap.get(id)?.type === BerthType.ANCHORAGE);
+                    const isAtAnchorage = currentBerthIds.some(id => berthMap.get(id)?.type === BerthType.ANCHORAGE);
 
                     if (isAtDock) {
                         statsByShip[shipId].dockMs += durationInState;
